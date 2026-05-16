@@ -49,7 +49,7 @@ def clean_json_response(text):
 def generate_story(topic, animal, lesson):
     genai.configure(api_key=GEMINI_API_KEY)
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
 You are writing for a YouTube Shorts channel called Tiny Brave Tails.
