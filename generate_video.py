@@ -1,13 +1,12 @@
 import os
 import json
 import re
-import asyncio
+import subprocess
 import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
 
 import gspread
-import edge_tts
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 from google.oauth2.service_account import Credentials
@@ -25,8 +24,6 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 WIDTH = 1080
 HEIGHT = 1920
 FPS = 24
-
-VOICE = "en-US-GuyNeural"
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -110,7 +107,6 @@ def make_gradient_background():
         b = int(34 + ratio * 38)
         draw.line([(0, y), (WIDTH, y)], fill=(r, g, b))
 
-    # soft light circles
     overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     odraw = ImageDraw.Draw(overlay)
     odraw.ellipse((-250, 150, 520, 920), fill=(255, 210, 130, 35))
@@ -151,7 +147,6 @@ def draw_centered_multiline(draw, text, font, y, fill, max_width, line_spacing=1
         line_width = bbox[2] - bbox[0]
         x = (WIDTH - line_width) // 2
 
-        # shadow
         draw.text((x + 4, current_y + 4), line, font=font, fill=(0, 0, 0, 160))
         draw.text((x, current_y), line, font=font, fill=fill)
 
@@ -166,23 +161,24 @@ def create_frame(text, title, video_id, segment_index, total_segments):
     body_font = load_font(68)
     small_font = load_font(34)
 
-    # top brand
     brand = "Tiny Brave Tails"
     draw.text((60, 70), brand, font=title_font, fill=(255, 235, 190, 255))
 
-    # small story title
     wrapped_title = textwrap.shorten(title, width=34, placeholder="...")
     draw.text((60, 145), wrapped_title, font=small_font, fill=(220, 230, 240, 230))
 
-    # simple animal paw / circle visual
     cx, cy = WIDTH // 2, 500
-    draw.ellipse((cx - 150, cy - 150, cx + 150, cy + 150), fill=(255, 235, 190, 35), outline=(255, 235, 190, 110), width=4)
+    draw.ellipse(
+        (cx - 150, cy - 150, cx + 150, cy + 150),
+        fill=(255, 235, 190, 35),
+        outline=(255, 235, 190, 110),
+        width=4,
+    )
     draw.ellipse((cx - 45, cy - 20, cx + 45, cy + 70), fill=(255, 235, 190, 180))
     draw.ellipse((cx - 105, cy - 85, cx - 55, cy - 35), fill=(255, 235, 190, 170))
     draw.ellipse((cx + 55, cy - 85, cx + 105, cy - 35), fill=(255, 235, 190, 170))
     draw.ellipse((cx - 35, cy - 125, cx + 35, cy - 55), fill=(255, 235, 190, 170))
 
-    # main caption
     draw_centered_multiline(
         draw=draw,
         text=text,
@@ -193,7 +189,6 @@ def create_frame(text, title, video_id, segment_index, total_segments):
         line_spacing=20,
     )
 
-    # progress bar
     bar_x = 120
     bar_y = 1700
     bar_w = 840
@@ -211,7 +206,6 @@ def create_frame(text, title, video_id, segment_index, total_segments):
         fill=(255, 235, 190, 230),
     )
 
-    # bottom CTA
     cta = "Follow for tiny stories with big lessons"
     bbox = draw.textbbox((0, 0), cta, font=small_font)
     draw.text(
@@ -226,17 +220,41 @@ def create_frame(text, title, video_id, segment_index, total_segments):
     return frame_path
 
 
-async def create_voice(script, output_audio):
-    communicate = edge_tts.Communicate(script, VOICE)
-    await communicate.save(str(output_audio))
+def clean_text_for_tts(text):
+    text = text.replace("\n", " ")
+    text = re.sub(r"[“”]", '"', text)
+    text = re.sub(r"[‘’]", "'", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def create_voice(script, output_audio):
+    clean_script = clean_text_for_tts(script)
+
+    command = [
+        "espeak-ng",
+        "-v",
+        "en-us",
+        "-s",
+        "145",
+        "-p",
+        "45",
+        "-a",
+        "170",
+        "-w",
+        str(output_audio),
+        clean_script,
+    ]
+
+    subprocess.run(command, check=True)
 
 
 def create_video(video_id, title, script):
     safe_id = str(video_id).strip() or "video"
-    audio_path = OUTPUT_DIR / f"voice_{safe_id}.mp3"
+    audio_path = OUTPUT_DIR / f"voice_{safe_id}.wav"
     video_path = OUTPUT_DIR / f"tiny_brave_tails_{safe_id}.mp4"
 
-    asyncio.run(create_voice(script, audio_path))
+    create_voice(script, audio_path)
 
     audio_clip = AudioFileClip(str(audio_path))
     audio_duration = audio_clip.duration
@@ -244,7 +262,6 @@ def create_video(video_id, title, script):
     chunks = split_script(script)
     total_segments = len(chunks)
 
-    # distribute time by text length
     total_chars = sum(len(chunk) for chunk in chunks)
     clips = []
 
