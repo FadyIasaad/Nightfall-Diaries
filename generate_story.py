@@ -23,16 +23,12 @@ SCOPES = [
 
 def get_sheets_client():
     service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
-    credentials = Credentials.from_service_account_info(
-        service_account_info,
-        scopes=SCOPES,
-    )
+    credentials = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
     return gspread.authorize(credentials)
 
 
 def clean_json_response(text):
     text = text.strip()
-
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?", "", text, flags=re.IGNORECASE).strip()
         text = re.sub(r"```$", "", text).strip()
@@ -51,75 +47,101 @@ def generate_story_package(topic, animal, lesson):
     model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
-You are the lead writer for a YouTube Shorts channel called Tiny Brave Tails.
+You are the lead writer for a family-friendly YouTube Shorts channel called Tiny Brave Tails.
 
-Channel:
-Family-friendly emotional 2D storybook animal stories with life lessons.
+Channel style:
+Warm emotional 2D cartoon storybook animal stories with life lessons.
 
-Goal:
-Create a short viral YouTube Shorts story package.
+Create one short animated story package.
 
-Style:
-- Warm 2D cartoon storybook.
-- Cute emotional animals.
-- Simple English.
-- Strong emotional hook in the first 2 seconds.
-- Fast pacing.
-- No horror.
-- No gore.
-- No explicit violence.
-- No claim that the story is real.
-- Appealing to adults and children.
-- The story should feel like a tiny animated short.
+Important:
+The subtitles must match the narration scene by scene.
+Each scene narration should be short enough to fit subtitles clearly.
 
 Input:
 Topic: {topic}
 Animal: {animal}
 Life lesson: {lesson}
 
-Return valid JSON only.
+Rules:
+- English narration only.
+- Arabic subtitles must be a natural full translation of the English narration for each scene.
+- Family-friendly.
+- No horror.
+- No gore.
+- No explicit violence.
+- No claim that the story is true.
+- Strong hook in scene 1.
+- Fast pacing.
+- Emotional escalation.
+- 35 to 55 seconds total.
+- Cute 2D storybook style.
+- Return valid JSON only.
 
-Required JSON:
+Return exactly this JSON:
 {{
   "title": "Short emotional YouTube title under 70 characters",
-  "script": "Full English narration script, 35 to 55 seconds",
   "description": "Short YouTube description with hashtags",
-  "hook": "The strongest first sentence of the story",
-  "arabic_summary": "Short Arabic summary of the story",
   "character": {{
     "name": "Character name",
-    "description": "Consistent character design in English. Include color, eyes, accessory, mood, and style."
+    "description": "Consistent 2D storybook character design. Include animal type, color, eyes, accessory, mood, and visual style."
   }},
   "scenes": [
     {{
       "scene_number": 1,
-      "en_subtitle": "Short English subtitle for this scene",
-      "ar_subtitle": "ترجمة عربية قصيرة لهذا المشهد",
-      "image_prompt": "Prompt for a vertical 9:16 warm 2D cartoon storybook frame matching this scene"
+      "narration_en": "English narration for this scene. This text will be spoken.",
+      "subtitle_en": "Same meaning as narration_en, short and complete.",
+      "subtitle_ar": "ترجمة عربية طبيعية وكاملة لنفس الكلام",
+      "image_prompt": "Vertical 9:16 warm 2D cartoon storybook frame matching this scene, no text"
     }}
   ]
 }}
 
 Scene rules:
 - Exactly 6 scenes.
-- Each English subtitle must be short and punchy.
-- Each Arabic subtitle must be natural, short, and emotionally clear.
-- The 6 scenes must follow: hook, problem, fear, brave action, emotional turn, lesson.
-- Keep the same character design in every image prompt.
-- Each image prompt must include: warm 2D cartoon storybook style, soft colors, expressive animal face, child-safe, vertical 9:16, no text.
+- Scene 1: strong emotional hook.
+- Scene 2: introduce the problem.
+- Scene 3: fear or sadness.
+- Scene 4: brave action.
+- Scene 5: emotional turn.
+- Scene 6: life lesson.
+- Each narration_en should be 1 or 2 short sentences.
+- Each subtitle_ar must be complete, not summarized.
+- Keep the same character design in all image prompts.
+- Each image prompt must include: warm 2D cartoon storybook, soft colors, expressive animal face, child-safe, vertical 9:16, no text, no watermark.
 """
 
     response = model.generate_content(prompt)
     data = json.loads(clean_json_response(response.text))
 
-    required = ["title", "script", "description", "hook", "arabic_summary", "character", "scenes"]
-    for key in required:
+    for key in ["title", "description", "character", "scenes"]:
         if key not in data:
-            raise ValueError(f"Missing key from Gemini response: {key}")
+            raise ValueError(f"Missing key: {key}")
 
     scenes = data["scenes"]
     if not isinstance(scenes, list) or len(scenes) != 6:
-        raise ValueError(f"Expected exactly 6 scenes, got: {len(scenes) if isinstance(scenes, list) else 'invalid'}")
+        raise ValueError("Expected exactly 6 scenes.")
+
+    cleaned_scenes = []
+    for i, scene in enumerate(scenes, start=1):
+        narration = str(scene.get("narration_en", "")).strip()
+        subtitle_en = str(scene.get("subtitle_en", "")).strip() or narration
+        subtitle_ar = str(scene.get("subtitle_ar", "")).strip()
+        image_prompt = str(scene.get("image_prompt", "")).strip()
+
+        if not narration or not subtitle_ar or not image_prompt:
+            raise ValueError(f"Incomplete scene {i}: {scene}")
+
+        cleaned_scenes.append({
+            "scene_number": i,
+            "narration_en": narration,
+            "subtitle_en": subtitle_en,
+            "subtitle_ar": subtitle_ar,
+            "image_prompt": image_prompt,
+        })
+
+    data["scenes"] = cleaned_scenes
+    data["script"] = " ".join(scene["narration_en"] for scene in cleaned_scenes)
 
     return data
 
@@ -184,12 +206,9 @@ def main():
     lesson = get_cell(target_row, lesson_col)
 
     package = generate_story_package(topic, animal, lesson)
-
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     scene_payload = {
-        "hook": package["hook"],
-        "arabic_summary": package["arabic_summary"],
         "character": package["character"],
         "scenes": package["scenes"],
     }
@@ -205,14 +224,8 @@ def main():
     content_sheet.update_cell(target_row_number, youtube_status_col, "")
     content_sheet.update_cell(target_row_number, youtube_video_id_col, "")
 
-    log(
-        logs_sheet,
-        video_id,
-        "GENERATE_STORY",
-        f"Generated 6-scene 2D storybook package: {package['title']}",
-    )
-
-    print(f"Generated story package: {package['title']}")
+    log(logs_sheet, video_id, "GENERATE_STORY", f"Generated synced 6-scene story: {package['title']}")
+    print(f"Generated story: {package['title']}")
 
 
 if __name__ == "__main__":
