@@ -1,6 +1,7 @@
 gspread==6.1.4
 google-auth==2.35.0
 google-generativeai==0.8.3
+google-genai==1.49.0
 moviepy==1.0.3
 Pillow==10.4.0
 edge-tts==6.1.12
