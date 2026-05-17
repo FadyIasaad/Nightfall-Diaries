@@ -65,25 +65,41 @@ def log(logs_sheet, video_id, action, message):
     logs_sheet.append_row([now, video_id, action, message], value_input_option="USER_ENTERED")
 
 
-def load_font(size, bold=True):
+def load_latin_font(size, bold=True):
     paths = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ]
-
     for path in paths:
         if Path(path).exists():
             return ImageFont.truetype(path, size)
-
     return ImageFont.load_default()
 
 
-def fix_arabic_line(text):
+def load_arabic_font(size, bold=True):
+    paths = [
+        "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Bold.ttf",
+        "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansArabic-Bold.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
+    for path in paths:
+        if Path(path).exists():
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
+
+
+def reshape_arabic_for_display(text):
+    text = text.strip()
+    if not text:
+        return ""
     reshaped = arabic_reshaper.reshape(text)
     return get_display(reshaped)
 
 
-def wrap_ltr(draw, text, font, max_width):
+def wrap_ltr(draw, text, font, max_width, max_lines=3):
     words = text.split()
     lines = []
     current = ""
@@ -98,36 +114,42 @@ def wrap_ltr(draw, text, font, max_width):
                 lines.append(current)
             current = word
 
-    if current:
+        if len(lines) >= max_lines:
+            break
+
+    if current and len(lines) < max_lines:
         lines.append(current)
 
-    return lines
+    return lines[:max_lines]
 
 
-def wrap_arabic_logical(draw, text, font, max_width):
+def wrap_arabic(draw, text, font, max_width, max_lines=3):
     words = text.split()
-    lines = []
+    logical_lines = []
     current = ""
 
     for word in words:
         test_logical = (current + " " + word).strip()
-        test_visual = fix_arabic_line(test_logical)
+        test_visual = reshape_arabic_for_display(test_logical)
         bbox = draw.textbbox((0, 0), test_visual, font=font)
 
         if bbox[2] - bbox[0] <= max_width:
             current = test_logical
         else:
             if current:
-                lines.append(fix_arabic_line(current))
+                logical_lines.append(current)
             current = word
 
-    if current:
-        lines.append(fix_arabic_line(current))
+        if len(logical_lines) >= max_lines:
+            break
 
-    return lines
+    if current and len(logical_lines) < max_lines:
+        logical_lines.append(current)
+
+    return [reshape_arabic_for_display(line) for line in logical_lines[:max_lines]]
 
 
-def draw_centered_lines(draw, lines, font, center_y, fill, spacing=10):
+def draw_centered_lines(draw, lines, font, center_y, fill, spacing=8):
     heights = []
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=font)
@@ -190,38 +212,43 @@ def prepare_background(path):
     except Exception:
         img = Image.open(fallback_background(FRAMES_DIR / "fallback_bg.jpg")).convert("RGB")
 
-    overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 38))
+    overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 35))
     return Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
 
 def make_frame(video_id, scene_index, scene, title, image_path, total_scenes):
     bg = prepare_background(image_path).convert("RGBA")
 
-    top_overlay = Image.new("RGBA", (WIDTH, 175), (0, 0, 0, 95))
+    top_overlay = Image.new("RGBA", (WIDTH, 220), (0, 0, 0, 100))
     bg.alpha_composite(top_overlay, (0, 0))
 
-    subtitle_h = 430
+    subtitle_h = 450
     subtitle_y = HEIGHT - subtitle_h - 75
-    subtitle_box = Image.new("RGBA", (WIDTH, subtitle_h), (0, 0, 0, 155))
+    subtitle_box = Image.new("RGBA", (WIDTH, subtitle_h), (0, 0, 0, 160))
     subtitle_box = subtitle_box.filter(ImageFilter.GaussianBlur(1))
     bg.alpha_composite(subtitle_box, (0, subtitle_y))
 
     draw = ImageDraw.Draw(bg)
 
-    brand_font = load_font(42, True)
-    title_font = load_font(30, False)
-    en_font = load_font(48, True)
-    ar_font = load_font(40, True)
-    small_font = load_font(28, False)
+    brand_font = load_latin_font(42, True)
+    title_font = load_latin_font(30, False)
+    en_font = load_latin_font(46, True)
+    ar_font = load_arabic_font(42, True)
+    small_font = load_latin_font(28, False)
 
-    draw.text((55, 42), "Tiny Brave Tails", font=brand_font, fill=(255, 238, 190, 255))
-    draw.text((55, 105), title[:52], font=title_font, fill=(240, 240, 240, 230))
+    draw.text((55, 38), "Tiny Brave Tails", font=brand_font, fill=(255, 238, 190, 255))
+
+    title_lines = wrap_ltr(draw, title, title_font, 950, max_lines=2)
+    title_y = 102
+    for line in title_lines:
+        draw.text((55, title_y), line, font=title_font, fill=(240, 240, 240, 230))
+        title_y += 38
 
     en_text = scene.get("subtitle_en", scene.get("narration_en", "")).strip()
     ar_text = scene.get("subtitle_ar", "").strip()
 
-    en_lines = wrap_ltr(draw, en_text, en_font, 940)[:3]
-    ar_lines = wrap_arabic_logical(draw, ar_text, ar_font, 940)[:3]
+    en_lines = wrap_ltr(draw, en_text, en_font, 940, max_lines=3)
+    ar_lines = wrap_arabic(draw, ar_text, ar_font, 940, max_lines=3)
 
     draw_centered_lines(
         draw,
@@ -236,7 +263,7 @@ def make_frame(video_id, scene_index, scene, title, image_path, total_scenes):
         draw,
         ar_lines,
         ar_font,
-        subtitle_y + 292,
+        subtitle_y + 305,
         fill=(255, 232, 170, 255),
         spacing=8,
     )
@@ -321,7 +348,6 @@ def create_video(video_id, title, scene_payload):
 
     clips = []
     voice_sources = []
-
     total_scenes = len(scenes)
 
     for i, scene in enumerate(scenes, start=1):
@@ -383,7 +409,6 @@ def main():
     headers = values[0]
 
     id_col = find_column(headers, "id")
-    script_col = find_column(headers, "script")
     title_col = find_column(headers, "title")
     status_col = find_column(headers, "status")
     scene_prompts_col = find_column(headers, "scene_prompts")
@@ -412,6 +437,7 @@ def main():
         raise ValueError("Missing title or scene_prompts.")
 
     scene_payload = json.loads(scene_raw)
+
     video_path, voice_source = create_video(video_id, title, scene_payload)
 
     content_sheet.update_cell(target_row_number, status_col, "VIDEO_CREATED")
@@ -422,7 +448,7 @@ def main():
         logs_sheet,
         video_id,
         "GENERATE_VIDEO",
-        f"Created synced bilingual 2D storybook video: {video_path}. Voice: {voice_source}",
+        f"Created fixed Arabic bilingual 2D storybook video: {video_path}. Voice: {voice_source}",
     )
 
     print(f"Video created: {video_path}")
