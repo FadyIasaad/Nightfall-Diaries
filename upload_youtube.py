@@ -1,5 +1,4 @@
 import os
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,26 +21,48 @@ LOGS_SHEET_NAME = "Logs"
 
 OUTPUT_DIR = Path("output")
 
-SCOPES = [
+SHEET_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
 
+YOUTUBE_SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+]
+
 
 def get_sheets_client():
-    service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
+    service_account_info = ServiceCredentials.from_service_account_info
 
-    credentials = ServiceCredentials.from_service_account_info(
-        service_account_info,
-        scopes=SCOPES,
+    import json
+
+    service_account_data = json.loads(SERVICE_ACCOUNT_JSON)
+
+    credentials = service_account_info(
+        service_account_data,
+        scopes=SHEET_SCOPES,
     )
 
     return gspread.authorize(credentials)
 
 
+def get_youtube_service():
+    credentials = Credentials(
+        token=None,
+        refresh_token=YOUTUBE_REFRESH_TOKEN,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=YOUTUBE_CLIENT_ID,
+        client_secret=YOUTUBE_CLIENT_SECRET,
+        scopes=YOUTUBE_SCOPES,
+    )
+
+    return build("youtube", "v3", credentials=credentials)
+
+
 def find_column(headers, name):
     if name not in headers:
         raise ValueError(f"Missing required column: {name}")
+
     return headers.index(name) + 1
 
 
@@ -58,20 +79,22 @@ def log(logs_sheet, video_id, action, message):
     )
 
 
-def get_youtube_service():
-    creds = Credentials(
-        None,
-        refresh_token=YOUTUBE_REFRESH_TOKEN,
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=YOUTUBE_CLIENT_ID,
-        client_secret=YOUTUBE_CLIENT_SECRET,
-        scopes=["https://www.googleapis.com/auth/youtube.upload"],
-    )
+def find_latest_mp4():
+    mp4_files = list(OUTPUT_DIR.glob("*.mp4"))
 
-    return build("youtube", "v3", credentials=creds)
+    if not mp4_files:
+        raise FileNotFoundError("No MP4 video found inside output folder.")
+
+    mp4_files.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+
+    video_path = mp4_files[0]
+
+    print(f"Using video file: {video_path}")
+
+    return video_path
 
 
-def upload_video(video_path, title, description):
+def upload_video_to_youtube(video_path, title, description):
     youtube = get_youtube_service()
 
     request_body = {
@@ -101,24 +124,31 @@ def upload_video(video_path, title, description):
     response = None
 
     while response is None:
-        status, response = request.next_chunk()
+        upload_status, response = request.next_chunk()
 
-        if status:
-            progress = int(status.progress() * 100)
+        if upload_status:
+            progress = int(upload_status.progress() * 100)
             print(f"Upload progress: {progress}%")
+
+    if "id" not in response:
+        raise RuntimeError(f"YouTube upload did not return a video id: {response}")
 
     return response["id"]
 
 
 def main():
-    client = get_sheets_client()
+    sheets_client = get_sheets_client()
 
-    spreadsheet = client.open_by_key(SHEET_ID)
+    spreadsheet = sheets_client.open_by_key(SHEET_ID)
 
     content_sheet = spreadsheet.worksheet(CONTENT_SHEET_NAME)
     logs_sheet = spreadsheet.worksheet(LOGS_SHEET_NAME)
 
     values = content_sheet.get_all_values()
+
+    if not values:
+        raise ValueError("Content sheet is empty.")
+
     headers = values[0]
 
     id_col = find_column(headers, "id")
@@ -133,25 +163,40 @@ def main():
     target_row = None
 
     for index, row in enumerate(values[1:], start=2):
-        if get_cell(row, status_col) == "VIDEO_CREATED":
+        status = get_cell(row, status_col)
+        youtube_status = get_cell(row, youtube_status_col)
+
+        if status == "VIDEO_CREATED" and youtube_status != "UPLOADED_PRIVATE":
             target_row_number = index
             target_row = row
             break
 
     if target_row_number is None:
-        print("No VIDEO_CREATED row found.")
+        log(
+            logs_sheet,
+            "",
+            "UPLOAD_YOUTUBE",
+            "No VIDEO_CREATED row waiting for upload.",
+        )
+        print("No VIDEO_CREATED row waiting for upload.")
         return
 
     video_id = get_cell(target_row, id_col)
     title = get_cell(target_row, title_col)
     description = get_cell(target_row, description_col)
 
-    video_path = OUTPUT_DIR / f"tiny_brave_tails_{video_id}.mp4"
+    if not title:
+        raise ValueError(f"Missing title in row {target_row_number}")
 
-    if not video_path.exists():
-        raise FileNotFoundError(f"Video not found: {video_path}")
+    if not description:
+        description = (
+            "A short emotional animal story with a simple life lesson.\n\n"
+            "#shorts #animalstory #emotionalstory #lifelessons #tinybravetails"
+        )
 
-    youtube_video_id = upload_video(
+    video_path = find_latest_mp4()
+
+    youtube_video_id = upload_video_to_youtube(
         video_path=video_path,
         title=title,
         description=description,
