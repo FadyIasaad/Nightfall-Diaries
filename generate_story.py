@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import unicodedata
 from datetime import datetime, timezone
 
 import google.generativeai as genai
@@ -20,9 +19,14 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-ARABIC_LETTERS_RE = re.compile(r"[\u0600-\u06FF]")
-ARABIC_DIACRITICS_RE = re.compile(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]")
-DIRECTION_MARKS_RE = re.compile(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]")
+ALLOWED_VOICE_ROLES = {
+    "narrator",
+    "small_hero",
+    "female_warm",
+    "wise_elder",
+    "danger",
+    "ending",
+}
 
 
 def get_sheets_client():
@@ -33,178 +37,200 @@ def get_sheets_client():
 
 def clean_json_response(text):
     text = str(text or "").strip()
-
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?", "", text, flags=re.IGNORECASE).strip()
         text = re.sub(r"```$", "", text).strip()
 
     start = text.find("{")
     end = text.rfind("}")
-
     if start == -1 or end == -1 or end <= start:
-        raise ValueError(f"No JSON object found in Gemini response: {text}")
-
+        raise ValueError(f"No JSON object found in Gemini response: {text[:500]}")
     return text[start : end + 1]
 
 
-def clean_arabic_subtitle(text):
-    text = str(text or "")
-    text = unicodedata.normalize("NFC", text)
-    text = DIRECTION_MARKS_RE.sub("", text)
-    text = text.replace("ـ", "")
-    text = ARABIC_DIACRITICS_RE.sub("", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+def safe_text(value, max_len=None):
+    value = re.sub(r"\s+", " ", str(value or "").strip())
+    if max_len and len(value) > max_len:
+        value = value[: max_len - 1].rstrip() + "…"
+    return value
 
 
-def validate_arabic_subtitle(text, scene_number):
-    cleaned = clean_arabic_subtitle(text)
-
-    if not cleaned:
-        raise ValueError(f"Missing Arabic subtitle in scene {scene_number}.")
-
-    arabic_chars = ARABIC_LETTERS_RE.findall(cleaned)
-    if len(arabic_chars) < 8:
-        raise ValueError(f"Arabic subtitle is too weak or not Arabic in scene {scene_number}: {cleaned}")
-
-    bad_phrases = [
-        "ترجمة عربية",
-        "نفس الكلام",
-        "subtitle",
-        "translation",
-        "arabic",
-    ]
-    lowered = cleaned.lower()
-    if any(phrase.lower() in lowered for phrase in bad_phrases):
-        raise ValueError(f"Arabic subtitle looks like a placeholder in scene {scene_number}: {cleaned}")
-
-    return cleaned
-
-
-def build_prompt(topic, animal, lesson):
-    return f"""
-You are the lead writer and Arabic subtitle translator for a family-friendly YouTube Shorts channel called Tiny Brave Tails.
-
-Channel style:
-Warm emotional 2D cartoon storybook animal stories with simple life lessons.
-
-Create one short animated story package.
-
-Input:
-Topic: {topic}
-Animal: {animal}
-Life lesson: {lesson}
-
-Core rules:
-- English narration only in narration_en.
-- English subtitle in subtitle_en must match narration_en.
-- Arabic subtitle in subtitle_ar must be a natural full Modern Standard Arabic translation of narration_en.
-- Do not transliterate English words into Arabic.
-- Do not output reversed Arabic.
-- Do not output broken Arabic letters.
-- Do not output Arabic presentation forms.
-- Do not add strange symbols, hidden direction marks, or decoration marks.
-- Arabic must be normal readable Arabic like children's storybooks.
-- Each subtitle_ar must be complete, clear, emotional, and faithful to the English narration.
-- Family-friendly.
-- No horror.
-- No gore.
-- No explicit violence.
-- No claim that the story is true.
-- Strong hook in scene 1.
-- Fast pacing.
-- Emotional escalation.
-- 35 to 55 seconds total.
-- Cute 2D storybook style.
-- Return valid JSON only. No markdown. No explanation.
-
-Arabic quality example:
-English: "Little Pip, a tiny puppy, sat alone as the first rain began to fall."
-Good Arabic: "جلس بيب الصغير، الجرو اللطيف، وحيدا بينما بدأت أول قطرات المطر تتساقط."
-Bad Arabic is forbidden: broken words, random letters, reversed Arabic, machine-like nonsense, or placeholders.
-
-Return exactly this JSON shape:
-{{
-  "title": "Short emotional YouTube title under 70 characters",
-  "description": "Short YouTube description with hashtags",
-  "character": {{
-    "name": "Character name",
-    "description": "Consistent 2D storybook character design. Include animal type, color, eyes, accessory, mood, and visual style."
-  }},
-  "scenes": [
-    {{
-      "scene_number": 1,
-      "narration_en": "English narration for this scene. This text will be spoken.",
-      "subtitle_en": "Same meaning as narration_en, short and complete.",
-      "subtitle_ar": "ترجمة عربية طبيعية وكاملة لنفس الكلام",
-      "image_prompt": "Vertical 9:16 warm 2D cartoon storybook frame matching this scene, no text"
-    }}
-  ]
-}}
-
-Scene rules:
-- Exactly 6 scenes.
-- Scene 1: strong emotional hook.
-- Scene 2: introduce the problem.
-- Scene 3: fear or sadness.
-- Scene 4: brave action.
-- Scene 5: emotional turn.
-- Scene 6: life lesson.
-- Each narration_en should be 1 or 2 short sentences.
-- Each subtitle_en should be short enough to fit clearly on screen.
-- Each subtitle_ar must be complete, not summarized.
-- Keep the same character design in all image prompts.
-- Each image_prompt must include: warm 2D cartoon storybook, soft colors, expressive animal face, child-safe, vertical 9:16, no text, no watermark.
-"""
+def normalize_voice_role(value, fallback="narrator"):
+    value = safe_text(value).lower().replace(" ", "_").replace("-", "_")
+    return value if value in ALLOWED_VOICE_ROLES else fallback
 
 
 def generate_story_package(topic, animal, lesson):
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel("gemini-2.5-flash")
 
-    prompt = build_prompt(topic, animal, lesson)
+    prompt = f"""
+You are the lead writer, art director, and voice director for a family-friendly YouTube Shorts channel called Tiny Brave Tails.
 
-    response = model.generate_content(
-        prompt,
-        generation_config={
-            "temperature": 0.75,
-        },
-    )
+Create ONE cinematic, emotional, English-only animal story package for a fully automated video pipeline.
 
+INPUT
+Topic: {topic}
+Animal: {animal}
+Life lesson: {lesson}
+
+NON-NEGOTIABLE RULES
+- English only. Do not create Arabic subtitles or Arabic text anywhere.
+- Family-friendly, warm, emotional, and safe for a general audience.
+- No horror, no gore, no explicit violence, no cruelty, no disturbing imagery.
+- Do not claim the story is true.
+- Strong hook in scene 1.
+- Fast pacing: every line must earn its place.
+- Use short dramatic sentences with natural pauses using "..." or em dashes when helpful.
+- Include a small amount of dialogue. Do not make every line narration.
+- Make the voice roles fit the character and moment.
+- Total spoken story should feel like 40 to 55 seconds.
+- Return valid JSON only. No markdown. No explanation.
+
+VOICE ROLE MEANINGS
+- narrator: deep warm storyteller narration.
+- small_hero: innocent small main character, softer and more vulnerable.
+- female_warm: warm caring character.
+- wise_elder: slow wise mentor, older and calm.
+- danger: tense low dramatic moment, not horror.
+- ending: warm hopeful closing lesson.
+
+VISUAL STYLE
+- warm 2D cartoon storybook illustration.
+- vertical 9:16.
+- cute expressive animal character.
+- soft cinematic lighting.
+- clear subject in frame.
+- no text, no logo, no watermark.
+- keep the same main character design in every image prompt.
+
+Return exactly this JSON structure:
+{{
+  "title": "Short emotional YouTube title under 70 characters",
+  "description": "Short YouTube description with hashtags",
+  "character": {{
+    "name": "Character name",
+    "animal_type": "Animal type",
+    "description": "Consistent 2D storybook character design: animal type, fur/feather color, eyes, accessory, mood, and visual style."
+  }},
+  "scenes": [
+    {{
+      "scene_number": 1,
+      "moment_type": "hook",
+      "camera_motion": "slow_zoom_in",
+      "atmosphere": "soft rain",
+      "subtitle_en": "Short complete subtitle for the scene.",
+      "image_prompt": "Vertical 9:16 warm 2D cartoon storybook illustration matching this scene, no text, no watermark.",
+      "lines": [
+        {{
+          "speaker": "Narrator",
+          "voice_role": "narrator",
+          "text": "One short dramatic spoken line."
+        }}
+      ]
+    }}
+  ]
+}}
+
+SCENE PLAN
+- Exactly 8 scenes.
+- Scene 1: emotional hook.
+- Scene 2: introduce the problem.
+- Scene 3: the hero feels afraid or alone.
+- Scene 4: a choice appears.
+- Scene 5: brave action.
+- Scene 6: consequence or emotional turn.
+- Scene 7: relief or connection.
+- Scene 8: simple life lesson with a warm ending.
+
+LINE RULES
+- Each scene must have 1 to 3 spoken lines.
+- Each line text must be under 120 characters.
+- Use voice_role from the allowed list only.
+- subtitle_en should summarize the full scene in one short subtitle.
+- image_prompt must be specific and must include the same character design.
+"""
+
+    response = model.generate_content(prompt)
     data = json.loads(clean_json_response(response.text))
 
     for key in ["title", "description", "character", "scenes"]:
         if key not in data:
-            raise ValueError(f"Missing key: {key}")
+            raise ValueError(f"Missing key from Gemini JSON: {key}")
 
     scenes = data["scenes"]
-    if not isinstance(scenes, list) or len(scenes) != 6:
-        raise ValueError("Expected exactly 6 scenes.")
+    if not isinstance(scenes, list) or len(scenes) != 8:
+        raise ValueError(f"Expected exactly 8 scenes, got {len(scenes) if isinstance(scenes, list) else 'not a list'}")
+
+    character = data.get("character") or {}
+    character_description = safe_text(character.get("description"), 500)
+    if not character_description:
+        raise ValueError("Missing character.description")
 
     cleaned_scenes = []
-    for i, scene in enumerate(scenes, start=1):
-        narration = str(scene.get("narration_en", "")).strip()
-        subtitle_en = str(scene.get("subtitle_en", "")).strip() or narration
-        subtitle_ar = validate_arabic_subtitle(scene.get("subtitle_ar", ""), i)
-        image_prompt = str(scene.get("image_prompt", "")).strip()
+    script_parts = []
 
-        if not narration or not subtitle_en or not image_prompt:
+    for i, scene in enumerate(scenes, start=1):
+        image_prompt = safe_text(scene.get("image_prompt"), 900)
+        subtitle_en = safe_text(scene.get("subtitle_en"), 220)
+        moment_type = safe_text(scene.get("moment_type"), 60) or f"scene_{i}"
+        camera_motion = safe_text(scene.get("camera_motion"), 60) or "slow_zoom_in"
+        atmosphere = safe_text(scene.get("atmosphere"), 80) or "warm light"
+
+        raw_lines = scene.get("lines")
+        if not isinstance(raw_lines, list):
+            raw_lines = []
+
+        lines = []
+        for raw_line in raw_lines[:3]:
+            if not isinstance(raw_line, dict):
+                continue
+            text = safe_text(raw_line.get("text"), 140)
+            if not text:
+                continue
+            voice_role = normalize_voice_role(raw_line.get("voice_role"), "narrator")
+            speaker = safe_text(raw_line.get("speaker"), 60) or voice_role.replace("_", " ").title()
+            lines.append({"speaker": speaker, "voice_role": voice_role, "text": text})
+
+        if not lines:
+            narration = safe_text(scene.get("narration_en") or subtitle_en, 180)
+            if narration:
+                lines.append({"speaker": "Narrator", "voice_role": "narrator", "text": narration})
+
+        if not lines or not image_prompt:
             raise ValueError(f"Incomplete scene {i}: {scene}")
+
+        if not subtitle_en:
+            subtitle_en = safe_text(" ".join(line["text"] for line in lines), 220)
+
+        for line in lines:
+            script_parts.append(line["text"])
 
         cleaned_scenes.append(
             {
                 "scene_number": i,
-                "narration_en": narration,
+                "moment_type": moment_type,
+                "camera_motion": camera_motion,
+                "atmosphere": atmosphere,
                 "subtitle_en": subtitle_en,
-                "subtitle_ar": subtitle_ar,
                 "image_prompt": image_prompt,
+                "lines": lines,
+                "narration_en": " ".join(line["text"] for line in lines),
             }
         )
 
-    data["title"] = str(data["title"]).strip()
-    data["description"] = str(data["description"]).strip()
+    data["title"] = safe_text(data.get("title"), 70)
+    data["description"] = safe_text(data.get("description"), 4500)
+    data["character"] = {
+        "name": safe_text(character.get("name"), 80) or "Tiny Hero",
+        "animal_type": safe_text(character.get("animal_type"), 80) or safe_text(animal, 80),
+        "description": character_description,
+    }
     data["scenes"] = cleaned_scenes
-    data["script"] = " ".join(scene["narration_en"] for scene in cleaned_scenes)
+    data["script"] = " ".join(script_parts)
+
+    if not data["title"] or not data["script"]:
+        raise ValueError("Gemini returned empty title or script.")
 
     return data
 
@@ -215,8 +241,17 @@ def find_column(headers, name):
     return headers.index(name) + 1
 
 
+def find_optional_column(headers, name):
+    return headers.index(name) + 1 if name in headers else None
+
+
 def get_cell(row, col):
-    return row[col - 1].strip() if len(row) >= col else ""
+    return row[col - 1].strip() if col and len(row) >= col else ""
+
+
+def update_optional(sheet, row_number, col, value):
+    if col:
+        sheet.update_cell(row_number, col, value)
 
 
 def log(logs_sheet, video_id, action, message):
@@ -235,7 +270,6 @@ def main():
         raise ValueError("Content sheet is empty.")
 
     headers = values[0]
-
     id_col = find_column(headers, "id")
     topic_col = find_column(headers, "topic")
     animal_col = find_column(headers, "animal")
@@ -250,12 +284,12 @@ def main():
     audio_status_col = find_column(headers, "audio_status")
     youtube_status_col = find_column(headers, "youtube_status")
     youtube_video_id_col = find_column(headers, "youtube_video_id")
+    error_message_col = find_optional_column(headers, "error_message")
 
     target_row_number = None
     target_row = None
-
     for index, row in enumerate(values[1:], start=2):
-        if get_cell(row, status_col) == "IDEA":
+        if get_cell(row, status_col).upper() == "IDEA":
             target_row_number = index
             target_row = row
             break
@@ -273,11 +307,7 @@ def main():
     try:
         package = generate_story_package(topic, animal, lesson)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-        scene_payload = {
-            "character": package["character"],
-            "scenes": package["scenes"],
-        }
+        scene_payload = {"character": package["character"], "scenes": package["scenes"]}
 
         content_sheet.update_cell(target_row_number, title_col, package["title"])
         content_sheet.update_cell(target_row_number, script_col, package["script"])
@@ -293,13 +323,15 @@ def main():
         content_sheet.update_cell(target_row_number, audio_status_col, "PENDING")
         content_sheet.update_cell(target_row_number, youtube_status_col, "")
         content_sheet.update_cell(target_row_number, youtube_video_id_col, "")
+        update_optional(content_sheet, target_row_number, error_message_col, "")
 
-        log(logs_sheet, video_id, "GENERATE_STORY", f"Generated story with cleaned Arabic subtitles: {package['title']}")
+        log(logs_sheet, video_id, "GENERATE_STORY", f"Generated cinematic English-only 8-scene story: {package['title']}")
         print(f"Generated story: {package['title']}")
 
     except Exception as exc:
         content_sheet.update_cell(target_row_number, status_col, "FAILED_STORY")
-        log(logs_sheet, video_id, "GENERATE_STORY_FAILED", str(exc))
+        update_optional(content_sheet, target_row_number, error_message_col, str(exc)[:500])
+        log(logs_sheet, video_id, "FAILED_STORY", str(exc)[:1000])
         raise
 
 
