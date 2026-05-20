@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -8,41 +9,30 @@ from google.oauth2.service_account import Credentials as ServiceCredentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-
 SHEET_ID = os.environ["GOOGLE_SHEET_ID"]
 SERVICE_ACCOUNT_JSON = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
-
 YOUTUBE_CLIENT_ID = os.environ["YOUTUBE_CLIENT_ID"]
 YOUTUBE_CLIENT_SECRET = os.environ["YOUTUBE_CLIENT_SECRET"]
 YOUTUBE_REFRESH_TOKEN = os.environ["YOUTUBE_REFRESH_TOKEN"]
 
 CONTENT_SHEET_NAME = "Content"
 LOGS_SHEET_NAME = "Logs"
-
 OUTPUT_DIR = Path("output")
+
+YOUTUBE_PRIVACY_STATUS = os.environ.get("YOUTUBE_PRIVACY_STATUS", "private").strip().lower()
+SELF_DECLARED_MADE_FOR_KIDS = os.environ.get("SELF_DECLARED_MADE_FOR_KIDS", "false").strip().lower() == "true"
 
 SHEET_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
 
-YOUTUBE_SCOPES = [
-    "https://www.googleapis.com/auth/youtube.upload",
-]
+YOUTUBE_SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 
 def get_sheets_client():
-    service_account_info = ServiceCredentials.from_service_account_info
-
-    import json
-
     service_account_data = json.loads(SERVICE_ACCOUNT_JSON)
-
-    credentials = service_account_info(
-        service_account_data,
-        scopes=SHEET_SCOPES,
-    )
-
+    credentials = ServiceCredentials.from_service_account_info(service_account_data, scopes=SHEET_SCOPES)
     return gspread.authorize(credentials)
 
 
@@ -55,77 +45,89 @@ def get_youtube_service():
         client_secret=YOUTUBE_CLIENT_SECRET,
         scopes=YOUTUBE_SCOPES,
     )
-
     return build("youtube", "v3", credentials=credentials)
 
 
 def find_column(headers, name):
     if name not in headers:
         raise ValueError(f"Missing required column: {name}")
-
     return headers.index(name) + 1
 
 
+def find_optional_column(headers, name):
+    return headers.index(name) + 1 if name in headers else None
+
+
 def get_cell(row, col):
-    return row[col - 1].strip() if len(row) >= col else ""
+    return row[col - 1].strip() if col and len(row) >= col else ""
+
+
+def update_optional(sheet, row_number, col, value):
+    if col:
+        sheet.update_cell(row_number, col, value)
 
 
 def log(logs_sheet, video_id, action, message):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    logs_sheet.append_row([now, video_id, action, message], value_input_option="USER_ENTERED")
 
-    logs_sheet.append_row(
-        [now, video_id, action, message],
-        value_input_option="USER_ENTERED",
-    )
+
+def safe_filename(value):
+    import re
+
+    value = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(value or "video")).strip("_")
+    return value or "video"
 
 
 def find_latest_mp4():
     mp4_files = list(OUTPUT_DIR.glob("*.mp4"))
-
     if not mp4_files:
         raise FileNotFoundError("No MP4 video found inside output folder.")
-
     mp4_files.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return mp4_files[0]
 
-    video_path = mp4_files[0]
 
-    print(f"Using video file: {video_path}")
+def resolve_video_path(video_id, row, video_file_path_col):
+    if video_file_path_col:
+        sheet_path = get_cell(row, video_file_path_col)
+        if sheet_path and Path(sheet_path).exists():
+            print(f"Using video file from sheet: {sheet_path}")
+            return Path(sheet_path)
 
-    return video_path
+    expected = OUTPUT_DIR / f"tiny_brave_tails_{safe_filename(video_id)}.mp4"
+    if expected.exists():
+        print(f"Using expected video file for row id {video_id}: {expected}")
+        return expected
+
+    latest = find_latest_mp4()
+    print(f"WARNING: Row-specific video not found. Falling back to latest MP4: {latest}")
+    return latest
 
 
 def upload_video_to_youtube(video_path, title, description):
     youtube = get_youtube_service()
+    privacy_status = YOUTUBE_PRIVACY_STATUS if YOUTUBE_PRIVACY_STATUS in {"private", "unlisted", "public"} else "private"
 
     request_body = {
         "snippet": {
             "title": title[:100],
             "description": description[:5000],
             "categoryId": "1",
+            "tags": ["shorts", "animal story", "life lessons", "animated story", "Tiny Brave Tails"],
         },
         "status": {
-            "privacyStatus": "private",
-            "selfDeclaredMadeForKids": False,
+            "privacyStatus": privacy_status,
+            "selfDeclaredMadeForKids": SELF_DECLARED_MADE_FOR_KIDS,
+            "containsSyntheticMedia": False,
         },
     }
 
-    media = MediaFileUpload(
-        str(video_path),
-        resumable=True,
-        chunksize=1024 * 1024,
-    )
-
-    request = youtube.videos().insert(
-        part="snippet,status",
-        body=request_body,
-        media_body=media,
-    )
+    media = MediaFileUpload(str(video_path), resumable=True, chunksize=1024 * 1024)
+    request = youtube.videos().insert(part="snippet,status", body=request_body, media_body=media)
 
     response = None
-
     while response is None:
         upload_status, response = request.next_chunk()
-
         if upload_status:
             progress = int(upload_status.progress() * 100)
             print(f"Upload progress: {progress}%")
@@ -133,24 +135,20 @@ def upload_video_to_youtube(video_path, title, description):
     if "id" not in response:
         raise RuntimeError(f"YouTube upload did not return a video id: {response}")
 
-    return response["id"]
+    return response["id"], privacy_status
 
 
 def main():
     sheets_client = get_sheets_client()
-
     spreadsheet = sheets_client.open_by_key(SHEET_ID)
-
     content_sheet = spreadsheet.worksheet(CONTENT_SHEET_NAME)
     logs_sheet = spreadsheet.worksheet(LOGS_SHEET_NAME)
 
     values = content_sheet.get_all_values()
-
     if not values:
         raise ValueError("Content sheet is empty.")
 
     headers = values[0]
-
     id_col = find_column(headers, "id")
     title_col = find_column(headers, "title")
     description_col = find_column(headers, "description")
@@ -158,26 +156,21 @@ def main():
     youtube_status_col = find_column(headers, "youtube_status")
     youtube_video_id_col = find_column(headers, "youtube_video_id")
     video_url_col = find_column(headers, "video_url")
+    video_file_path_col = find_optional_column(headers, "video_file_path")
+    error_message_col = find_optional_column(headers, "error_message")
 
     target_row_number = None
     target_row = None
-
     for index, row in enumerate(values[1:], start=2):
-        status = get_cell(row, status_col)
-        youtube_status = get_cell(row, youtube_status_col)
-
-        if status == "VIDEO_CREATED" and youtube_status != "UPLOADED_PRIVATE":
+        status = get_cell(row, status_col).upper()
+        youtube_status = get_cell(row, youtube_status_col).upper()
+        if status == "VIDEO_CREATED" and not youtube_status.startswith("UPLOADED"):
             target_row_number = index
             target_row = row
             break
 
     if target_row_number is None:
-        log(
-            logs_sheet,
-            "",
-            "UPLOAD_YOUTUBE",
-            "No VIDEO_CREATED row waiting for upload.",
-        )
+        log(logs_sheet, "", "UPLOAD_YOUTUBE", "No VIDEO_CREATED row waiting for upload.")
         print("No VIDEO_CREATED row waiting for upload.")
         return
 
@@ -185,57 +178,35 @@ def main():
     title = get_cell(target_row, title_col)
     description = get_cell(target_row, description_col)
 
-    if not title:
-        raise ValueError(f"Missing title in row {target_row_number}")
+    try:
+        if not title:
+            raise ValueError(f"Missing title in row {target_row_number}")
 
-    if not description:
-        description = (
-            "A short emotional animal story with a simple life lesson.\n\n"
-            "#shorts #animalstory #emotionalstory #lifelessons #tinybravetails"
-        )
+        if not description:
+            description = (
+                "A short emotional animal story with a simple life lesson.\n\n"
+                "#shorts #animalstory #emotionalstory #lifelessons #tinybravetails"
+            )
 
-    video_path = find_latest_mp4()
+        video_path = resolve_video_path(video_id, target_row, video_file_path_col)
+        youtube_video_id, privacy_status = upload_video_to_youtube(video_path, title, description)
+        youtube_url = f"https://youtu.be/{youtube_video_id}"
+        upload_status_value = f"UPLOADED_{privacy_status.upper()}"
 
-    youtube_video_id = upload_video_to_youtube(
-        video_path=video_path,
-        title=title,
-        description=description,
-    )
+        content_sheet.update_cell(target_row_number, youtube_status_col, upload_status_value)
+        content_sheet.update_cell(target_row_number, youtube_video_id_col, youtube_video_id)
+        content_sheet.update_cell(target_row_number, video_url_col, youtube_url)
+        content_sheet.update_cell(target_row_number, status_col, "UPLOADED")
+        update_optional(content_sheet, target_row_number, error_message_col, "")
 
-    youtube_url = f"https://youtu.be/{youtube_video_id}"
+        log(logs_sheet, video_id, "UPLOAD_YOUTUBE", f"Uploaded {privacy_status} video: {youtube_url}")
+        print(f"Uploaded successfully: {youtube_url}")
 
-    content_sheet.update_cell(
-        target_row_number,
-        youtube_status_col,
-        "UPLOADED_PRIVATE",
-    )
-
-    content_sheet.update_cell(
-        target_row_number,
-        youtube_video_id_col,
-        youtube_video_id,
-    )
-
-    content_sheet.update_cell(
-        target_row_number,
-        video_url_col,
-        youtube_url,
-    )
-
-    content_sheet.update_cell(
-        target_row_number,
-        status_col,
-        "UPLOADED",
-    )
-
-    log(
-        logs_sheet,
-        video_id,
-        "UPLOAD_YOUTUBE",
-        f"Uploaded private video: {youtube_url}",
-    )
-
-    print(f"Uploaded successfully: {youtube_url}")
+    except Exception as exc:
+        content_sheet.update_cell(target_row_number, status_col, "FAILED_UPLOAD")
+        update_optional(content_sheet, target_row_number, error_message_col, str(exc)[:500])
+        log(logs_sheet, video_id, "FAILED_UPLOAD", str(exc)[:1000])
+        raise
 
 
 if __name__ == "__main__":
