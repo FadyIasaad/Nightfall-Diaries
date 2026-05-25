@@ -38,6 +38,11 @@ REQUIRED_COLUMNS = [
 ]
 
 VALID_EMOTIONS = {"curious", "sad", "fear", "brave", "happy", "emotional", "worried", "lonely", "determined", "hopeful", "heartfelt"}
+VALID_VOICE_STYLES = {
+    "tiny_gentle", "tiny_brave", "soft_warm", "tender_sad", "urgent_fear",
+    "deep_brave", "wise_slow", "bright_curious", "hopeful_warm",
+    "happy_light", "narrator_emotional"
+}
 
 
 def now_iso():
@@ -95,6 +100,51 @@ def split_sentences(script):
     return parts or [script.strip()]
 
 
+def infer_voice_style(animal, emotion):
+    animal_text = str(animal or "").lower()
+    emotion = str(emotion or "emotional").lower()
+
+    small_animals = ("puppy", "kitten", "rabbit", "bunny", "bird", "sparrow", "mouse", "squirrel", "duckling", "cub", "chick")
+    warm_animals = ("dog", "cat", "dolphin", "fox", "deer", "panda", "koala")
+    deep_animals = ("lion", "wolf", "horse", "bear", "tiger", "eagle")
+    wise_animals = ("elephant", "whale", "turtle", "owl")
+
+    if any(word in animal_text for word in small_animals):
+        if emotion in {"brave", "determined"}:
+            return "tiny_brave"
+        if emotion in {"curious", "happy"}:
+            return "bright_curious"
+        if emotion in {"sad", "lonely", "heartfelt"}:
+            return "tender_sad"
+        return "tiny_gentle"
+
+    if any(word in animal_text for word in wise_animals):
+        return "wise_slow"
+    if any(word in animal_text for word in deep_animals):
+        if emotion in {"sad", "lonely", "heartfelt"}:
+            return "soft_warm"
+        return "deep_brave"
+    if any(word in animal_text for word in warm_animals):
+        if emotion in {"sad", "lonely", "heartfelt"}:
+            return "tender_sad"
+        if emotion in {"brave", "determined"}:
+            return "deep_brave"
+        return "soft_warm"
+
+    return {
+        "curious": "bright_curious",
+        "sad": "tender_sad",
+        "fear": "urgent_fear",
+        "brave": "deep_brave",
+        "happy": "happy_light",
+        "worried": "urgent_fear",
+        "lonely": "tender_sad",
+        "determined": "deep_brave",
+        "hopeful": "hopeful_warm",
+        "heartfelt": "soft_warm",
+    }.get(emotion, "narrator_emotional")
+
+
 def fallback_scene_payload(title, script, animal, lesson):
     sentences = split_sentences(script)
     scene_count = min(7, max(5, len(sentences)))
@@ -120,6 +170,7 @@ def fallback_scene_payload(title, script, animal, lesson):
             "narration_en": narration,
             "subtitle_en": narration,
             "emotion": emotion,
+            "voice_style": infer_voice_style(animal_clean, emotion),
             "image_prompt": (
                 f"{character_desc} Scene {idx}: {narration}. Emotional cinematic lighting, "
                 "vertical 9:16, no text, no watermark, no logo."
@@ -165,6 +216,9 @@ def normalize_scene_payload(raw_payload, title, script, animal, lesson):
         emotion = str(scene.get("emotion") or "emotional").strip().lower()
         if emotion not in VALID_EMOTIONS:
             emotion = "emotional"
+        voice_style = str(scene.get("voice_style") or "").strip().lower()
+        if voice_style not in VALID_VOICE_STYLES:
+            voice_style = infer_voice_style(character.get("animal_type") or animal, emotion)
         image_prompt = str(scene.get("image_prompt") or "").strip()
         if not image_prompt:
             image_prompt = f"{character['description']} Scene: {narration}. Vertical 9:16, no text, no watermark."
@@ -173,6 +227,7 @@ def normalize_scene_payload(raw_payload, title, script, animal, lesson):
             "narration_en": narration,
             "subtitle_en": str(scene.get("subtitle_en") or narration).strip(),
             "emotion": emotion,
+            "voice_style": voice_style,
             "image_prompt": image_prompt,
         })
 
@@ -204,8 +259,22 @@ Hard rules:
 - Do not claim the story is true.
 - No copyrighted characters.
 - Keep one consistent animal character across all scenes.
+- Match the voice style to the animal character and scene emotion.
 - Make the first sentence a strong hook.
 - The story must feel emotional, cinematic, and simple.
+
+Voice style options:
+- tiny_gentle: tiny animals, soft innocent moments
+- tiny_brave: tiny animals doing brave actions
+- soft_warm: loyal pets and heartfelt narration
+- tender_sad: lonely or sad scenes
+- urgent_fear: danger, fear, worry, without violence
+- deep_brave: larger heroic animals or brave turning points
+- wise_slow: elephants, turtles, whales, owls, reflective moments
+- bright_curious: curious or playful discovery scenes
+- hopeful_warm: hopeful recovery scenes
+- happy_light: happy ending scenes
+- narrator_emotional: neutral emotional narration
 
 Input idea:
 Topic: {topic}
@@ -233,6 +302,7 @@ Required JSON schema:
         "narration_en": "One short narration sentence or two",
         "subtitle_en": "Same or shorter subtitle text",
         "emotion": "curious",
+        "voice_style": "bright_curious",
         "image_prompt": "Vertical 9:16 2D storybook image prompt, no text, no watermark"
       }}
     ]

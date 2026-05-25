@@ -42,14 +42,89 @@ WIDTH = 1080
 HEIGHT = 1920
 FPS = 24
 
-VOICE_BY_EMOTION = {
-    "curious": ("en-US-AriaNeural", "+4%", "+10%"),
-    "sad": ("en-US-JennyNeural", "-4%", "-5%"),
-    "fear": ("en-US-JennyNeural", "-2%", "+0%"),
-    "brave": ("en-US-GuyNeural", "+2%", "+8%"),
-    "happy": ("en-US-AriaNeural", "+5%", "+8%"),
-    "emotional": ("en-US-AriaNeural", "+0%", "+4%"),
+# Character-based dramatic voice system.
+# Tuple format: (edge_tts_voice, rate, pitch)
+# rate/pitch are SSML-style strings supported by edge-tts.
+VOICE_BY_STYLE = {
+    "tiny_gentle": ("en-US-AriaNeural", "+6%", "+12%"),
+    "tiny_brave": ("en-US-AriaNeural", "+2%", "+8%"),
+    "soft_warm": ("en-US-JennyNeural", "-3%", "-3%"),
+    "tender_sad": ("en-US-JennyNeural", "-7%", "-8%"),
+    "urgent_fear": ("en-US-JennyNeural", "+3%", "+2%"),
+    "deep_brave": ("en-US-GuyNeural", "+1%", "+4%"),
+    "wise_slow": ("en-US-DavisNeural", "-8%", "-8%"),
+    "bright_curious": ("en-US-AriaNeural", "+8%", "+14%"),
+    "hopeful_warm": ("en-US-AriaNeural", "+1%", "+6%"),
+    "happy_light": ("en-US-AriaNeural", "+7%", "+10%"),
+    "narrator_emotional": ("en-US-AriaNeural", "+0%", "+4%"),
 }
+
+VOICE_BY_EMOTION = {
+    "curious": "bright_curious",
+    "sad": "tender_sad",
+    "fear": "urgent_fear",
+    "brave": "deep_brave",
+    "happy": "happy_light",
+    "emotional": "narrator_emotional",
+    "worried": "urgent_fear",
+    "lonely": "tender_sad",
+    "determined": "deep_brave",
+    "hopeful": "hopeful_warm",
+    "heartfelt": "soft_warm",
+}
+
+SMALL_ANIMALS = ("puppy", "kitten", "rabbit", "bunny", "bird", "sparrow", "mouse", "squirrel", "duckling", "cub", "chick")
+WARM_ANIMALS = ("dog", "cat", "dolphin", "fox", "deer", "panda", "koala")
+DEEP_ANIMALS = ("lion", "wolf", "horse", "bear", "tiger", "eagle")
+WISE_ANIMALS = ("elephant", "whale", "turtle", "owl")
+
+
+def normalize_voice_style(value):
+    style = re.sub(r"[^a-z0-9_]+", "_", str(value or "").strip().lower()).strip("_")
+    return style if style in VOICE_BY_STYLE else ""
+
+
+def infer_animal_voice_style(character):
+    animal_text = " ".join([
+        str((character or {}).get("animal_type", "")),
+        str((character or {}).get("description", "")),
+        str((character or {}).get("name", "")),
+    ]).lower()
+
+    if any(word in animal_text for word in WISE_ANIMALS):
+        return "wise_slow"
+    if any(word in animal_text for word in DEEP_ANIMALS):
+        return "deep_brave"
+    if any(word in animal_text for word in SMALL_ANIMALS):
+        return "tiny_gentle"
+    if any(word in animal_text for word in WARM_ANIMALS):
+        return "soft_warm"
+    return "narrator_emotional"
+
+
+def choose_voice_style(scene, character):
+    explicit = normalize_voice_style(scene.get("voice_style"))
+    if explicit:
+        return explicit
+
+    emotion = str(scene.get("emotion", "emotional")).strip().lower()
+    animal_style = infer_animal_voice_style(character)
+
+    # Emotion is important, but small animals should not suddenly sound like an adult hero.
+    if animal_style == "tiny_gentle" and emotion in {"brave", "determined"}:
+        return "tiny_brave"
+    if animal_style == "tiny_gentle" and emotion in {"curious", "happy"}:
+        return "bright_curious"
+    if animal_style == "wise_slow" and emotion not in {"happy", "curious"}:
+        return "wise_slow"
+
+    return VOICE_BY_EMOTION.get(emotion, animal_style)
+
+
+def voice_settings_for_scene(scene, character):
+    style = choose_voice_style(scene, character)
+    voice, rate, pitch = VOICE_BY_STYLE.get(style, VOICE_BY_STYLE["narrator_emotional"])
+    return style, voice, rate, pitch
 
 
 def safe_filename(value):
@@ -216,15 +291,15 @@ def make_frame(video_id, scene_index, scene, title, image_path, total_scenes, ho
     return frame_path
 
 
-async def create_edge_audio_async(text, output_path, emotion):
-    emotion_key = str(emotion or "emotional").lower()
-    voice, pitch, rate = VOICE_BY_EMOTION.get(emotion_key, VOICE_BY_EMOTION["emotional"])
+async def create_edge_audio_async(text, output_path, scene, character):
+    style, voice, rate, pitch = voice_settings_for_scene(scene, character)
+    print(f"Voice style selected: {style} | voice={voice} | rate={rate} | pitch={pitch}")
     communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate, pitch=pitch)
     await communicate.save(str(output_path))
 
 
-def create_edge_audio(text, output_path, emotion):
-    asyncio.run(create_edge_audio_async(text, output_path, emotion))
+def create_edge_audio(text, output_path, scene, character):
+    asyncio.run(create_edge_audio_async(text, output_path, scene, character))
     return output_path
 
 
@@ -242,7 +317,7 @@ def create_espeak_audio(text, output_path):
     return output_path
 
 
-def create_scene_audio(scene, video_id, scene_index):
+def create_scene_audio(scene, video_id, scene_index, character=None):
     narration = scene.get("narration_en", "").strip()
     if not narration:
         raise ValueError(f"Missing narration_en for scene {scene_index}")
@@ -250,20 +325,20 @@ def create_scene_audio(scene, video_id, scene_index):
     edge_path = AUDIO_DIR / f"audio_{safe_id}_{scene_index:02d}.mp3"
     gtts_path = AUDIO_DIR / f"audio_{safe_id}_{scene_index:02d}_gtts.mp3"
     wav_path = AUDIO_DIR / f"audio_{safe_id}_{scene_index:02d}.wav"
-    emotion = scene.get("emotion", "emotional")
 
+    selected_style = choose_voice_style(scene, character or {})
     try:
-        create_edge_audio(narration, edge_path, emotion)
-        return edge_path, "edge-tts"
+        create_edge_audio(narration, edge_path, scene, character or {})
+        return edge_path, f"edge-tts:{selected_style}"
     except Exception as e:
         print(f"edge-tts failed for scene {scene_index}: {e}")
     try:
         create_gtts_audio(narration, gtts_path)
-        return gtts_path, "gTTS"
+        return gtts_path, f"gTTS:fallback_from_{selected_style}"
     except Exception as e:
         print(f"gTTS failed for scene {scene_index}: {e}")
         create_espeak_audio(narration, wav_path)
-        return wav_path, "espeak-ng"
+        return wav_path, f"espeak-ng:fallback_from_{selected_style}"
 
 
 def make_motion_clip(frame_path, duration, scene_index):
@@ -307,7 +382,7 @@ def create_video(video_id, title, scene_payload):
             print(f"Pollinations failed for scene {i}: {e}")
             fallback_background(visual_path)
 
-        audio_path, voice_source = create_scene_audio(scene, safe_id, i)
+        audio_path, voice_source = create_scene_audio(scene, safe_id, i, character)
         voice_sources.append(voice_source)
         audio_clip = AudioFileClip(str(audio_path))
         duration = max(3.1, audio_clip.duration + 0.55)
