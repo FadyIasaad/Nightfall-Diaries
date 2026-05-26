@@ -3,82 +3,74 @@ name: Create And Upload Now
 on:
   workflow_dispatch:
 
-concurrency:
-  group: tiny-brave-tails-video-pipeline
-  cancel-in-progress: false
-
 jobs:
-  create-and-upload-now:
+  create-and-upload:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install FFmpeg, fonts, and fallback TTS engine
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak-ng fonts-dejavu-core fonts-liberation
-          ffmpeg -version
+          sudo apt-get install -y ffmpeg
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Validate Python files
-        run: |
-          python -m py_compile generate_story.py generate_video.py upload_youtube.py
-
-      - name: Generate English cinematic story
+      - name: Generate story
         env:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python generate_story.py
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+        run: |
+          python generate_story.py
 
-      - name: Generate cinematic video
+      - name: Generate video
         env:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-        run: python generate_video.py
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+        run: |
+          python generate_video.py
 
-      - name: Upload to YouTube
+      - name: Verify generated video
+        run: |
+          echo "Listing output folder:"
+          ls -R output || true
+
+          echo "Checking MP4 files:"
+          find output -name "*.mp4" -type f -print
+
+          MP4_COUNT=$(find output -name "*.mp4" -type f | wc -l)
+          if [ "$MP4_COUNT" -eq 0 ]; then
+            echo "No MP4 video was generated."
+            exit 1
+          fi
+
+      - name: Save generated video artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-brave-tails-video
+          path: output/*.mp4
+          if-no-files-found: error
+
+      - name: Upload video to YouTube
         env:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          YOUTUBE_PRIVACY_STATUS: private
-          SELF_DECLARED_MADE_FOR_KIDS: "false"
-        run: python upload_youtube.py
-
-      - name: Upload generated video artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-video-now
-          path: output/*.mp4
-          if-no-files-found: warn
-
-      - name: Upload generated visuals artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-visuals-now
-          path: output/visuals/**
-          if-no-files-found: warn
-
-      - name: Upload generated audio artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-audio-now
-          path: output/audio/**
-          if-no-files-found: warn
+        run: |
+          python upload_youtube.py
