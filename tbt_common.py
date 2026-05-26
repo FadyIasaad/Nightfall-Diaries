@@ -17,6 +17,11 @@ TRANSIENT_ERROR_TEXT = [
     "429", "500", "502", "503", "504", "timeout", "timed out",
     "temporarily", "temporary", "service unavailable", "service is currently unavailable",
     "internal error", "connection", "deadline exceeded", "rate limit",
+    # Gemini sometimes returns truncated/malformed JSON. Treat that as retryable.
+    "malformed json", "invalid json", "incomplete json", "unterminated string",
+    "could not find complete json", "could not find json", "jsondecodeerror",
+    "gemini returned empty text", "missing title", "missing script", "missing description",
+    "generated script is too short", "generated script is too long",
 ]
 
 

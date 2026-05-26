@@ -84,14 +84,33 @@ def clean_json_text(text):
 
 
 def parse_json_response(text):
+    """
+    Parse Gemini JSON safely.
+    Important: this function never invents missing braces or cuts strings.
+    If JSON is incomplete, it raises a retryable error so Gemini is called again.
+    """
     cleaned = clean_json_text(text)
+
     try:
         return json.loads(cleaned)
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
-        if not match:
-            raise RuntimeError(f"Could not find JSON in Gemini response:\n{cleaned[:1200]}")
-        return json.loads(match.group(0))
+    except json.JSONDecodeError as first_error:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+
+        if start == -1 or end == -1 or end <= start:
+            raise RuntimeError(
+                "Could not find complete JSON in Gemini response. "
+                f"Preview: {cleaned[:900]}"
+            ) from first_error
+
+        candidate = cleaned[start:end + 1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError as second_error:
+            raise RuntimeError(
+                "Malformed JSON from Gemini. This is retryable. "
+                f"JSON error: {second_error}. Preview: {cleaned[:900]}"
+            ) from second_error
 
 
 def split_sentences(script):
@@ -281,7 +300,8 @@ Topic: {topic}
 Animal: {animal}
 Life lesson: {lesson}
 
-Return JSON only. No markdown.
+Return valid JSON only. No markdown. No comments. No text before or after JSON.
+All strings must be properly escaped. Do not leave any string unfinished.
 
 Required JSON schema:
 {{
@@ -350,17 +370,39 @@ def configure_gemini():
     genai.configure(api_key=GEMINI_API_KEY)
 
 
+def make_gemini_model(model_name):
+    # Prefer strict JSON output. If this SDK/model rejects response_mime_type, fall back safely.
+    base_config = {
+        "temperature": 0.65,
+        "top_p": 0.9,
+        "top_k": 40,
+        "max_output_tokens": 4096,
+        "response_mime_type": "application/json",
+    }
+    try:
+        return genai.GenerativeModel(model_name, generation_config=base_config)
+    except TypeError:
+        base_config.pop("response_mime_type", None)
+        return genai.GenerativeModel(model_name, generation_config=base_config)
+
+
 def call_model(model_name, prompt):
-    model = genai.GenerativeModel(
-        model_name,
-        generation_config={
-            "temperature": 0.85,
-            "top_p": 0.95,
-            "top_k": 40,
-            "max_output_tokens": 4500,
-        },
-    )
-    response = model.generate_content(prompt)
+    model = make_gemini_model(model_name)
+    try:
+        response = model.generate_content(prompt)
+    except TypeError:
+        # Older SDK/model combination may reject JSON mime at request time.
+        model = genai.GenerativeModel(
+            model_name,
+            generation_config={
+                "temperature": 0.65,
+                "top_p": 0.9,
+                "top_k": 40,
+                "max_output_tokens": 4096,
+            },
+        )
+        response = model.generate_content(prompt)
+
     text = getattr(response, "text", None)
     if not text:
         try:
@@ -374,20 +416,37 @@ def generate_story(record):
     configure_gemini()
     prompt = build_prompt(record)
     errors = []
+
     for model_name in MODEL_CANDIDATES:
-        try:
-            print(f"Trying Gemini model: {model_name}")
-            text = run_with_retry(f"Generating story with {model_name}", lambda: call_model(model_name, prompt), max_attempts=3)
+        print(f"Trying Gemini model: {model_name}")
+
+        def one_complete_generation():
+            text = call_model(model_name, prompt)
             data = parse_json_response(text)
-            story = validate_story(data, record)
+            return validate_story(data, record)
+
+        try:
+            story = run_with_retry(
+                f"Generating and validating story with {model_name}",
+                one_complete_generation,
+                max_attempts=4,
+                max_wait_seconds=45,
+            )
             print(f"Gemini model used: {model_name}")
             return story, model_name
+
         except Exception as exc:
-            errors.append(f"{model_name}: {exc}")
-            if "404" in str(exc) or "not found" in str(exc).lower() or "not supported" in str(exc).lower():
+            message = str(exc)
+            errors.append(f"{model_name}: {message}")
+            if "404" in message or "not found" in message.lower() or "not supported" in message.lower():
                 print(f"Model {model_name} is unavailable. Trying next model...")
                 continue
+            # If a model repeatedly returns malformed JSON, try the next model instead of killing the whole run.
+            if any(s in message.lower() for s in ["malformed json", "invalid json", "incomplete json", "unterminated string", "could not find complete json"]):
+                print(f"Model {model_name} kept returning bad JSON. Trying next model...")
+                continue
             raise
+
     raise RuntimeError("All Gemini models failed. " + " | ".join(errors))
 
 
