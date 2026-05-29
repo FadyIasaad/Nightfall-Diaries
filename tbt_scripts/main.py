@@ -2,10 +2,10 @@ import argparse
 import json
 from pathlib import Path
 from config import VIDEO_TYPES, METADATA_DIR
-from scripts.story_engine import generate_script
-from scripts.voice_engine import generate_voice
-from scripts.video_engine import render_video
-from scripts.youtube_uploader import upload_video, add_to_playlist
+from .story_engine import generate_script
+from .voice_engine import generate_voice
+from .video_engine import render_video
+from .youtube_uploader import upload_video, add_to_playlist
 
 def run(video_type: str):
     if video_type not in VIDEO_TYPES:
