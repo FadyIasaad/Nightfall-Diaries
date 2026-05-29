@@ -59,7 +59,7 @@ To upload videos, you must provide a valid YouTube OAuth token.
     -   Run the helper script on your local computer (requires Python):
         ```bash
         pip install google-auth-oauthlib
-        python scripts/generate_youtube_token.py
+        python tbt_scripts/generate_youtube_token.py
         ```
     -   Follow the instructions in the terminal. It will open a browser for you to log in to your YouTube account.
     -   After logging in, the script will print a long line of text (a JSON object).
