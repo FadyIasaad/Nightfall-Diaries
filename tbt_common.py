@@ -80,6 +80,10 @@ def get_all_values(sheet):
     return run_with_retry("Reading worksheet values", lambda: sheet.get_all_values())
 
 
+def get_all_records(sheet):
+    return run_with_retry("Reading worksheet records", lambda: sheet.get_all_records())
+
+
 def update_cell(sheet, row, col, value):
     return run_with_retry(f"Updating R{row}C{col}", lambda: sheet.update_cell(row, col, value))
 
