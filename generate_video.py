@@ -13,8 +13,10 @@ from urllib.parse import quote_plus
 import edge_tts
 import requests
 from gtts import gTTS
-from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips, vfx
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.LANCZOS
+from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips, vfx
 
 from tbt_common import (
     get_sheets_client, open_spreadsheet, get_worksheet, get_all_values,

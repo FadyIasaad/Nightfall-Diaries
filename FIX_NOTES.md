@@ -12,7 +12,7 @@ This package is a full stability update, not a blind patch.
    - Retrying the whole Gemini generation + parse + validation step.
    - Falling back to another Gemini model if a model repeatedly returns bad JSON.
 4. Added JSON parsing errors to retryable transient errors in `tbt_common.py`.
-5. Added `GEMINI_MODEL: gemini-2.5-flash` explicitly to story workflows.
+5. Added `GEMINI_MODEL: gemini-1.5-flash` explicitly to story workflows.
 
 ## Correct run order
 1. Generate First Story
