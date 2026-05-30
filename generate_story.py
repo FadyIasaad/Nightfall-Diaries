@@ -23,11 +23,10 @@ CONTENT_SHEET_NAME = os.getenv("CONTENT_SHEET_NAME", "Content").strip()
 LOGS_SHEET_NAME = os.getenv("LOGS_SHEET_NAME", "Logs").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
-# Do NOT use Gemini 1.5 models. They now commonly return 404.
 MODEL_CANDIDATES = [
-    os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip(),
-    "gemini-2.5-flash-lite",
-    "gemini-2.0-flash",
+    os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip(),
+    "gemini-1.5-flash-lite",
+    "gemini-2.0-flash-exp",
 ]
 MODEL_CANDIDATES = list(dict.fromkeys([m for m in MODEL_CANDIDATES if m]))
 

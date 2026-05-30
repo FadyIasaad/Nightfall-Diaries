@@ -23,13 +23,6 @@ def _get_youtube_client():
                 creds.refresh(Request())
 
         youtube = build("youtube", "v3", credentials=creds)
-
-        # Get channel info to let the user know where it's being uploaded
-        channels_response = youtube.channels().list(part="snippet", mine=True).execute()
-        if channels_response.get("items"):
-            channel_title = channels_response["items"][0]["snippet"]["title"]
-            print(f"Authenticated as YouTube channel: {channel_title}")
-
         return youtube
     except Exception as e:
         print(f"Error authenticating with YouTube: {e}")

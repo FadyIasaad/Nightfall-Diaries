@@ -50,19 +50,7 @@ def load_youtube_credentials():
             "YOUTUBE_TOKEN_JSON is not valid JSON. Copy the full JSON exactly from PowerShell into GitHub Secret."
         ) from exc
 
-    required_fields = ["token", "refresh_token", "token_uri", "client_id", "client_secret", "scopes"]
-    missing = [field for field in required_fields if not token_data.get(field)]
-    if missing:
-        raise RuntimeError("YOUTUBE_TOKEN_JSON is missing required fields: " + ", ".join(missing))
-
-    credentials = Credentials(
-        token=token_data["token"],
-        refresh_token=token_data["refresh_token"],
-        token_uri=token_data["token_uri"],
-        client_id=token_data["client_id"],
-        client_secret=token_data["client_secret"],
-        scopes=token_data["scopes"],
-    )
+    credentials = Credentials.from_authorized_user_info(token_data)
 
     if not credentials.valid:
         print("YouTube credentials are not valid. Refreshing access token from refresh_token...")
@@ -144,8 +132,7 @@ def upload_video_to_youtube(video_path, title, description):
         },
         "status": {
             "privacyStatus": privacy_status,
-            "selfDeclaredMadeForKids": SELF_DECLARED_MADE_FOR_KIDS,
-            "containsSyntheticMedia": CONTAINS_SYNTHETIC_MEDIA,
+            "selfDeclaredMadeForKids": True,
         },
     }
 
