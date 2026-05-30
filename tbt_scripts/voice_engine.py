@@ -3,15 +3,21 @@ import edge_tts
 from config import AUDIO_DIR
 
 def _ssml_safe_pause_text(text: str) -> str:
-    # Simple pacing improvement: add pauses after sentences.
-    return text.replace(". ", ". ... ").replace("? ", "? ... ").replace("! ", "! ... ")
+    # Improved pacing: add natural pauses after punctuation for better quality.
+    text = text.replace(". ", ". <break time='500ms'/> ")
+    text = text.replace("? ", "? <break time='500ms'/> ")
+    text = text.replace("! ", "! <break time='500ms'/> ")
+    text = text.replace(", ", ", <break time='200ms'/> ")
+    return text
 
 async def _save_voice(text: str, voice: str, output_path: str):
     paced = _ssml_safe_pause_text(text)
+    # Wrap in SSML to make breaks work and prevent tags from being read aloud
+    ssml = f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='{voice}'>{paced}</voice></speak>"
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            communicate = edge_tts.Communicate(paced, voice)
+            communicate = edge_tts.Communicate(ssml, voice)
             await communicate.save(output_path)
             return
         except Exception as e:

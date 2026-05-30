@@ -410,7 +410,7 @@ def create_video(video_id, title, scene_payload):
         audio_codec="aac",
         preset="medium",
         threads=2,
-        bitrate="5200k",
+        bitrate="8000k",
     )
     video.close()
     for clip in clips:

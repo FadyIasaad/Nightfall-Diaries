@@ -111,5 +111,5 @@ def render_video(story_data, audio_path, settings, video_type):
     final = video.set_audio(audio)
 
     output_path = VIDEO_DIR / f"{video_type}_final.mp4"
-    final.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac")
+    final.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac", bitrate="8000k")
     return str(output_path)

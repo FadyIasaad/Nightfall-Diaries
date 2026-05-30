@@ -251,10 +251,14 @@ def main():
     if not scene_prompts_raw:
         raise ValueError(f"Missing scene_prompts in row {target_row_number}")
 
-    scenes = json.loads(scene_prompts_raw)
+    data = json.loads(scene_prompts_raw)
+    if isinstance(data, dict):
+        scenes = data.get("scenes", [])
+    else:
+        scenes = data
 
-    if not isinstance(scenes, list) or len(scenes) != 3:
-        raise ValueError("scene_prompts must contain exactly 3 scenes.")
+    if not isinstance(scenes, list) or len(scenes) < 1:
+        raise ValueError("scene_prompts must contain at least 1 scene.")
 
     video_visual_dir = OUTPUT_DIR / str(video_id)
     video_visual_dir.mkdir(parents=True, exist_ok=True)
