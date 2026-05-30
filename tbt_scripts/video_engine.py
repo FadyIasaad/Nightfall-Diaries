@@ -9,7 +9,7 @@ if not hasattr(Image, "ANTIALIAS"):
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeVideoClip, TextClip, ColorClip
 from config import VISUAL_DIR, VIDEO_DIR
 
-WIDTH, HEIGHT = 1280, 720
+WIDTH, HEIGHT = 1080, 1920
 
 MOOD_COLORS = {
     "calm": [(18, 30, 70), (50, 70, 130)],
@@ -68,14 +68,14 @@ def make_scene_image(scene, video_type):
         draw.ellipse((x, y, x+size, y+size), fill=(255,255,220))
 
     # hills
-    draw.ellipse((-200, 460, 700, 900), fill=(25, 90, 60))
-    draw.ellipse((450, 430, 1500, 920), fill=(30, 110, 70))
+    draw.ellipse((-250, 1380, 720, 2020), fill=(25, 90, 60))
+    draw.ellipse((430, 1320, 1450, 2040), fill=(30, 110, 70))
 
-    _draw_simple_character(draw, scene.get("character", "Benny"), 545, 290)
+    _draw_simple_character(draw, scene.get("character", "Benny"), 455, 860)
 
-    text = scene.get("text", "")[:90]
-    draw.rounded_rectangle((80, 560, 1200, 690), radius=30, fill=(0,0,0,130))
-    draw.text((110, 595), text, font=_font(34), fill=(255,255,255))
+    text = scene.get("text", "")[:110]
+    draw.rounded_rectangle((70, 1540, 1010, 1765), radius=34, fill=(0,0,0,145))
+    draw.text((105, 1595), text, font=_font(38), fill=(255,255,255))
 
     path = VISUAL_DIR / f"{video_type}_scene_{scene['scene_number']:03d}.png"
     bg.save(path)
@@ -111,5 +111,12 @@ def render_video(story_data, audio_path, settings, video_type):
     final = video.set_audio(audio)
 
     output_path = VIDEO_DIR / f"{video_type}_final.mp4"
-    final.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac")
+    final.write_videofile(
+        str(output_path),
+        fps=24,
+        codec="libx264",
+        audio_codec="aac",
+        bitrate="7500k",
+        ffmpeg_params=["-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-profile:v", "high"],
+    )
     return str(output_path)
