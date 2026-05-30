@@ -15,6 +15,10 @@ from bidi.algorithm import get_display
 from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+# MoviePy 1.0.3 compatibility with newer Pillow builds.
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.LANCZOS
+
 from tbt_common import (
     find_column,
     get_all_values,
@@ -78,7 +82,7 @@ def reshape_arabic(text):
     return get_display(arabic_reshaper.reshape(text))
 
 
-def wrap_ltr(draw, text, font, max_width, max_lines=3):
+def wrap_ltr(draw, text, font, max_width, max_lines=4):
     words = str(text or "").split()
     lines, current = [], ""
     for word in words:
@@ -97,7 +101,7 @@ def wrap_ltr(draw, text, font, max_width, max_lines=3):
     return lines[:max_lines]
 
 
-def wrap_arabic(draw, text, font, max_width, max_lines=3):
+def wrap_arabic(draw, text, font, max_width, max_lines=4):
     words = str(text or "").split()
     lines, current = [], ""
     for word in words:
@@ -193,8 +197,8 @@ def make_frame(video_id, scene_index, scene, title, image_path, total_scenes):
     brand_font = load_font(42, True)
     title_font = load_font(30, False)
     beat_font = load_font(28, False)
-    en_font = load_font(48, True)
-    ar_font = load_font(43, True, arabic=True)
+    en_font = load_font(44, True)
+    ar_font = load_font(39, True, arabic=True)
     small_font = load_font(28, False)
 
     top = Image.new("RGBA", (WIDTH, 235), (0, 0, 0, 105))
@@ -207,15 +211,15 @@ def make_frame(video_id, scene_index, scene, title, image_path, total_scenes):
     emotion = str(scene.get("emotion", "peaceful")).capitalize()
     draw.text((55, 178), f"{scene_index}/{total_scenes}  •  {emotion}", font=beat_font, fill=(255, 238, 190, 230))
 
-    subtitle_h = 415
+    subtitle_h = 500
     subtitle_y = HEIGHT - subtitle_h - 75
     box = Image.new("RGBA", (WIDTH - 80, subtitle_h), (0, 0, 0, 155)).filter(ImageFilter.GaussianBlur(1))
     bg.alpha_composite(box, (40, subtitle_y))
 
-    en_lines = wrap_ltr(draw, scene.get("subtitle_en") or scene.get("narration_en"), en_font, 910, 3)
-    ar_lines = wrap_arabic(draw, scene.get("subtitle_ar", ""), ar_font, 910, 3)
-    draw_centered_lines(draw, en_lines, en_font, subtitle_y + 125, (255, 255, 255, 255), 8)
-    draw_centered_lines(draw, ar_lines, ar_font, subtitle_y + 290, (255, 232, 170, 255), 8)
+    en_lines = wrap_ltr(draw, scene.get("subtitle_en") or scene.get("narration_en"), en_font, 910, 4)
+    ar_lines = wrap_arabic(draw, scene.get("subtitle_ar", ""), ar_font, 910, 4)
+    draw_centered_lines(draw, en_lines, en_font, subtitle_y + 150, (255, 255, 255, 255), 8)
+    draw_centered_lines(draw, ar_lines, ar_font, subtitle_y + 350, (255, 232, 170, 255), 8)
 
     bar_x, bar_y, bar_w, bar_h = 120, HEIGHT - 92, 840, 12
     draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=8, fill=(255, 255, 255, 65))
@@ -256,6 +260,23 @@ def create_espeak_audio(text, output_path):
     return output_path
 
 
+def normalize_audio(input_path, video_id, scene_index):
+    """Normalize loudness so voices do not jump between scenes."""
+    normalized = AUDIO_DIR / f"audio_{video_id}_{scene_index:02d}_norm.m4a"
+    command = [
+        "ffmpeg", "-y", "-i", str(input_path),
+        "-af", "loudnorm=I=-18:TP=-1.5:LRA=11",
+        "-ar", "48000", "-ac", "2", "-c:a", "aac", "-b:a", "192k",
+        str(normalized),
+    ]
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return normalized
+    except Exception as exc:
+        print(f"Audio normalization failed, using original audio: {exc}")
+        return input_path
+
+
 def create_scene_audio(scene, video_id, scene_index):
     narration = scene.get("narration_en", "").strip()
     emotion = scene.get("emotion", "peaceful").strip().lower()
@@ -263,11 +284,13 @@ def create_scene_audio(scene, video_id, scene_index):
     wav_path = AUDIO_DIR / f"audio_{video_id}_{scene_index:02d}.wav"
     try:
         create_edge_audio(narration, mp3_path, emotion)
-        return mp3_path, f"edge-tts:{EMOTION_STYLE.get(emotion, EMOTION_STYLE['peaceful'])['voice']}"
+        final_audio = normalize_audio(mp3_path, video_id, scene_index)
+        return final_audio, f"edge-tts:{EMOTION_STYLE.get(emotion, EMOTION_STYLE['peaceful'])['voice']}:loudnorm"
     except Exception as exc:
         print(f"Edge TTS failed for scene {scene_index}: {exc}")
         create_espeak_audio(narration, wav_path)
-        return wav_path, "espeak-ng"
+        final_audio = normalize_audio(wav_path, video_id, scene_index)
+        return final_audio, "espeak-ng:loudnorm"
 
 
 def motion_params(motion, duration):
@@ -324,7 +347,7 @@ def create_video(video_id, title, scene_payload):
         audio_path, voice_source = create_scene_audio(scene, safe_id, i)
         voice_sources.append(voice_source)
         audio_clip = AudioFileClip(str(audio_path))
-        pause_after = float(scene.get("pause_after", 0.35) or 0.35)
+        pause_after = min(0.85, max(0.25, float(scene.get("pause_after", 0.35) or 0.35)))
         duration = max(3.2, audio_clip.duration + pause_after)
         frame_path = make_frame(safe_id, i, scene, title, visual_path, total_scenes)
         clip = animated_clip(frame_path, duration, scene.get("camera_motion", "slow_zoom_in")).set_audio(audio_clip)
@@ -338,11 +361,17 @@ def create_video(video_id, title, scene_payload):
         audio_codec="aac",
         preset="medium",
         threads=2,
-        bitrate="5200k",
+        bitrate="7500k",
+        ffmpeg_params=["-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-profile:v", "high"],
     )
     video.close()
     for clip in clips:
-        clip.close()
+        try:
+            if clip.audio:
+                clip.audio.close()
+            clip.close()
+        except Exception:
+            pass
     return video_path, ",".join(sorted(set(voice_sources)))
 
 
