@@ -1,4 +1,4 @@
-name: Seed Content Ideas By Type
+name: 00 Generate Content Backlog
 
 on:
   workflow_dispatch:

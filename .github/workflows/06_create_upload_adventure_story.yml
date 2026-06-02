@@ -1,20 +1,12 @@
-name: Create And Upload Now
+name: 06 Create Upload Adventure Story
 
 on:
   workflow_dispatch:
     inputs:
-      video_type:
-        description: "Choose video type"
-        required: true
-        default: "long_story"
-        type: choice
-        options:
-          - short
-          - bedtime
-          - long_story
-          - toby_collection
-          - calming
-          - adventure
+      target_minutes:
+        description: "Optional override minutes. Leave blank to use sheet/default."
+        required: false
+        default: "30"
       privacy:
         description: "YouTube privacy"
         required: true
@@ -28,7 +20,7 @@ on:
 jobs:
   create-and-upload:
     runs-on: ubuntu-latest
-    timeout-minutes: 420
+    timeout-minutes: 360
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -48,19 +40,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Generate selected story type
+      - name: Generate adventure story
         env:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TBT_VIDEO_TYPE: ${{ github.event.inputs.video_type }}
+          TBT_VIDEO_TYPE: adventure
+          TBT_TARGET_MINUTES: ${{ github.event.inputs.target_minutes }}
         run: python generate_story.py
 
       - name: Generate video
         env:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          TBT_VIDEO_TYPE: ${{ github.event.inputs.video_type }}
+          TBT_VIDEO_TYPE: adventure
         run: python generate_video.py
 
       - name: Verify MP4 exists
@@ -82,12 +75,12 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_PRIVACY: ${{ github.event.inputs.privacy }}
           YOUTUBE_CATEGORY_ID: 24
-          TBT_VIDEO_TYPE: ${{ github.event.inputs.video_type }}
+          TBT_VIDEO_TYPE: adventure
         run: python upload_youtube.py
 
       - name: Upload rendered video artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tiny-brave-tails-output
+          name: output-adventure
           path: output/
