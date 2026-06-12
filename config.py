@@ -11,8 +11,8 @@ METADATA_DIR = OUTPUT_DIR / "metadata"
 
 DEFAULT_VIDEO_PRIVACY = "private"
 DEFAULT_PRIVACY_STATUS = DEFAULT_VIDEO_PRIVACY
-DEFAULT_EDGE_TTS_VOICE = "en-US-JennyNeural"
-DEFAULT_BEDTIME_VOICE = "en-US-AriaNeural"
+DEFAULT_EDGE_TTS_VOICE = "en-US-AvaNeural"
+DEFAULT_BEDTIME_VOICE = "en-US-AvaNeural"
 DEFAULT_MADE_FOR_KIDS = False
 YOUTUBE_CATEGORY_ID = "24"  # Entertainment. Avoids forcing the channel into Kids/Education positioning.
 
@@ -31,7 +31,7 @@ VIDEO_TYPES = {
         "category": "emotional_short",
         "duration_minutes": 1,
         "scene_count": 7,
-        "voice": "en-US-AriaNeural",
+        "voice": "en-US-AvaNeural",
         "mood": "emotional",
         "made_for_kids": False,
     },
@@ -39,7 +39,7 @@ VIDEO_TYPES = {
         "category": "long_bedtime_story",
         "duration_minutes": 30,
         "scene_count": 28,
-        "voice": "en-US-AriaNeural",
+        "voice": "en-US-AvaNeural",
         "mood": "calm_deep",
         "made_for_kids": False,
     },
@@ -47,7 +47,7 @@ VIDEO_TYPES = {
         "category": "long_emotional_story",
         "duration_minutes": 30,
         "scene_count": 32,
-        "voice": "en-US-AriaNeural",
+        "voice": "en-US-AvaNeural",
         "mood": "deep_emotional",
         "made_for_kids": False,
     },
@@ -55,7 +55,7 @@ VIDEO_TYPES = {
         "category": "toby_collection",
         "duration_minutes": 45,
         "scene_count": 42,
-        "voice": "en-US-AriaNeural",
+        "voice": "en-US-AvaNeural",
         "mood": "deep_emotional_collection",
         "made_for_kids": False,
     },
@@ -64,7 +64,7 @@ VIDEO_TYPES = {
         "category": "emotional_adventure_story",
         "duration_minutes": 30,
         "scene_count": 32,
-        "voice": "en-US-AriaNeural",
+        "voice": "en-US-AvaNeural",
         "mood": "deep_adventure",
         "made_for_kids": False,
     },
@@ -72,7 +72,7 @@ VIDEO_TYPES = {
         "category": "calming_story",
         "duration_minutes": 30,
         "scene_count": 30,
-        "voice": "en-US-AriaNeural",
+        "voice": "en-US-AvaNeural",
         "mood": "calm_reflective",
         "made_for_kids": False,
     },

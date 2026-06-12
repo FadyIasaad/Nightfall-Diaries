@@ -45,19 +45,20 @@ for folder in [OUTPUT_DIR, FRAMES_DIR, VISUALS_DIR, AUDIO_DIR, VIDEO_DIR]:
 WIDTH = 1080
 HEIGHT = 1920
 FPS = 24
-DEFAULT_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-JennyNeural")
-BEDTIME_VOICE = os.getenv("EDGE_TTS_BEDTIME_VOICE", "en-US-AriaNeural")
-LONG_NARRATION_VOICE = os.getenv("EDGE_TTS_LONG_VOICE", "en-US-AriaNeural")
+DEFAULT_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-AvaNeural")
+BEDTIME_VOICE = os.getenv("EDGE_TTS_BEDTIME_VOICE", "en-US-AvaNeural")
+LONG_NARRATION_VOICE = os.getenv("EDGE_TTS_LONG_VOICE", "en-US-AvaNeural")
 
 EMOTION_STYLE = {
-    "wonder": {"voice": LONG_NARRATION_VOICE, "rate": "-12%", "pitch": "-1Hz", "volume": "+0%"},
-    "lonely": {"voice": LONG_NARRATION_VOICE, "rate": "-18%", "pitch": "-5Hz", "volume": "-1%"},
-    "worried": {"voice": LONG_NARRATION_VOICE, "rate": "-16%", "pitch": "-3Hz", "volume": "+0%"},
-    "afraid": {"voice": LONG_NARRATION_VOICE, "rate": "-15%", "pitch": "-6Hz", "volume": "+0%"},
-    "brave": {"voice": LONG_NARRATION_VOICE, "rate": "-11%", "pitch": "+0Hz", "volume": "+1%"},
-    "relieved": {"voice": LONG_NARRATION_VOICE, "rate": "-13%", "pitch": "-1Hz", "volume": "+0%"},
-    "peaceful": {"voice": LONG_NARRATION_VOICE, "rate": "-18%", "pitch": "-4Hz", "volume": "-1%"},
+    "wonder": {"voice": LONG_NARRATION_VOICE, "rate": "-13%", "pitch": "-2Hz", "volume": "+0%"},
+    "lonely": {"voice": LONG_NARRATION_VOICE, "rate": "-20%", "pitch": "-6Hz", "volume": "-2%"},
+    "worried": {"voice": LONG_NARRATION_VOICE, "rate": "-18%", "pitch": "-5Hz", "volume": "-1%"},
+    "afraid": {"voice": LONG_NARRATION_VOICE, "rate": "-17%", "pitch": "-7Hz", "volume": "-1%"},
+    "brave": {"voice": LONG_NARRATION_VOICE, "rate": "-14%", "pitch": "-2Hz", "volume": "+0%"},
+    "relieved": {"voice": LONG_NARRATION_VOICE, "rate": "-16%", "pitch": "-3Hz", "volume": "-1%"},
+    "peaceful": {"voice": LONG_NARRATION_VOICE, "rate": "-21%", "pitch": "-5Hz", "volume": "-2%"},
 }
+
 
 
 def load_font(size, bold=True, arabic=False):
@@ -195,46 +196,42 @@ def prepare_background(path):
     return rgba
 
 
-def make_frame(video_id, scene_index, scene, title, image_path, total_scenes):
+def make_frame(video_id, scene_index, visual_index, scene, title, image_path, total_scenes):
     bg = prepare_background(image_path)
     draw = ImageDraw.Draw(bg)
     brand_font = load_font(42, True)
     title_font = load_font(30, False)
     beat_font = load_font(28, False)
-    en_font = load_font(40, True)
-    ar_font = load_font(36, True, arabic=True)
-    small_font = load_font(28, False)
+    en_font = load_font(36, True)
+    small_font = load_font(26, False)
 
-    top = Image.new("RGBA", (WIDTH, 235), (0, 0, 0, 105))
+    top = Image.new("RGBA", (WIDTH, 220), (0, 0, 0, 95))
     bg.alpha_composite(top, (0, 0))
     draw.text((55, 36), "Tiny Brave Tails", font=brand_font, fill=(255, 238, 190, 255))
     y = 98
     for line in wrap_ltr(draw, title, title_font, 940, 2):
-        draw.text((55, y), line, font=title_font, fill=(245, 245, 245, 230))
+        draw.text((55, y), line, font=title_font, fill=(245, 245, 245, 225))
         y += 38
     emotion = str(scene.get("emotion", "peaceful")).capitalize()
-    draw.text((55, 178), f"{scene_index}/{total_scenes}  •  {emotion}", font=beat_font, fill=(255, 238, 190, 230))
+    draw.text((55, 174), f"{scene_index}/{total_scenes}  •  {emotion}", font=beat_font, fill=(255, 238, 190, 225))
 
-    subtitle_h = 560
-    subtitle_y = HEIGHT - subtitle_h - 75
-    box = Image.new("RGBA", (WIDTH - 80, subtitle_h), (0, 0, 0, 155)).filter(ImageFilter.GaussianBlur(1))
-    bg.alpha_composite(box, (40, subtitle_y))
+    subtitle_h = 255
+    subtitle_y = HEIGHT - subtitle_h - 95
+    box = Image.new("RGBA", (WIDTH - 96, subtitle_h), (0, 0, 0, 135)).filter(ImageFilter.GaussianBlur(1))
+    bg.alpha_composite(box, (48, subtitle_y))
 
     en_source = scene.get("subtitle_en") or scene.get("narration_en")
-    ar_source = scene.get("subtitle_ar", "")
-    en_lines = wrap_ltr(draw, en_source, en_font, 910, 5)
-    ar_lines = wrap_arabic(draw, ar_source, ar_font, 910, 5)
-    draw_centered_lines(draw, en_lines, en_font, subtitle_y + 180, (255, 255, 255, 255), 7)
-    draw_centered_lines(draw, ar_lines, ar_font, subtitle_y + 405, (255, 232, 170, 255), 7)
+    en_lines = wrap_ltr(draw, en_source, en_font, 900, 4)
+    draw_centered_lines(draw, en_lines, en_font, subtitle_y + subtitle_h // 2, (255, 255, 255, 255), 8)
 
     bar_x, bar_y, bar_w, bar_h = 120, HEIGHT - 92, 840, 12
     draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=8, fill=(255, 255, 255, 65))
     draw.rounded_rectangle((bar_x, bar_y, bar_x + int(bar_w * scene_index / total_scenes), bar_y + bar_h), radius=8, fill=(255, 232, 170, 245))
     cta = "Soft animal stories with tiny courage"
     bbox = draw.textbbox((0, 0), cta, font=small_font)
-    draw.text(((WIDTH - (bbox[2] - bbox[0])) // 2, HEIGHT - 58), cta, font=small_font, fill=(255, 255, 255, 220))
+    draw.text(((WIDTH - (bbox[2] - bbox[0])) // 2, HEIGHT - 58), cta, font=small_font, fill=(255, 255, 255, 210))
 
-    frame_path = FRAMES_DIR / f"frame_{video_id}_{scene_index:02d}.jpg"
+    frame_path = FRAMES_DIR / f"frame_{video_id}_{scene_index:02d}_{visual_index:02d}.jpg"
     bg.convert("RGB").save(frame_path, quality=95)
     return frame_path
 
@@ -253,6 +250,7 @@ async def create_edge_audio_async(text, output_path, emotion="peaceful"):
 
 def create_edge_audio(text, output_path, emotion="peaceful"):
     clean = re.sub(r"\s+", " ", str(text).replace("\n", " ")).strip()
+    clean = re.sub(r"([.!?])\s+", r"\1 ", clean)
     if not clean:
         raise ValueError("Empty narration text")
     asyncio.run(create_edge_audio_async(clean, output_path, emotion))
@@ -341,23 +339,40 @@ def create_video(video_id, title, scene_payload):
 
     numeric_seed = sum(ord(ch) for ch in safe_id) % 100000
     for i, scene in enumerate(scenes, start=1):
-        prompt = f"{char_desc}. {scene.get('image_prompt', '')} Emotion: {scene.get('emotion', 'peaceful')}."
-        visual_path = VISUALS_DIR / f"visual_{safe_id}_{i:02d}.jpg"
-        try:
-            pollinations_image(prompt, visual_path, seed=numeric_seed * 100 + i)
-            time.sleep(0.25)
-        except Exception as exc:
-            print(f"Image generation failed for scene {i}: {exc}")
-            fallback_background(visual_path, scene.get("emotion", "peaceful"))
+        raw_moments = scene.get("visual_moments") or []
+        if not isinstance(raw_moments, list) or not raw_moments:
+            raw_moments = [scene.get("image_prompt", "")]
+        visual_moments = [str(item).strip() for item in raw_moments if str(item).strip()][:3]
+        if not visual_moments:
+            visual_moments = [f"{char_desc}. {scene.get('image_prompt', '')} Emotion: {scene.get('emotion', 'peaceful')}."]
 
         audio_path, voice_source = create_scene_audio(scene, safe_id, i)
         voice_sources.append(voice_source)
         audio_clip = AudioFileClip(str(audio_path))
-        pause_after = min(0.85, max(0.25, float(scene.get("pause_after", 0.35) or 0.35)))
-        duration = max(4.0, audio_clip.duration + pause_after)
-        frame_path = make_frame(safe_id, i, scene, title, visual_path, total_scenes)
-        clip = animated_clip(frame_path, duration, scene.get("camera_motion", "slow_zoom_in")).set_audio(audio_clip)
-        clips.append(clip)
+        pause_after = min(1.0, max(0.35, float(scene.get("pause_after", 0.55) or 0.55)))
+        duration = max(4.8, audio_clip.duration + pause_after)
+        per_visual_duration = duration / len(visual_moments)
+        moment_clips = []
+
+        for visual_index, moment_prompt in enumerate(visual_moments, start=1):
+            prompt = f"{char_desc}. {moment_prompt}. Emotion: {scene.get('emotion', 'peaceful')}."
+            visual_path = VISUALS_DIR / f"visual_{safe_id}_{i:02d}_{visual_index:02d}.jpg"
+            try:
+                pollinations_image(prompt, visual_path, seed=numeric_seed * 1000 + i * 10 + visual_index)
+                time.sleep(0.2)
+            except Exception as exc:
+                print(f"Image generation failed for scene {i} moment {visual_index}: {exc}")
+                fallback_background(visual_path, scene.get("emotion", "peaceful"))
+            frame_path = make_frame(safe_id, i, visual_index, scene, title, visual_path, total_scenes)
+            motion = scene.get("camera_motion", "slow_zoom_in")
+            if visual_index == 2 and motion == "slow_zoom_in":
+                motion = "gentle_pan_right"
+            elif visual_index == 3 and motion in ["slow_zoom_in", "gentle_pan_right"]:
+                motion = "slow_zoom_out"
+            moment_clips.append(animated_clip(frame_path, per_visual_duration, motion))
+
+        scene_clip = concatenate_videoclips(moment_clips, method="compose").set_audio(audio_clip)
+        clips.append(scene_clip)
 
     video = concatenate_videoclips(clips, method="compose")
     video.write_videofile(

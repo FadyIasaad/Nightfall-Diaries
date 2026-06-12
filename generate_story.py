@@ -182,9 +182,10 @@ Hard quality rules:
 - Toby the turtle must feel consistent: slow, wise, flawed, emotionally restrained, not a mascot.
 - Every scene needs a distinct action/location/emotion so the video does not repeat the same visual.
 - Use cinematic sensory detail: rain on leaves, lantern light, wet stones, quiet breathing, old shell, distant thunder.
-- English narration only. Arabic subtitles must fully translate each scene.
+- English narration and English subtitles only. Do not create Arabic subtitles or Arabic translation anywhere.
 - No direct moral lecture. Let the meaning land through the ending.
 - Every image_prompt must include the exact character design and a different visual composition.
+- Every scene must include 3 distinct visual_moments that show the situation changing: establishing emotion, action/conflict, reaction/release.
 
 Scene beats:
 {beat_text}
@@ -211,8 +212,12 @@ Return valid JSON only, exactly in this shape:
       "camera_motion": "one of: slow_zoom_in, slow_zoom_out, gentle_pan_left, gentle_pan_right, tiny_handheld, still_soft",
       "narration_en": "spoken English narration. For long videos, use 2-5 emotionally rich sentences.",
       "subtitle_en": "same meaning, subtitle-safe English",
-      "subtitle_ar": "Arabic translation of the narration",
-      "image_prompt": "vertical 9:16 warm 2D cinematic storybook frame, exact character design, no text"
+      "image_prompt": "vertical 9:16 warm 2D cinematic storybook frame, exact character design, no text",
+      "visual_moments": [
+        "moment 1 prompt: character emotion and location",
+        "moment 2 prompt: action/conflict in this situation",
+        "moment 3 prompt: reaction/change after the moment"
+      ]
     }}
   ]
 }}
@@ -222,18 +227,15 @@ Return valid JSON only, exactly in this shape:
 def normalize_scene(scene: Dict[str, Any], i: int, character_desc: str, video_type: str) -> Dict[str, Any]:
     narration = str(scene.get("narration_en", "")).strip()
     subtitle_en = str(scene.get("subtitle_en", "")).strip() or narration
-    subtitle_ar = str(scene.get("subtitle_ar", "")).strip()
     image_prompt = str(scene.get("image_prompt") or scene.get("visual_prompt") or scene.get("prompt") or "").strip()
     beat_default = LONG_BEATS[(i - 1) % len(LONG_BEATS)] if video_type != "short" else SHORT_BEATS[min(i - 1, len(SHORT_BEATS)-1)]
     emotion = str(scene.get("emotion", "peaceful")).strip().lower()
     if emotion not in {"wonder", "lonely", "worried", "afraid", "brave", "relieved", "peaceful"}:
         emotion = "peaceful"
     if not narration:
-        narration = f"Toby kept moving through the Moonlit Forest, carrying a quiet fear he had not yet learned how to name."
+        narration = "Toby kept moving through the Moonlit Forest, carrying a quiet fear he had not yet learned how to name."
     if not subtitle_en:
         subtitle_en = narration
-    if not subtitle_ar:
-        subtitle_ar = "واصل توبي رحلته بهدوء، وهو يحمل خوفًا صغيرًا لم يعرف بعد كيف يسميه."
     if not image_prompt:
         image_prompt = (
             f"vertical 9:16 warm 2D cinematic storybook frame, {character_desc}, "
@@ -242,19 +244,35 @@ def normalize_scene(scene: Dict[str, Any], i: int, character_desc: str, video_ty
         )
     if character_desc and character_desc[:40].lower() not in image_prompt.lower():
         image_prompt = f"{character_desc}. {image_prompt}"
+
+    raw_moments = scene.get("visual_moments") or scene.get("image_moments") or []
+    if not isinstance(raw_moments, list):
+        raw_moments = []
+    visual_moments = [str(item).strip() for item in raw_moments if str(item).strip()]
+    if len(visual_moments) < 3:
+        beat = str(scene.get("beat", beat_default)).strip()
+        visual_moments = [
+            f"{image_prompt}. Establishing shot: {character_desc}, {emotion} mood, {beat}, cinematic vertical composition.",
+            f"{image_prompt}. Action shot: show the exact situation changing, body language, conflict or choice, no text.",
+            f"{image_prompt}. Reaction shot: close emotional expression, tiny visible consequence, soft light, no text.",
+        ]
+    visual_moments = [
+        (f"{character_desc}. {moment}" if character_desc and character_desc[:40].lower() not in moment.lower() else moment)
+        for moment in visual_moments[:3]
+    ]
+
     return {
         "scene_number": i,
         "beat": str(scene.get("beat", beat_default)).strip(),
         "emotion": emotion,
-        "voice_style": str(scene.get("voice_style", "slow warm cinematic narrator, emotionally restrained")).strip(),
-        "pause_after": float(scene.get("pause_after", 0.45) or 0.45),
+        "voice_style": str(scene.get("voice_style", "soft human-like narrator, warm, intimate, emotional, with natural pauses")).strip(),
+        "pause_after": float(scene.get("pause_after", 0.55) or 0.55),
         "camera_motion": str(scene.get("camera_motion", ["slow_zoom_in", "gentle_pan_left", "slow_zoom_out", "gentle_pan_right", "still_soft"][i % 5])).strip(),
         "narration_en": narration,
         "subtitle_en": subtitle_en,
-        "subtitle_ar": subtitle_ar,
         "image_prompt": image_prompt,
+        "visual_moments": visual_moments,
     }
-
 
 def fallback_expand_scenes(data: Dict[str, Any], scene_count: int, character: Dict[str, str], video_type: str) -> Dict[str, Any]:
     scenes = data.get("scenes", []) if isinstance(data.get("scenes"), list) else []
@@ -267,8 +285,8 @@ def fallback_expand_scenes(data: Dict[str, Any], scene_count: int, character: Di
             "scene_number": i,
             "beat": beat,
             "emotion": ["lonely", "worried", "afraid", "brave", "relieved", "peaceful"][i % 6],
-            "voice_style": "slow, intimate, cinematic, with tiny pauses after emotional words",
-            "pause_after": 0.5,
+            "voice_style": "soft human-like narrator, warm, intimate, emotional, with natural pauses",
+            "pause_after": 0.6,
             "camera_motion": ["slow_zoom_in", "gentle_pan_left", "slow_zoom_out", "gentle_pan_right", "still_soft"][i % 5],
             "narration_en": (
                 f"Toby moved through another quiet part of the Moonlit Forest, slower than the wind but steadier than his fear. "
@@ -276,8 +294,12 @@ def fallback_expand_scenes(data: Dict[str, Any], scene_count: int, character: Di
                 f"Still, he listened, breathed, and chose one small brave step."
             ),
             "subtitle_en": "Toby moved slowly through the Moonlit Forest, afraid but still choosing one brave step.",
-            "subtitle_ar": "تحرك توبي ببطء داخل الغابة المقمرة، خائفًا لكنه اختار خطوة شجاعة صغيرة.",
             "image_prompt": f"vertical 9:16 warm 2D cinematic storybook frame, {character['description']}, {beat}, moonlit forest, no text",
+            "visual_moments": [
+                f"{character['description']}, wide emotional establishing shot, {beat}, moonlit forest, no text",
+                f"{character['description']}, action moment showing the situation, {beat}, expressive body language, no text",
+                f"{character['description']}, close emotional reaction, soft eyes, tiny brave step, no text",
+            ],
         })
     data["scenes"] = scenes[:scene_count]
     return data
