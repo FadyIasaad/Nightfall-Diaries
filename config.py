@@ -14,11 +14,10 @@ DEFAULT_PRIVACY_STATUS = DEFAULT_VIDEO_PRIVACY
 DEFAULT_MADE_FOR_KIDS = False
 YOUTUBE_CATEGORY_ID = "24"
 
-# Best FREE voice direction: Edge Neural with a soft emotional female narrator.
-# For a truly human/premium voice, add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID in GitHub Secrets.
-DEFAULT_EDGE_TTS_VOICE = "en-US-JennyNeural"
-DEFAULT_BEDTIME_VOICE = "en-US-JennyNeural"
-DEFAULT_LONG_VOICE = "en-US-JennyNeural"
+# Primary voice: AriaNeural is the most expressive and natural for emotional storytelling.
+DEFAULT_EDGE_TTS_VOICE = "en-US-AriaNeural"
+DEFAULT_BEDTIME_VOICE  = "en-US-AriaNeural"
+DEFAULT_LONG_VOICE     = "en-US-AriaNeural"
 
 # New channel direction: emotional animal stories for a general audience, not made-for-kids.
 CHANNEL_POSITIONING = "Emotional storybook cartoon animal stories with meaningful hooks"
@@ -30,11 +29,20 @@ MAIN_CHARACTER_BIBLE = (
 )
 STORY_UNIVERSE = "The Moonlit Forest"
 
-# Visual direction used by story + video generation.
+# ─── VISUAL STYLE ────────────────────────────────────────────────────────────
+# Return to the classic Tiny Brave Tails look: bright, warm, Pixar-quality 3D
+# cartoon animals with large expressive eyes and vibrant painted backgrounds.
 CINEMATIC_VISUAL_STYLE = (
-    "premium animated movie still, cinematic 2D storybook illustration, dramatic composition, "
-    "soft volumetric moonlight, emotional eyes, detailed environment, depth of field, warm color grading, "
-    "beautiful children-animation film frame, no text, no watermark, vertical 9:16"
+    "ultra-detailed Pixar 3D animated film still, adorable expressive cartoon animal character, "
+    "large round sparkling eyes with warm catchlights and reflections, cute appealing proportions, "
+    "vibrant warm saturated colors with rich contrast, "
+    "beautiful soft golden forest bokeh painted background, "
+    "rich detailed painterly fur and feather textures, "
+    "warm cinematic glowing rim and fill lighting, "
+    "children's animated movie quality similar to Zootopia, DreamWorks, or Pixar, "
+    "emotionally expressive face and body gesture, "
+    "clean professional cinematic composition, front-lit character, "
+    "no text, no watermark, vertical 9:16"
 )
 
 VIDEO_TYPES = {
