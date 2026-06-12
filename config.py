@@ -16,9 +16,9 @@ YOUTUBE_CATEGORY_ID = "24"
 
 # Best FREE voice direction: Edge Neural with a soft emotional female narrator.
 # For a truly human/premium voice, add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID in GitHub Secrets.
-DEFAULT_EDGE_TTS_VOICE = "en-US-AvaNeural"
-DEFAULT_BEDTIME_VOICE = "en-US-AvaNeural"
-DEFAULT_LONG_VOICE = "en-US-AvaNeural"
+DEFAULT_EDGE_TTS_VOICE = "en-US-AriaNeural"
+DEFAULT_BEDTIME_VOICE = "en-US-JennyNeural"
+DEFAULT_LONG_VOICE = "en-US-AriaNeural"
 
 # New channel direction: emotional animal stories for a general audience, not made-for-kids.
 CHANNEL_POSITIONING = "Cinematic emotional animal stories for a general audience"
