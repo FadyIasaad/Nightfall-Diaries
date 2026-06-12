@@ -34,6 +34,8 @@ jobs:
           pip install -r requirements.txt
       - name: Generate video
         env:
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           TBT_VIDEO_TYPE: ${{ github.event.inputs.video_type }}
