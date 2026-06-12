@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 import google.generativeai as genai
 
-from config import MAIN_CHARACTER_BIBLE, MAIN_CHARACTER_NAME, STORY_UNIVERSE, VIDEO_TYPES
+from config import CINEMATIC_VISUAL_STYLE, MAIN_CHARACTER_BIBLE, MAIN_CHARACTER_NAME, STORY_UNIVERSE, VIDEO_TYPES
 from tbt_common import (
     find_column,
     find_optional_column,
@@ -182,10 +182,12 @@ Hard quality rules:
 - Toby the turtle must feel consistent: slow, wise, flawed, emotionally restrained, not a mascot.
 - Every scene needs a distinct action/location/emotion so the video does not repeat the same visual.
 - Use cinematic sensory detail: rain on leaves, lantern light, wet stones, quiet breathing, old shell, distant thunder.
-- English narration and English subtitles only. Do not create Arabic subtitles or Arabic translation anywhere.
+- English narration only. Do not create Arabic translation or Arabic subtitles.
+- Every scene must include exactly 4 visually different shots. Each shot needs its own narration_en and image_prompt.
+- Think like a film director: wide shot, medium action, close-up emotion, final consequence.
+- Every image_prompt must describe camera angle, lighting, location, action, emotion, and character design. Generic prompts are forbidden.
 - No direct moral lecture. Let the meaning land through the ending.
 - Every image_prompt must include the exact character design and a different visual composition.
-- Every scene must include 3 distinct visual_moments that show the situation changing: establishing emotion, action/conflict, reaction/release.
 
 Scene beats:
 {beat_text}
@@ -210,18 +212,101 @@ Return valid JSON only, exactly in this shape:
       "voice_style": "specific direction for narrator performance",
       "pause_after": 0.45,
       "camera_motion": "one of: slow_zoom_in, slow_zoom_out, gentle_pan_left, gentle_pan_right, tiny_handheld, still_soft",
-      "narration_en": "spoken English narration. For long videos, use 2-5 emotionally rich sentences.",
-      "subtitle_en": "same meaning, subtitle-safe English",
-      "image_prompt": "vertical 9:16 warm 2D cinematic storybook frame, exact character design, no text",
-      "visual_moments": [
-        "moment 1 prompt: character emotion and location",
-        "moment 2 prompt: action/conflict in this situation",
-        "moment 3 prompt: reaction/change after the moment"
+      "narration_en": "full spoken English narration for the scene",
+      "subtitle_en": "short English subtitle only",
+      "image_prompt": "main scene visual prompt",
+      "shots": [
+        {
+          "shot_number": 1,
+          "emotion": "one of: wonder, lonely, worried, afraid, brave, relieved, peaceful",
+          "narration_en": "one short emotional sentence for this exact moment",
+          "subtitle_en": "short English subtitle only",
+          "image_prompt": "vertical 9:16 warm cinematic storybook illustration for this exact action/moment, exact character design, no text",
+          "camera_motion": "slow_zoom_in"
+        },
+        {
+          "shot_number": 2,
+          "emotion": "one of: wonder, lonely, worried, afraid, brave, relieved, peaceful",
+          "narration_en": "next short emotional sentence for a new visual moment",
+          "subtitle_en": "short English subtitle only",
+          "image_prompt": "different visual composition for this moment, exact character design, no text",
+          "camera_motion": "gentle_pan_left"
+        },
+        {
+          "shot_number": 3,
+          "emotion": "one of: wonder, lonely, worried, afraid, brave, relieved, peaceful",
+          "narration_en": "third short emotional sentence for a close-up moment",
+          "subtitle_en": "short English subtitle only",
+          "image_prompt": "different emotional close-up action frame, exact character design, no text",
+          "camera_motion": "tiny_handheld"
+        },
+        {
+          "shot_number": 4,
+          "emotion": "one of: wonder, lonely, worried, afraid, brave, relieved, peaceful",
+          "narration_en": "final short emotional sentence for this scene consequence",
+          "subtitle_en": "short English subtitle only",
+          "image_prompt": "final consequence frame with cinematic lighting, exact character design, no text",
+          "camera_motion": "slow_zoom_out"
+        }
       ]
     }}
   ]
 }}
 """
+
+
+def split_into_shots(narration: str, image_prompt: str, emotion: str, character_desc: str, scene_index: int) -> List[Dict[str, Any]]:
+    parts = [x.strip() for x in re.split(r"(?<=[.!?])\s+", narration or "") if x.strip()]
+    if len(parts) < 3:
+        parts = [
+            narration.strip() or "Toby stopped under the moonlight and listened to the forest breathe.",
+            "For a moment, the small silence felt heavier than the rain.",
+            "His little feet pressed into the wet earth as the whole forest seemed to hold its breath.",
+            "Then he took one careful step forward, because courage did not need to be loud.",
+        ]
+    parts = parts[:4]
+    shot_styles = [
+        "wide cinematic establishing shot showing the full location, weather, and loneliness",
+        "medium action shot showing the exact emotional choice or movement",
+        "close-up cinematic shot showing expressive eyes, breath, and inner fear",
+        "final consequence shot showing what changed in the scene and why it matters",
+    ]
+    motions = ["slow_zoom_in", "gentle_pan_left", "tiny_handheld", "slow_zoom_out"]
+    shots = []
+    for n, sentence in enumerate(parts, start=1):
+        shots.append({
+            "shot_number": n,
+            "emotion": emotion,
+            "narration_en": sentence,
+            "subtitle_en": sentence,
+            "camera_motion": motions[(n - 1) % len(motions)],
+            "image_prompt": (
+                f"{character_desc}. {shot_styles[n-1]}. {image_prompt}. "
+                f"Action based on this exact narration: {sentence}. "
+                f"{CINEMATIC_VISUAL_STYLE}. No text, no watermark."
+            ),
+        })
+    return shots
+
+
+def normalize_shot(shot: Dict[str, Any], n: int, scene_narration: str, scene_prompt: str, emotion: str, character_desc: str) -> Dict[str, Any]:
+    shot_emotion = str(shot.get("emotion", emotion)).strip().lower()
+    if shot_emotion not in {"wonder", "lonely", "worried", "afraid", "brave", "relieved", "peaceful"}:
+        shot_emotion = emotion
+    narration = str(shot.get("narration_en", "")).strip() or scene_narration
+    subtitle = str(shot.get("subtitle_en", "")).strip() or narration
+    prompt = str(shot.get("image_prompt", "")).strip() or scene_prompt
+    if character_desc and character_desc[:40].lower() not in prompt.lower():
+        prompt = f"{character_desc}. {prompt}"
+    return {
+        "shot_number": n,
+        "emotion": shot_emotion,
+        "narration_en": narration,
+        "subtitle_en": subtitle,
+        "image_prompt": prompt,
+        "camera_motion": str(shot.get("camera_motion", ["slow_zoom_in", "gentle_pan_left", "slow_zoom_out", "gentle_pan_right", "tiny_handheld"][n % 5])).strip(),
+        "pause_after": float(shot.get("pause_after", 0.28) or 0.28),
+    }
 
 
 def normalize_scene(scene: Dict[str, Any], i: int, character_desc: str, video_type: str) -> Dict[str, Any]:
@@ -245,33 +330,22 @@ def normalize_scene(scene: Dict[str, Any], i: int, character_desc: str, video_ty
     if character_desc and character_desc[:40].lower() not in image_prompt.lower():
         image_prompt = f"{character_desc}. {image_prompt}"
 
-    raw_moments = scene.get("visual_moments") or scene.get("image_moments") or []
-    if not isinstance(raw_moments, list):
-        raw_moments = []
-    visual_moments = [str(item).strip() for item in raw_moments if str(item).strip()]
-    if len(visual_moments) < 3:
-        beat = str(scene.get("beat", beat_default)).strip()
-        visual_moments = [
-            f"{image_prompt}. Establishing shot: {character_desc}, {emotion} mood, {beat}, cinematic vertical composition.",
-            f"{image_prompt}. Action shot: show the exact situation changing, body language, conflict or choice, no text.",
-            f"{image_prompt}. Reaction shot: close emotional expression, tiny visible consequence, soft light, no text.",
-        ]
-    visual_moments = [
-        (f"{character_desc}. {moment}" if character_desc and character_desc[:40].lower() not in moment.lower() else moment)
-        for moment in visual_moments[:3]
-    ]
+    raw_shots = scene.get("shots") if isinstance(scene.get("shots"), list) else []
+    if not raw_shots:
+        raw_shots = split_into_shots(narration, image_prompt, emotion, character_desc, i)
+    shots = [normalize_shot(shot, n, narration, image_prompt, emotion, character_desc) for n, shot in enumerate(raw_shots[:4], start=1)]
 
     return {
         "scene_number": i,
         "beat": str(scene.get("beat", beat_default)).strip(),
         "emotion": emotion,
-        "voice_style": str(scene.get("voice_style", "soft human-like narrator, warm, intimate, emotional, with natural pauses")).strip(),
-        "pause_after": float(scene.get("pause_after", 0.55) or 0.55),
+        "voice_style": str(scene.get("voice_style", "slow warm cinematic narrator, emotionally restrained")).strip(),
+        "pause_after": float(scene.get("pause_after", 0.45) or 0.45),
         "camera_motion": str(scene.get("camera_motion", ["slow_zoom_in", "gentle_pan_left", "slow_zoom_out", "gentle_pan_right", "still_soft"][i % 5])).strip(),
         "narration_en": narration,
         "subtitle_en": subtitle_en,
         "image_prompt": image_prompt,
-        "visual_moments": visual_moments,
+        "shots": shots,
     }
 
 def fallback_expand_scenes(data: Dict[str, Any], scene_count: int, character: Dict[str, str], video_type: str) -> Dict[str, Any]:
@@ -285,8 +359,8 @@ def fallback_expand_scenes(data: Dict[str, Any], scene_count: int, character: Di
             "scene_number": i,
             "beat": beat,
             "emotion": ["lonely", "worried", "afraid", "brave", "relieved", "peaceful"][i % 6],
-            "voice_style": "soft human-like narrator, warm, intimate, emotional, with natural pauses",
-            "pause_after": 0.6,
+            "voice_style": "slow, intimate, cinematic, with tiny pauses after emotional words",
+            "pause_after": 0.5,
             "camera_motion": ["slow_zoom_in", "gentle_pan_left", "slow_zoom_out", "gentle_pan_right", "still_soft"][i % 5],
             "narration_en": (
                 f"Toby moved through another quiet part of the Moonlit Forest, slower than the wind but steadier than his fear. "
@@ -295,11 +369,6 @@ def fallback_expand_scenes(data: Dict[str, Any], scene_count: int, character: Di
             ),
             "subtitle_en": "Toby moved slowly through the Moonlit Forest, afraid but still choosing one brave step.",
             "image_prompt": f"vertical 9:16 warm 2D cinematic storybook frame, {character['description']}, {beat}, moonlit forest, no text",
-            "visual_moments": [
-                f"{character['description']}, wide emotional establishing shot, {beat}, moonlit forest, no text",
-                f"{character['description']}, action moment showing the situation, {beat}, expressive body language, no text",
-                f"{character['description']}, close emotional reaction, soft eyes, tiny brave step, no text",
-            ],
         })
     data["scenes"] = scenes[:scene_count]
     return data
@@ -310,7 +379,7 @@ def generate_story_package(topic: str, animal: str, lesson: str, video_type="lon
     settings = VIDEO_TYPES[video_type]
     target_minutes = clamp_int(target_minutes, int(settings.get("duration_minutes", 30)), 1, 60)
     if video_type == "short":
-        scene_count = 7
+        scene_count = 6
     else:
         # Keep render practical but genuinely long-form. User can increase via sheet.
         scene_count = clamp_int(settings.get("scene_count", 32), 28 if target_minutes >= 30 else 18, 18, 60)

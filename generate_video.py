@@ -8,11 +8,9 @@ import time
 from pathlib import Path
 from urllib.parse import quote_plus
 
-import arabic_reshaper
 import edge_tts
 import requests
-from bidi.algorithm import get_display
-from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips
+from moviepy.editor import AudioFileClip, CompositeAudioClip, ImageClip, concatenate_videoclips
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 # MoviePy 1.0.3 compatibility with newer Pillow builds.
@@ -45,33 +43,26 @@ for folder in [OUTPUT_DIR, FRAMES_DIR, VISUALS_DIR, AUDIO_DIR, VIDEO_DIR]:
 WIDTH = 1080
 HEIGHT = 1920
 FPS = 24
-DEFAULT_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-AvaNeural")
-BEDTIME_VOICE = os.getenv("EDGE_TTS_BEDTIME_VOICE", "en-US-AvaNeural")
-LONG_NARRATION_VOICE = os.getenv("EDGE_TTS_LONG_VOICE", "en-US-AvaNeural")
+HUMAN_VOICE = os.getenv("EDGE_TTS_LONG_VOICE", os.getenv("EDGE_TTS_VOICE", "en-US-ChristopherNeural"))
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "").strip()
+ELEVENLABS_MODEL_ID = os.getenv("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2").strip()
 
 EMOTION_STYLE = {
-    "wonder": {"voice": LONG_NARRATION_VOICE, "rate": "-13%", "pitch": "-2Hz", "volume": "+0%"},
-    "lonely": {"voice": LONG_NARRATION_VOICE, "rate": "-20%", "pitch": "-6Hz", "volume": "-2%"},
-    "worried": {"voice": LONG_NARRATION_VOICE, "rate": "-18%", "pitch": "-5Hz", "volume": "-1%"},
-    "afraid": {"voice": LONG_NARRATION_VOICE, "rate": "-17%", "pitch": "-7Hz", "volume": "-1%"},
-    "brave": {"voice": LONG_NARRATION_VOICE, "rate": "-14%", "pitch": "-2Hz", "volume": "+0%"},
-    "relieved": {"voice": LONG_NARRATION_VOICE, "rate": "-16%", "pitch": "-3Hz", "volume": "-1%"},
-    "peaceful": {"voice": LONG_NARRATION_VOICE, "rate": "-21%", "pitch": "-5Hz", "volume": "-2%"},
+    "wonder": {"voice": HUMAN_VOICE, "rate": "-8%", "pitch": "-1Hz", "volume": "+0%"},
+    "lonely": {"voice": HUMAN_VOICE, "rate": "-13%", "pitch": "-3Hz", "volume": "-1%"},
+    "worried": {"voice": HUMAN_VOICE, "rate": "-11%", "pitch": "-2Hz", "volume": "+0%"},
+    "afraid": {"voice": HUMAN_VOICE, "rate": "-10%", "pitch": "-4Hz", "volume": "+0%"},
+    "brave": {"voice": HUMAN_VOICE, "rate": "-6%", "pitch": "+0Hz", "volume": "+1%"},
+    "relieved": {"voice": HUMAN_VOICE, "rate": "-8%", "pitch": "-1Hz", "volume": "+0%"},
+    "peaceful": {"voice": HUMAN_VOICE, "rate": "-12%", "pitch": "-2Hz", "volume": "-1%"},
 }
 
 
-
-def load_font(size, bold=True, arabic=False):
-    paths = []
-    if arabic:
-        paths += [
-            "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Bold.ttf",
-            "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSansArabic-Bold.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
-        ]
-    paths += [
+def load_font(size, bold=True):
+    paths = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ]
     for path in paths:
@@ -80,14 +71,7 @@ def load_font(size, bold=True, arabic=False):
     return ImageFont.load_default()
 
 
-def reshape_arabic(text):
-    text = (text or "").strip()
-    if not text:
-        return ""
-    return get_display(arabic_reshaper.reshape(text))
-
-
-def wrap_ltr(draw, text, font, max_width, max_lines=4):
+def wrap_ltr(draw, text, font, max_width, max_lines=3):
     words = str(text or "").split()
     lines, current = [], ""
     for word in words:
@@ -106,34 +90,16 @@ def wrap_ltr(draw, text, font, max_width, max_lines=4):
     return lines[:max_lines]
 
 
-def wrap_arabic(draw, text, font, max_width, max_lines=4):
-    words = str(text or "").split()
-    lines, current = [], ""
-    for word in words:
-        test = (current + " " + word).strip()
-        visual = reshape_arabic(test)
-        bbox = draw.textbbox((0, 0), visual, font=font)
-        if bbox[2] - bbox[0] <= max_width:
-            current = test
-        else:
-            if current:
-                lines.append(current)
-            current = word
-            if len(lines) >= max_lines:
-                break
-    if current and len(lines) < max_lines:
-        lines.append(current)
-    return [reshape_arabic(line) for line in lines[:max_lines]]
-
-
 def draw_centered_lines(draw, lines, font, center_y, fill, spacing=9):
+    if not lines:
+        return
     heights = [draw.textbbox((0, 0), line, font=font)[3] - draw.textbbox((0, 0), line, font=font)[1] for line in lines]
     total_h = sum(heights) + spacing * max(0, len(lines) - 1)
     y = center_y - total_h // 2
     for line, h in zip(lines, heights):
         bbox = draw.textbbox((0, 0), line, font=font)
         x = (WIDTH - (bbox[2] - bbox[0])) // 2
-        draw.text((x + 4, y + 4), line, font=font, fill=(0, 0, 0, 210))
+        draw.text((x + 4, y + 4), line, font=font, fill=(0, 0, 0, 220))
         draw.text((x, y), line, font=font, fill=fill)
         y += h + spacing
 
@@ -148,16 +114,15 @@ def fallback_background(output_path, emotion="peaceful"):
         "peaceful": ((35, 48, 68), (90, 95, 125)),
         "wonder": ((38, 45, 80), (120, 95, 145)),
     }
-    top, bottom = palettes.get(emotion, palettes["peaceful"])
+    top, bottom = palettes.get(str(emotion).lower(), palettes["peaceful"])
     img = Image.new("RGB", (WIDTH, HEIGHT), top)
     draw = ImageDraw.Draw(img)
     for y in range(HEIGHT):
         ratio = y / HEIGHT
         color = tuple(int(top[i] * (1 - ratio) + bottom[i] * ratio) for i in range(3))
         draw.line([(0, y), (WIDTH, y)], fill=color)
-    # moon + soft stars
     draw.ellipse((760, 130, 940, 310), fill=(250, 230, 170))
-    for i in range(70):
+    for i in range(80):
         x = (i * 137) % WIDTH
         y = 70 + (i * 83) % 820
         r = 1 + (i % 3)
@@ -168,10 +133,11 @@ def fallback_background(output_path, emotion="peaceful"):
 
 def pollinations_image(prompt, output_path, seed):
     final_prompt = f"""
-warm emotional 2D cartoon storybook illustration, consistent cute animal character,
-soft cinematic bedtime lighting, expressive eyes, gentle painterly texture,
-vertical 9:16 composition, child safe, no text, no watermark.
-Scene: {prompt}
+Premium cinematic animated movie still, beautiful vertical 9:16 frame,
+2D storybook / Pixar-like emotional composition, dramatic camera angle,
+soft volumetric moonlight, warm rim light, expressive animal eyes, detailed environment,
+depth of field, painterly texture, consistent character design, high quality, no text, no watermark, no logo.
+Make this a specific scene, not a generic cute animal image. Exact moment: {prompt}
 """
     encoded = quote_plus(final_prompt)
     url = f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=flux"
@@ -189,57 +155,95 @@ def prepare_background(path):
     except Exception:
         fallback = FRAMES_DIR / "fallback_bg.jpg"
         img = Image.open(fallback_background(fallback)).convert("RGB")
-    # subtle readability gradient
     rgba = img.convert("RGBA")
-    overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 25))
-    rgba = Image.alpha_composite(rgba, overlay)
+    # Very light overlay only. Do not bury the picture under black boxes.
+    top_grad = Image.new("RGBA", (WIDTH, 260), (0, 0, 0, 75))
+    bottom_grad = Image.new("RGBA", (WIDTH, 360), (0, 0, 0, 95))
+    rgba.alpha_composite(top_grad, (0, 0))
+    rgba.alpha_composite(bottom_grad, (0, HEIGHT - 360))
     return rgba
 
 
-def make_frame(video_id, scene_index, visual_index, scene, title, image_path, total_scenes):
+def make_frame(video_id, shot_index, shot, title, image_path, total_shots):
     bg = prepare_background(image_path)
     draw = ImageDraw.Draw(bg)
-    brand_font = load_font(42, True)
-    title_font = load_font(30, False)
-    beat_font = load_font(28, False)
-    en_font = load_font(36, True)
+    brand_font = load_font(40, True)
+    title_font = load_font(28, False)
+    sub_font = load_font(42, True)
     small_font = load_font(26, False)
 
-    top = Image.new("RGBA", (WIDTH, 220), (0, 0, 0, 95))
-    bg.alpha_composite(top, (0, 0))
-    draw.text((55, 36), "Tiny Brave Tails", font=brand_font, fill=(255, 238, 190, 255))
-    y = 98
+    draw.text((50, 34), "Tiny Brave Tails", font=brand_font, fill=(255, 238, 190, 255))
+    y = 92
     for line in wrap_ltr(draw, title, title_font, 940, 2):
-        draw.text((55, y), line, font=title_font, fill=(245, 245, 245, 225))
-        y += 38
-    emotion = str(scene.get("emotion", "peaceful")).capitalize()
-    draw.text((55, 174), f"{scene_index}/{total_scenes}  •  {emotion}", font=beat_font, fill=(255, 238, 190, 225))
+        draw.text((50, y), line, font=title_font, fill=(245, 245, 245, 235))
+        y += 36
 
-    subtitle_h = 255
-    subtitle_y = HEIGHT - subtitle_h - 95
-    box = Image.new("RGBA", (WIDTH - 96, subtitle_h), (0, 0, 0, 135)).filter(ImageFilter.GaussianBlur(1))
-    bg.alpha_composite(box, (48, subtitle_y))
+    subtitle = os.getenv("SHOW_SUBTITLES", "true").lower() not in {"0", "false", "no"} and (shot.get("subtitle_en") or shot.get("narration_en", "")) or ""
+    lines = wrap_ltr(draw, subtitle, sub_font, 930, 3)
+    draw_centered_lines(draw, lines, sub_font, HEIGHT - 210, (255, 255, 255, 255), 8)
 
-    en_source = scene.get("subtitle_en") or scene.get("narration_en")
-    en_lines = wrap_ltr(draw, en_source, en_font, 900, 4)
-    draw_centered_lines(draw, en_lines, en_font, subtitle_y + subtitle_h // 2, (255, 255, 255, 255), 8)
-
-    bar_x, bar_y, bar_w, bar_h = 120, HEIGHT - 92, 840, 12
-    draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=8, fill=(255, 255, 255, 65))
-    draw.rounded_rectangle((bar_x, bar_y, bar_x + int(bar_w * scene_index / total_scenes), bar_y + bar_h), radius=8, fill=(255, 232, 170, 245))
+    bar_x, bar_y, bar_w, bar_h = 120, HEIGHT - 72, 840, 10
+    draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=8, fill=(255, 255, 255, 75))
+    draw.rounded_rectangle((bar_x, bar_y, bar_x + int(bar_w * shot_index / max(total_shots, 1)), bar_y + bar_h), radius=8, fill=(255, 232, 170, 245))
     cta = "Soft animal stories with tiny courage"
     bbox = draw.textbbox((0, 0), cta, font=small_font)
-    draw.text(((WIDTH - (bbox[2] - bbox[0])) // 2, HEIGHT - 58), cta, font=small_font, fill=(255, 255, 255, 210))
+    draw.text(((WIDTH - (bbox[2] - bbox[0])) // 2, HEIGHT - 48), cta, font=small_font, fill=(255, 255, 255, 220))
 
-    frame_path = FRAMES_DIR / f"frame_{video_id}_{scene_index:02d}_{visual_index:02d}.jpg"
+    frame_path = FRAMES_DIR / f"frame_{video_id}_{shot_index:03d}.jpg"
     bg.convert("RGB").save(frame_path, quality=95)
     return frame_path
 
 
+def humanize_text(text):
+    clean = re.sub(r"\s+", " ", str(text or "").replace("\n", " ")).strip()
+    if not clean:
+        raise ValueError("Empty narration text")
+    # Human-like rhythm: emotional pauses without over-slow robotic dragging.
+    replacements = {
+        r"\bbut\b": "but...",
+        r"\band then\b": "and then...",
+        r"\bfor a moment\b": "for a moment...",
+        r"\bstill\b": "still...",
+        r"\bsuddenly\b": "suddenly...",
+        r"\bhe whispered\b": "he whispered...",
+        r"\bshe whispered\b": "she whispered...",
+    }
+    for pattern, repl in replacements.items():
+        clean = re.sub(pattern, repl, clean, flags=re.IGNORECASE)
+    clean = re.sub(r"([.!?])\s+", r"\1 ", clean)
+    clean = re.sub(r"\.{4,}", "...", clean)
+    return clean
+
+
+
+def create_elevenlabs_audio(text, output_path, emotion="peaceful"):
+    if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
+        raise RuntimeError("ELEVENLABS_API_KEY or ELEVENLABS_VOICE_ID not set")
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
+    payload = {
+        "text": humanize_text(text),
+        "model_id": ELEVENLABS_MODEL_ID,
+        "voice_settings": {
+            "stability": 0.42,
+            "similarity_boost": 0.82,
+            "style": 0.38,
+            "use_speaker_boost": True,
+        },
+    }
+    headers = {
+        "xi-api-key": ELEVENLABS_API_KEY,
+        "accept": "audio/mpeg",
+        "content-type": "application/json",
+    }
+    response = requests.post(url, json=payload, headers=headers, timeout=180)
+    response.raise_for_status()
+    output_path.write_bytes(response.content)
+    return output_path
+
 async def create_edge_audio_async(text, output_path, emotion="peaceful"):
-    style = EMOTION_STYLE.get(emotion, EMOTION_STYLE["peaceful"])
+    style = EMOTION_STYLE.get(str(emotion).lower(), EMOTION_STYLE["peaceful"])
     communicate = edge_tts.Communicate(
-        text=text,
+        text=humanize_text(text),
         voice=style["voice"],
         rate=style["rate"],
         pitch=style["pitch"],
@@ -249,27 +253,21 @@ async def create_edge_audio_async(text, output_path, emotion="peaceful"):
 
 
 def create_edge_audio(text, output_path, emotion="peaceful"):
-    clean = re.sub(r"\s+", " ", str(text).replace("\n", " ")).strip()
-    clean = re.sub(r"([.!?])\s+", r"\1 ", clean)
-    if not clean:
-        raise ValueError("Empty narration text")
-    asyncio.run(create_edge_audio_async(clean, output_path, emotion))
+    asyncio.run(create_edge_audio_async(text, output_path, emotion))
     return output_path
 
 
 def create_espeak_audio(text, output_path):
-    clean = re.sub(r"\s+", " ", str(text).replace("\n", " ")).strip()
-    command = ["espeak-ng", "-v", "en-us", "-s", "132", "-p", "42", "-a", "155", "-w", str(output_path), clean]
+    command = ["espeak-ng", "-v", "en-us", "-s", "118", "-p", "35", "-a", "145", "-w", str(output_path), humanize_text(text)]
     subprocess.run(command, check=True)
     return output_path
 
 
-def normalize_audio(input_path, video_id, scene_index):
-    """Normalize loudness so voices do not jump between scenes."""
-    normalized = AUDIO_DIR / f"audio_{video_id}_{scene_index:02d}_norm.m4a"
+def normalize_audio(input_path, video_id, shot_index):
+    normalized = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}_norm.m4a"
     command = [
         "ffmpeg", "-y", "-i", str(input_path),
-        "-af", "loudnorm=I=-18:TP=-1.5:LRA=11",
+        "-af", "loudnorm=I=-18:TP=-1.5:LRA=9,acompressor=threshold=-22dB:ratio=2.2:attack=20:release=250",
         "-ar", "48000", "-ac", "2", "-c:a", "aac", "-b:a", "192k",
         str(normalized),
     ]
@@ -281,28 +279,32 @@ def normalize_audio(input_path, video_id, scene_index):
         return input_path
 
 
-def create_scene_audio(scene, video_id, scene_index):
-    narration = scene.get("narration_en", "").strip()
-    emotion = scene.get("emotion", "peaceful").strip().lower()
-    mp3_path = AUDIO_DIR / f"audio_{video_id}_{scene_index:02d}.mp3"
-    wav_path = AUDIO_DIR / f"audio_{video_id}_{scene_index:02d}.wav"
+def create_shot_audio(shot, video_id, shot_index):
+    narration = shot.get("narration_en", "").strip()
+    emotion = shot.get("emotion", "peaceful").strip().lower()
+    mp3_path = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}.mp3"
+    wav_path = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}.wav"
+    try:
+        if ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID:
+            create_elevenlabs_audio(narration, mp3_path, emotion)
+            return normalize_audio(mp3_path, video_id, shot_index), f"elevenlabs:{ELEVENLABS_VOICE_ID}:human"
+    except Exception as exc:
+        print(f"ElevenLabs failed for shot {shot_index}, falling back to Edge: {exc}")
     try:
         create_edge_audio(narration, mp3_path, emotion)
-        final_audio = normalize_audio(mp3_path, video_id, scene_index)
-        return final_audio, f"edge-tts:{EMOTION_STYLE.get(emotion, EMOTION_STYLE['peaceful'])['voice']}:loudnorm"
+        return normalize_audio(mp3_path, video_id, shot_index), f"edge-tts:{EMOTION_STYLE.get(emotion, EMOTION_STYLE['peaceful'])['voice']}:cinematic-free"
     except Exception as exc:
-        print(f"Edge TTS failed for scene {scene_index}: {exc}")
+        print(f"Edge TTS failed for shot {shot_index}: {exc}")
         create_espeak_audio(narration, wav_path)
-        final_audio = normalize_audio(wav_path, video_id, scene_index)
-        return final_audio, "espeak-ng:loudnorm"
+        return normalize_audio(wav_path, video_id, shot_index), "espeak-ng:fallback"
 
 
 def motion_params(motion, duration):
     if motion == "slow_zoom_out":
-        return lambda t: 1.08 - 0.045 * (t / max(duration, 0.1))
+        return lambda t: 1.09 - 0.055 * (t / max(duration, 0.1))
     if motion in ["slow_zoom_in", "tiny_handheld", "gentle_pan_left", "gentle_pan_right"]:
-        return lambda t: 1.0 + 0.055 * (t / max(duration, 0.1))
-    return lambda t: 1.02
+        return lambda t: 1.0 + 0.07 * (t / max(duration, 0.1))
+    return lambda t: 1.03
 
 
 def animated_clip(frame_path, duration, motion):
@@ -315,64 +317,90 @@ def animated_clip(frame_path, duration, motion):
         base_x = (WIDTH - WIDTH * zoom(t)) / 2
         base_y = (HEIGHT - HEIGHT * zoom(t)) / 2
         if motion == "gentle_pan_left":
-            return (base_x - 22 * progress, base_y)
+            return (base_x - 28 * progress, base_y)
         if motion == "gentle_pan_right":
-            return (base_x + 22 * progress, base_y)
+            return (base_x + 28 * progress, base_y)
         if motion == "tiny_handheld":
-            return (base_x + math.sin(t * 2.2) * 5, base_y + math.cos(t * 1.9) * 4)
+            return (base_x + math.sin(t * 2.0) * 4, base_y + math.cos(t * 1.7) * 3)
         return (base_x, base_y)
 
     return clip.set_position(pos).on_color(size=(WIDTH, HEIGHT), color=(0, 0, 0), pos=("center", "center"))
 
 
-def create_video(video_id, title, scene_payload):
-    scenes = scene_payload.get("scenes", [])
-    if not scenes:
-        raise ValueError("No scenes found in scene_prompts.")
+def split_scene_to_shots(scene):
+    if isinstance(scene.get("shots"), list) and scene["shots"]:
+        return scene["shots"][:4]
+    narration = scene.get("narration_en", "")
+    parts = [x.strip() for x in re.split(r"(?<=[.!?])\s+", narration) if x.strip()]
+    if len(parts) < 4:
+        parts = [narration or "Toby listened to the quiet forest.", "The moon made every shadow feel alive.", "His tiny feet touched the wet ground.", "He moved forward anyway."]
+    motions = ["slow_zoom_in", "gentle_pan_left", "tiny_handheld", "slow_zoom_out"]
+    return [
+        {
+            "shot_number": i + 1,
+            "emotion": scene.get("emotion", "peaceful"),
+            "narration_en": part,
+            "subtitle_en": part,
+            "image_prompt": f"{scene.get('image_prompt', '')}. Exact visual moment: {part}",
+            "camera_motion": motions[i % len(motions)],
+            "pause_after": 0.25,
+        }
+        for i, part in enumerate(parts[:4])
+    ]
+
+
+def flatten_story(scene_payload):
+    shots = []
     character = scene_payload.get("character", {})
     char_desc = character.get("description", "")
+    for scene_index, scene in enumerate(scene_payload.get("scenes", []), start=1):
+        scene_shots = split_scene_to_shots(scene)
+        for shot in scene_shots:
+            prompt = shot.get("image_prompt") or scene.get("image_prompt", "")
+            if char_desc and char_desc[:40].lower() not in str(prompt).lower():
+                prompt = f"{char_desc}. {prompt}"
+            shots.append({
+                "scene_number": scene_index,
+                "shot_number": shot.get("shot_number", len(shots) + 1),
+                "emotion": shot.get("emotion", scene.get("emotion", "peaceful")),
+                "narration_en": shot.get("narration_en") or scene.get("narration_en", ""),
+                "subtitle_en": shot.get("subtitle_en") or shot.get("narration_en") or scene.get("subtitle_en", ""),
+                "image_prompt": prompt,
+                "camera_motion": shot.get("camera_motion") or scene.get("camera_motion", "slow_zoom_in"),
+                "pause_after": shot.get("pause_after", 0.25),
+            })
+    return shots
+
+
+def create_video(video_id, title, scene_payload):
+    shots = flatten_story(scene_payload)
+    if not shots:
+        raise ValueError("No scenes/shots found in scene_prompts.")
     safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", str(video_id).strip() or "video")
     video_path = VIDEO_DIR / f"tiny_brave_tails_{safe_id}.mp4"
     clips = []
     voice_sources = []
-    total_scenes = len(scenes)
-
+    total_shots = len(shots)
     numeric_seed = sum(ord(ch) for ch in safe_id) % 100000
-    for i, scene in enumerate(scenes, start=1):
-        raw_moments = scene.get("visual_moments") or []
-        if not isinstance(raw_moments, list) or not raw_moments:
-            raw_moments = [scene.get("image_prompt", "")]
-        visual_moments = [str(item).strip() for item in raw_moments if str(item).strip()][:3]
-        if not visual_moments:
-            visual_moments = [f"{char_desc}. {scene.get('image_prompt', '')} Emotion: {scene.get('emotion', 'peaceful')}."]
 
-        audio_path, voice_source = create_scene_audio(scene, safe_id, i)
+    for i, shot in enumerate(shots, start=1):
+        prompt = f"{shot.get('image_prompt', '')} Emotion: {shot.get('emotion', 'peaceful')}."
+        visual_path = VISUALS_DIR / f"visual_{safe_id}_{i:03d}.jpg"
+        try:
+            pollinations_image(prompt, visual_path, seed=numeric_seed * 1000 + i)
+            time.sleep(0.2)
+        except Exception as exc:
+            print(f"Image generation failed for shot {i}: {exc}")
+            fallback_background(visual_path, shot.get("emotion", "peaceful"))
+
+        audio_path, voice_source = create_shot_audio(shot, safe_id, i)
         voice_sources.append(voice_source)
         audio_clip = AudioFileClip(str(audio_path))
-        pause_after = min(1.0, max(0.35, float(scene.get("pause_after", 0.55) or 0.55)))
-        duration = max(4.8, audio_clip.duration + pause_after)
-        per_visual_duration = duration / len(visual_moments)
-        moment_clips = []
-
-        for visual_index, moment_prompt in enumerate(visual_moments, start=1):
-            prompt = f"{char_desc}. {moment_prompt}. Emotion: {scene.get('emotion', 'peaceful')}."
-            visual_path = VISUALS_DIR / f"visual_{safe_id}_{i:02d}_{visual_index:02d}.jpg"
-            try:
-                pollinations_image(prompt, visual_path, seed=numeric_seed * 1000 + i * 10 + visual_index)
-                time.sleep(0.2)
-            except Exception as exc:
-                print(f"Image generation failed for scene {i} moment {visual_index}: {exc}")
-                fallback_background(visual_path, scene.get("emotion", "peaceful"))
-            frame_path = make_frame(safe_id, i, visual_index, scene, title, visual_path, total_scenes)
-            motion = scene.get("camera_motion", "slow_zoom_in")
-            if visual_index == 2 and motion == "slow_zoom_in":
-                motion = "gentle_pan_right"
-            elif visual_index == 3 and motion in ["slow_zoom_in", "gentle_pan_right"]:
-                motion = "slow_zoom_out"
-            moment_clips.append(animated_clip(frame_path, per_visual_duration, motion))
-
-        scene_clip = concatenate_videoclips(moment_clips, method="compose").set_audio(audio_clip)
-        clips.append(scene_clip)
+        pause_after = min(0.6, max(0.15, float(shot.get("pause_after", 0.25) or 0.25)))
+        duration = max(3.0, audio_clip.duration + pause_after)
+        frame_path = make_frame(safe_id, i, shot, title, visual_path, total_shots)
+        clip = animated_clip(frame_path, duration, shot.get("camera_motion", "slow_zoom_in")).set_audio(audio_clip)
+        clips.append(clip)
 
     video = concatenate_videoclips(clips, method="compose")
     video.write_videofile(
@@ -393,7 +421,7 @@ def create_video(video_id, title, scene_payload):
             clip.close()
         except Exception:
             pass
-    return video_path, ",".join(sorted(set(voice_sources)))
+    return video_path, ",".join(sorted(set(voice_sources))) + f" | shots={total_shots}"
 
 
 def main():
@@ -444,7 +472,7 @@ def main():
     update_cell(content_sheet, target_row_number, audio_status_col, voice_source)
     if error_message_col:
         update_cell(content_sheet, target_row_number, error_message_col, "")
-    log(logs_sheet, video_id, "GENERATE_VIDEO", f"Created long emotional video: {video_path}. Voice: {voice_source}")
+    log(logs_sheet, video_id, "GENERATE_VIDEO", f"Created video with one picture per shot: {video_path}. Voice: {voice_source}")
     print(f"Video created: {video_path}")
     print(f"Voice source: {voice_source}")
 

@@ -11,13 +11,17 @@ METADATA_DIR = OUTPUT_DIR / "metadata"
 
 DEFAULT_VIDEO_PRIVACY = "private"
 DEFAULT_PRIVACY_STATUS = DEFAULT_VIDEO_PRIVACY
-DEFAULT_EDGE_TTS_VOICE = "en-US-AvaNeural"
-DEFAULT_BEDTIME_VOICE = "en-US-AvaNeural"
 DEFAULT_MADE_FOR_KIDS = False
-YOUTUBE_CATEGORY_ID = "24"  # Entertainment. Avoids forcing the channel into Kids/Education positioning.
+YOUTUBE_CATEGORY_ID = "24"
+
+# The current free voice ceiling is Edge Neural. For a truly human voice, add ELEVENLABS_API_KEY
+# and ELEVENLABS_VOICE_ID in GitHub Secrets. The code will use ElevenLabs automatically when present.
+DEFAULT_EDGE_TTS_VOICE = "en-US-ChristopherNeural"
+DEFAULT_BEDTIME_VOICE = "en-US-ChristopherNeural"
+DEFAULT_LONG_VOICE = "en-US-ChristopherNeural"
 
 # New channel direction: emotional animal stories for a general audience, not made-for-kids.
-CHANNEL_POSITIONING = "Emotional animal stories for a general audience"
+CHANNEL_POSITIONING = "Cinematic emotional animal stories for a general audience"
 MAIN_CHARACTER_NAME = "Toby"
 MAIN_CHARACTER_BIBLE = (
     "Toby is an old emerald-green turtle with warm amber eyes, a small cracked shell mark shaped like a crescent, "
@@ -26,54 +30,66 @@ MAIN_CHARACTER_BIBLE = (
 )
 STORY_UNIVERSE = "The Moonlit Forest"
 
+# Visual direction used by story + video generation.
+CINEMATIC_VISUAL_STYLE = (
+    "premium animated movie still, cinematic 2D storybook illustration, dramatic composition, "
+    "soft volumetric moonlight, emotional eyes, detailed environment, depth of field, warm color grading, "
+    "beautiful children-animation film frame, no text, no watermark, vertical 9:16"
+)
+
 VIDEO_TYPES = {
     "short": {
         "category": "emotional_short",
         "duration_minutes": 1,
-        "scene_count": 7,
-        "voice": "en-US-AvaNeural",
-        "mood": "emotional",
+        "scene_count": 6,
+        "shots_per_scene": 4,
+        "voice": DEFAULT_LONG_VOICE,
+        "mood": "cinematic_emotional",
         "made_for_kids": False,
     },
     "bedtime": {
         "category": "long_bedtime_story",
         "duration_minutes": 30,
         "scene_count": 28,
-        "voice": "en-US-AvaNeural",
-        "mood": "calm_deep",
+        "shots_per_scene": 4,
+        "voice": DEFAULT_LONG_VOICE,
+        "mood": "calm_cinematic",
         "made_for_kids": False,
     },
     "long_story": {
         "category": "long_emotional_story",
         "duration_minutes": 30,
         "scene_count": 32,
-        "voice": "en-US-AvaNeural",
-        "mood": "deep_emotional",
+        "shots_per_scene": 4,
+        "voice": DEFAULT_LONG_VOICE,
+        "mood": "deep_cinematic_emotional",
         "made_for_kids": False,
     },
     "toby_collection": {
         "category": "toby_collection",
         "duration_minutes": 45,
         "scene_count": 42,
-        "voice": "en-US-AvaNeural",
-        "mood": "deep_emotional_collection",
+        "shots_per_scene": 4,
+        "voice": DEFAULT_LONG_VOICE,
+        "mood": "deep_cinematic_collection",
         "made_for_kids": False,
     },
-
     "adventure": {
         "category": "emotional_adventure_story",
         "duration_minutes": 30,
         "scene_count": 32,
-        "voice": "en-US-AvaNeural",
-        "mood": "deep_adventure",
+        "shots_per_scene": 4,
+        "voice": DEFAULT_LONG_VOICE,
+        "mood": "cinematic_adventure",
         "made_for_kids": False,
     },
     "calming": {
         "category": "calming_story",
         "duration_minutes": 30,
         "scene_count": 30,
-        "voice": "en-US-AvaNeural",
-        "mood": "calm_reflective",
+        "shots_per_scene": 4,
+        "voice": DEFAULT_LONG_VOICE,
+        "mood": "calm_reflective_cinematic",
         "made_for_kids": False,
     },
 }
