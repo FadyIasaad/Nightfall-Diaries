@@ -184,8 +184,10 @@ Hard quality rules:
 - Use cinematic sensory detail: rain on leaves, lantern light, wet stones, quiet breathing, old shell, distant thunder.
 - English narration only. Do not create Arabic translation or Arabic subtitles.
 - Every scene must include exactly 4 visually different shots. Each shot needs its own narration_en and image_prompt.
+- Visual identity must match the old successful Tiny Brave Tails style: emotional 2D storybook cartoon animal illustrations, warm, cute, expressive, not realistic stock footage.
 - Think like a film director: wide shot, medium action, close-up emotion, final consequence.
 - Every image_prompt must describe camera angle, lighting, location, action, emotion, and character design. Generic prompts are forbidden.
+- The first scene must be a strong hook with a visual question or emotional danger in the first 3 seconds.
 - No direct moral lecture. Let the meaning land through the ending.
 - Every image_prompt must include the exact character design and a different visual composition.
 - The first shot must be a scroll-stopping cinematic image: danger, loneliness, rescue, storm, empty street, broken promise, or emotional mystery.

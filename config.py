@@ -16,12 +16,12 @@ YOUTUBE_CATEGORY_ID = "24"
 
 # Best FREE voice direction: Edge Neural with a soft emotional female narrator.
 # For a truly human/premium voice, add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID in GitHub Secrets.
-DEFAULT_EDGE_TTS_VOICE = "en-US-AriaNeural"
+DEFAULT_EDGE_TTS_VOICE = "en-US-JennyNeural"
 DEFAULT_BEDTIME_VOICE = "en-US-JennyNeural"
-DEFAULT_LONG_VOICE = "en-US-AriaNeural"
+DEFAULT_LONG_VOICE = "en-US-JennyNeural"
 
 # New channel direction: emotional animal stories for a general audience, not made-for-kids.
-CHANNEL_POSITIONING = "Cinematic emotional animal stories for a general audience"
+CHANNEL_POSITIONING = "Emotional storybook cartoon animal stories with meaningful hooks"
 MAIN_CHARACTER_NAME = "Toby"
 MAIN_CHARACTER_BIBLE = (
     "Toby is an old emerald-green turtle with warm amber eyes, a small cracked shell mark shaped like a crescent, "

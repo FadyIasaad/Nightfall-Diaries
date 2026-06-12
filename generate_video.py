@@ -44,18 +44,27 @@ HEIGHT = 1920
 FPS = 24
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
+USE_STOCK_FIRST = os.getenv("USE_STOCK_FIRST", "false").lower() in {"1", "true", "yes"}
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "").strip()
 ELEVENLABS_MODEL_ID = os.getenv("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2").strip()
 
 EMOTION_STYLE = {
-    "wonder": {"voice": "en-US-AvaNeural", "rate": "-10%", "pitch": "+1Hz", "volume": "+0%"},
-    "lonely": {"voice": "en-US-AriaNeural", "rate": "-17%", "pitch": "-4Hz", "volume": "-1%"},
-    "worried": {"voice": "en-US-SaraNeural", "rate": "-14%", "pitch": "-3Hz", "volume": "+0%"},
-    "afraid": {"voice": "en-US-SaraNeural", "rate": "-12%", "pitch": "-5Hz", "volume": "+0%"},
-    "brave": {"voice": "en-US-GuyNeural", "rate": "-8%", "pitch": "-1Hz", "volume": "+1%"},
-    "relieved": {"voice": "en-US-JennyNeural", "rate": "-11%", "pitch": "-1Hz", "volume": "+0%"},
-    "peaceful": {"voice": "en-US-JennyNeural", "rate": "-14%", "pitch": "-2Hz", "volume": "-1%"},
+    "wonder": {"voice": "en-US-AvaNeural", "rate": "-9%", "pitch": "+1Hz", "volume": "+0%"},
+    "lonely": {"voice": "en-US-AriaNeural", "rate": "-15%", "pitch": "-3Hz", "volume": "-1%"},
+    "worried": {"voice": "en-US-AriaNeural", "rate": "-13%", "pitch": "-2Hz", "volume": "+0%"},
+    "afraid": {"voice": "en-US-AriaNeural", "rate": "-12%", "pitch": "-4Hz", "volume": "+0%"},
+    "brave": {"voice": "en-US-GuyNeural", "rate": "-7%", "pitch": "-1Hz", "volume": "+1%"},
+    "relieved": {"voice": "en-US-JennyNeural", "rate": "-10%", "pitch": "-1Hz", "volume": "+0%"},
+    "peaceful": {"voice": "en-US-JennyNeural", "rate": "-12%", "pitch": "-2Hz", "volume": "-1%"},
+}
+
+CHARACTER_VOICE_HINTS = {
+    "narrator": "en-US-JennyNeural",
+    "toby": "en-US-AriaNeural",
+    "small": "en-US-AvaNeural",
+    "mother": "en-US-JennyNeural",
+    "father": "en-US-GuyNeural",
 }
 
 SEARCH_WORDS = {
@@ -181,6 +190,32 @@ def fetch_stock_visual(shot, safe_id, index):
             errors.append(f"{name}: {exc}")
     raise RuntimeError("Stock visual failed. Add valid PEXELS_API_KEY and PIXABAY_API_KEY. " + " | ".join(errors[:4]))
 
+
+def pollinations_storybook_image(prompt, output_path, seed):
+    final_prompt = f"""
+Emotional 2D storybook cartoon animal illustration, same warm gentle style as a children story channel,
+soft cinematic lighting, expressive animal eyes, cute but emotional character, painted background,
+vertical 9:16 YouTube Shorts frame, high quality, clean composition, no text, no watermark, no logo.
+Make the moment specific and emotional, not realistic stock footage. Exact scene: {prompt}
+"""
+    encoded = quote_plus(final_prompt)
+    urls = [
+        f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true",
+        f"https://pollinations.ai/p/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true",
+    ]
+    last_error = None
+    for url in urls:
+        try:
+            r = requests.get(url, timeout=150)
+            r.raise_for_status()
+            output_path.write_bytes(r.content)
+            with Image.open(output_path) as img:
+                img.verify()
+            return output_path
+        except Exception as exc:
+            last_error = exc
+    raise RuntimeError(f"AI storybook image failed: {last_error}")
+
 def wrap_ltr(draw, text, font, max_width, max_lines=3):
     words = str(text or "").split()
     lines, current = [], ""
@@ -254,7 +289,13 @@ def humanize_text(text):
 
 async def create_edge_audio_async(text, output_path, emotion="peaceful"):
     style = EMOTION_STYLE.get(str(emotion).lower(), EMOTION_STYLE["peaceful"])
-    communicate = edge_tts.Communicate(text=humanize_text(text), voice=style["voice"], rate=style["rate"], pitch=style["pitch"], volume=style["volume"])
+    text_lower = str(text).lower()
+    voice = style["voice"]
+    for key, hinted_voice in CHARACTER_VOICE_HINTS.items():
+        if key in text_lower:
+            voice = hinted_voice
+            break
+    communicate = edge_tts.Communicate(text=humanize_text(text), voice=voice, rate=style["rate"], pitch=style["pitch"], volume=style["volume"])
     await communicate.save(str(output_path))
 
 def create_edge_audio(text, output_path, emotion="peaceful"):
@@ -329,6 +370,24 @@ def flatten_story(scene_payload):
             prompt = shot.get("image_prompt") or scene.get("image_prompt", "")
             shots.append({"scene_number": scene_index, "shot_number": shot.get("shot_number", len(shots) + 1), "emotion": shot.get("emotion", scene.get("emotion", "peaceful")), "narration_en": shot.get("narration_en") or scene.get("narration_en", ""), "subtitle_en": shot.get("subtitle_en") or shot.get("narration_en") or scene.get("subtitle_en", ""), "image_prompt": f"{char_desc}. {prompt}", "camera_motion": shot.get("camera_motion") or scene.get("camera_motion", "slow_zoom_in"), "pause_after": shot.get("pause_after", 0.25)})
     return shots
+
+
+def fetch_visual(shot, safe_id, index, numeric_seed):
+    prompt = f"{shot.get('image_prompt','')} Emotion: {shot.get('emotion','peaceful')}. Narration moment: {shot.get('narration_en','')}"
+    storybook_path = VISUALS_DIR / f"visual_{safe_id}_{index:03d}.jpg"
+    if not USE_STOCK_FIRST:
+        try:
+            pollinations_storybook_image(prompt, storybook_path, seed=numeric_seed * 1000 + index)
+            return storybook_path, "ai_storybook", "storybook cartoon animal"
+        except Exception as exc:
+            print(f"AI storybook image failed for shot {index}, trying stock backup: {exc}")
+    try:
+        return fetch_stock_visual(shot, safe_id, index)
+    except Exception as stock_exc:
+        if USE_STOCK_FIRST:
+            pollinations_storybook_image(prompt, storybook_path, seed=numeric_seed * 1000 + index)
+            return storybook_path, "ai_storybook_after_stock", "storybook cartoon animal"
+        raise RuntimeError(f"All visual sources failed for shot {index}. AI storybook + stock backup failed: {stock_exc}") from stock_exc
 
 def create_video(video_id, title, scene_payload):
     shots = flatten_story(scene_payload)
