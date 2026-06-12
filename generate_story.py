@@ -216,38 +216,38 @@ Return valid JSON only, exactly in this shape:
       "subtitle_en": "short English subtitle only",
       "image_prompt": "main scene visual prompt",
       "shots": [
-        {
+        {{
           "shot_number": 1,
           "emotion": "one of: wonder, lonely, worried, afraid, brave, relieved, peaceful",
           "narration_en": "one short emotional sentence for this exact moment",
           "subtitle_en": "short English subtitle only",
           "image_prompt": "vertical 9:16 warm cinematic storybook illustration for this exact action/moment, exact character design, no text",
           "camera_motion": "slow_zoom_in"
-        },
-        {
+        }},
+        {{
           "shot_number": 2,
           "emotion": "one of: wonder, lonely, worried, afraid, brave, relieved, peaceful",
           "narration_en": "next short emotional sentence for a new visual moment",
           "subtitle_en": "short English subtitle only",
           "image_prompt": "different visual composition for this moment, exact character design, no text",
           "camera_motion": "gentle_pan_left"
-        },
-        {
+        }},
+        {{
           "shot_number": 3,
           "emotion": "one of: wonder, lonely, worried, afraid, brave, relieved, peaceful",
           "narration_en": "third short emotional sentence for a close-up moment",
           "subtitle_en": "short English subtitle only",
           "image_prompt": "different emotional close-up action frame, exact character design, no text",
           "camera_motion": "tiny_handheld"
-        },
-        {
+        }},
+        {{
           "shot_number": 4,
           "emotion": "one of: wonder, lonely, worried, afraid, brave, relieved, peaceful",
           "narration_en": "final short emotional sentence for this scene consequence",
           "subtitle_en": "short English subtitle only",
           "image_prompt": "final consequence frame with cinematic lighting, exact character design, no text",
           "camera_motion": "slow_zoom_out"
-        }
+        }}
       ]
     }}
   ]
