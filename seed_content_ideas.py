@@ -1,20 +1,19 @@
 import csv
-import json
 import os
 from pathlib import Path
 
-from tbt_common import get_sheets_client, open_spreadsheet, get_worksheet, get_all_values, run_with_retry
+from nd_common import get_sheets_client, open_spreadsheet, get_worksheet, get_all_values, run_with_retry
 
 CONTENT_SHEET_NAME = "Content"
 IDEAS_FILE = Path(os.getenv("TBT_IDEAS_FILE", "content_ideas_by_type.csv"))
 
 REQUIRED_HEADERS = [
-    "id", "topic", "animal", "lesson", "video_type", "target_minutes", "main_character", "story_universe", "audience", "made_for_kids",
+    "id", "topic", "characters", "theme", "video_type", "target_minutes", "narrator_pov", "setting", "audience", "made_for_kids",
     "script", "title", "description", "status", "video_url", "created_at", "scene_prompts", "image_status", "audio_status",
     "youtube_status", "youtube_video_id", "video_file_path", "error_message"
 ]
 
-VALID_TYPES = {"short", "bedtime", "long_story", "toby_collection", "calming", "adventure"}
+VALID_TYPES = {"short", "horror_story", "confession_story"}
 
 
 def ensure_headers(sheet):
@@ -66,7 +65,7 @@ def main():
     rows_to_append = []
     added_counts = {t: 0 for t in VALID_TYPES}
     for item in load_ideas():
-        vtype = (item.get("video_type") or "long_story").strip().lower()
+        vtype = (item.get("video_type") or "horror_story").strip().lower()
         if vtype not in VALID_TYPES:
             continue
         if requested_type != "all" and vtype != requested_type:

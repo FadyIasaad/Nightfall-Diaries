@@ -1,21 +1,27 @@
-from tbt_common import get_sheets_client, open_spreadsheet, get_worksheet, get_all_values, update_cell, run_with_retry
+from nd_common import get_sheets_client, open_spreadsheet, get_worksheet, get_all_values, update_cell, run_with_retry
 
 CONTENT_SHEET_NAME = "Content"
 LOGS_SHEET_NAME = "Logs"
 
 REQUIRED_HEADERS = [
-    "id", "topic", "animal", "lesson", "video_type", "target_minutes", "main_character", "story_universe", "audience", "made_for_kids",
+    "id", "topic", "characters", "theme", "video_type", "target_minutes", "narrator_pov", "setting", "audience", "made_for_kids",
     "script", "title", "description", "status", "video_url", "created_at", "scene_prompts", "image_status", "audio_status",
     "youtube_status", "youtube_video_id", "video_file_path", "error_message"
 ]
 
 STARTER_ROWS = [
-    ["TBT-SHORT-001", "Toby finds a cracked lantern beside the river and must decide whether to carry it alone", "old turtle", "Small courage matters when nobody is watching", "short", 1, "Toby", "The Moonlit Forest", "general audience - not made for kids", "FALSE", "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
-    ["TBT-BED-001", "Toby walks through a quiet rainy forest to return a forgotten bell before sunrise", "old turtle", "Peace is earned through patience, not escape", "bedtime", 30, "Toby", "The Moonlit Forest", "general audience - not made for kids", "FALSE", "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
-    ["TBT-LONG-001", "Toby carries a lantern through the flooded Moonlit Forest to find the animal who stopped answering", "old turtle", "Some hearts heal only when they stop pretending they are fine", "long_story", 30, "Toby", "The Moonlit Forest", "general audience - not made for kids", "FALSE", "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
-    ["TBT-COL-001", "Five quiet nights where Toby helps animals who are hiding old pain", "turtle collection", "Kindness becomes powerful when it costs something", "toby_collection", 45, "Toby", "The Moonlit Forest", "general audience - not made for kids", "FALSE", "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
-    ["TBT-CALM-001", "Toby sits beside the lake while the forest slowly remembers how to breathe", "old turtle", "Stillness can be a form of strength", "calming", 30, "Toby", "The Moonlit Forest", "general audience - not made for kids", "FALSE", "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
-    ["TBT-ADV-001", "Toby crosses the broken bridge to save a wolf everyone else feared", "old turtle and wolf", "Bravery is not loud; it keeps walking", "adventure", 30, "Toby", "The Moonlit Forest", "general audience - not made for kids", "FALSE", "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
+    ["ND-HOR-001", "A woman house-sitting a remote cabin notices the photos on the wall change slightly each night",
+     "the house-sitter, the absent owners", "what you stop questioning becomes what controls you", "horror_story", 18,
+     "an anonymous adult narrator, calm and a little tired", "a remote cabin in the woods", "general audience", "FALSE",
+     "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
+    ["ND-CONF-001", "A woman spends a year quietly building the case that ends her husband's affair and his career in the same week",
+     "the narrator, her husband, his coworker", "patience can be its own kind of justice", "confession_story", 16,
+     "the woman herself, calm and exact, telling it after the fact", "a quiet suburban home", "general audience", "FALSE",
+     "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
+    ["ND-SH-001", "A woman gets a porch-camera notification from a doorbell that was unplugged three years ago",
+     "the narrator", "some things don't stop just because you disconnect them", "short", 1,
+     "an anonymous adult narrator, calm and unsettled", "a quiet front porch at night", "general audience", "FALSE",
+     "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
 ]
 
 
@@ -43,13 +49,13 @@ def main():
     headers = ensure_headers(content)
     values = get_all_values(content)
     if len(values) <= 1:
-        run_with_retry("Adding starter long-video rows", lambda: content.append_rows(STARTER_ROWS, value_input_option="USER_ENTERED"))
+        run_with_retry("Adding starter rows", lambda: content.append_rows(STARTER_ROWS, value_input_option="USER_ENTERED"))
     try:
         spreadsheet.worksheet(LOGS_SHEET_NAME)
     except Exception:
         logs = spreadsheet.add_worksheet(title=LOGS_SHEET_NAME, rows=1000, cols=4)
         logs.update("A1:D1", [["timestamp", "video_id", "action", "message"]], value_input_option="USER_ENTERED")
-    print("Sheet schema ready. Next run: Generate Content Backlog to fill ideas for every video type.")
+    print("Sheet schema ready. Next run: Seed Ideas to fill the backlog for every video type.")
 
 if __name__ == "__main__":
     main()

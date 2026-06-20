@@ -1,4 +1,4 @@
-# Runtime settings for Tiny Brave Tails.
+# Runtime settings for Nightfall Diaries.
 # Secrets stay in GitHub Secrets, not in this file.
 from pathlib import Path
 
@@ -9,95 +9,78 @@ VISUAL_DIR = OUTPUT_DIR / "visuals"
 VIDEO_DIR = OUTPUT_DIR / "videos"
 METADATA_DIR = OUTPUT_DIR / "metadata"
 
+CHANNEL_NAME = "Nightfall Diaries"
 DEFAULT_VIDEO_PRIVACY = "private"
 DEFAULT_PRIVACY_STATUS = DEFAULT_VIDEO_PRIVACY
 DEFAULT_MADE_FOR_KIDS = False
-YOUTUBE_CATEGORY_ID = "24"
+YOUTUBE_CATEGORY_ID = "24"  # Entertainment
 
-# Primary voice: AriaNeural is the most expressive and natural for emotional storytelling.
+# One calm, controlled narrator voice for the whole channel. It carries both
+# quiet horror dread and matter-of-fact confession/revenge storytelling well,
+# and a single consistent voice is what makes a channel feel like "a place"
+# rather than a random AI feed.
 DEFAULT_EDGE_TTS_VOICE = "en-US-AriaNeural"
-DEFAULT_BEDTIME_VOICE  = "en-US-AriaNeural"
-DEFAULT_LONG_VOICE     = "en-US-AriaNeural"
 
-# New channel direction: emotional animal stories for a general audience, not made-for-kids.
-CHANNEL_POSITIONING = "Emotional storybook cartoon animal stories with meaningful hooks"
-MAIN_CHARACTER_NAME = "Toby"
-MAIN_CHARACTER_BIBLE = (
-    "Toby is an old emerald-green turtle with warm amber eyes, a small cracked shell mark shaped like a crescent, "
-    "a faded blue scarf, tiny careful steps, and a quiet brave heart. He is slow, observant, wounded by old losses, "
-    "and never gives direct lessons; he discovers them through pain, patience, and kindness."
+CHANNEL_POSITIONING = (
+    "Real-feeling late-night stories for adults: true-crime-style confessions, "
+    "betrayal and revenge accounts, and quiet psychological horror. Narrated slowly "
+    "over dark cinematic visuals with a soft ambient sound bed underneath, built to "
+    "watch, unwind, or fall asleep to."
 )
-STORY_UNIVERSE = "The Moonlit Forest"
+
+# There is no fixed mascot. Every story has a different first-person narrator
+# and cast, described fresh per story in the Content sheet. This is the
+# fallback used when a row does not specify one.
+DEFAULT_NARRATOR_STYLE = (
+    "an anonymous adult narrator speaking in first person, calm and a little tired, "
+    "like someone telling you something true very late at night"
+)
 
 # ─── VISUAL STYLE ────────────────────────────────────────────────────────────
-# Return to the classic Tiny Brave Tails look: bright, warm, Pixar-quality 3D
-# cartoon animals with large expressive eyes and vibrant painted backgrounds.
+# Dark, moody, cinematic — built for low-light viewing. Visual identity leans on
+# atmosphere, objects, and silhouettes rather than detailed recurring character
+# faces, since this channel covers a different real-feeling story every episode.
 CINEMATIC_VISUAL_STYLE = (
-    "ultra-detailed Pixar 3D animated film still, adorable expressive cartoon animal character, "
-    "large round sparkling eyes with warm catchlights and reflections, cute appealing proportions, "
-    "vibrant warm saturated colors with rich contrast, "
-    "beautiful soft golden forest bokeh painted background, "
-    "rich detailed painterly fur and feather textures, "
-    "warm cinematic glowing rim and fill lighting, "
-    "children's animated movie quality similar to Zootopia, DreamWorks, or Pixar, "
-    "emotionally expressive face and body gesture, "
-    "clean professional cinematic composition, front-lit character, "
-    "no text, no watermark, vertical 9:16"
+    "ultra-detailed dark cinematic still, moody late-night atmosphere, "
+    "deep shadows with a single warm or cold practical light source, subtle film grain, "
+    "muted desaturated color palette with one accent color, "
+    "rain-streaked windows, empty rooms, quiet streets, foggy treelines, hallway light under a door, "
+    "restrained and suggestive rather than graphic or gory, "
+    "photoreal-painterly hybrid illustration, slow contemplative composition, "
+    "faces obscured, in shadow, turned away, or not shown, "
+    "no text, no watermark, no logo, vertical 9:16 aspect ratio"
 )
 
 VIDEO_TYPES = {
     "short": {
-        "category": "emotional_short",
+        "category": "hook_short",
         "duration_minutes": 1,
         "scene_count": 6,
         "shots_per_scene": 4,
-        "voice": DEFAULT_LONG_VOICE,
-        "mood": "cinematic_emotional",
+        "mood": "tense_hook",
         "made_for_kids": False,
     },
-    "bedtime": {
-        "category": "long_bedtime_story",
-        "duration_minutes": 30,
-        "scene_count": 28,
+    "horror_story": {
+        "category": "horror_story",
+        "duration_minutes": 18,
+        "scene_count": 26,
         "shots_per_scene": 4,
-        "voice": DEFAULT_LONG_VOICE,
-        "mood": "calm_cinematic",
+        "mood": "slow_dread",
         "made_for_kids": False,
     },
-    "long_story": {
-        "category": "long_emotional_story",
-        "duration_minutes": 30,
-        "scene_count": 32,
+    "confession_story": {
+        "category": "confession_story",
+        "duration_minutes": 16,
+        "scene_count": 24,
         "shots_per_scene": 4,
-        "voice": DEFAULT_LONG_VOICE,
-        "mood": "deep_cinematic_emotional",
-        "made_for_kids": False,
-    },
-    "toby_collection": {
-        "category": "toby_collection",
-        "duration_minutes": 45,
-        "scene_count": 42,
-        "shots_per_scene": 4,
-        "voice": DEFAULT_LONG_VOICE,
-        "mood": "deep_cinematic_collection",
-        "made_for_kids": False,
-    },
-    "adventure": {
-        "category": "emotional_adventure_story",
-        "duration_minutes": 30,
-        "scene_count": 32,
-        "shots_per_scene": 4,
-        "voice": DEFAULT_LONG_VOICE,
-        "mood": "cinematic_adventure",
-        "made_for_kids": False,
-    },
-    "calming": {
-        "category": "calming_story",
-        "duration_minutes": 30,
-        "scene_count": 30,
-        "shots_per_scene": 4,
-        "voice": DEFAULT_LONG_VOICE,
-        "mood": "calm_reflective_cinematic",
+        "mood": "betrayal_and_release",
         "made_for_kids": False,
     },
 }
+
+# ─── AMBIENT SOUND BED ───────────────────────────────────────────────────────
+# A quiet, fully generated (not sourced) rain/drone bed is mixed under every
+# narration track. Generated, not downloaded, so there is zero copyright risk.
+# This is what gives the channel its "fall asleep to" quality.
+ENABLE_AMBIENT_BED = True
+AMBIENT_BED_VOLUME = 0.10  # 0.0–1.0, relative level under the narration

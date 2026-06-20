@@ -16,7 +16,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 if not hasattr(Image, "ANTIALIAS"):
     Image.ANTIALIAS = Image.LANCZOS
 
-from tbt_common import (
+from config import AMBIENT_BED_VOLUME, CHANNEL_NAME, ENABLE_AMBIENT_BED
+from nd_common import (
     find_optional_column,
     find_column,
     get_all_values,
@@ -45,49 +46,46 @@ FPS = 24
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 USE_STOCK_FIRST = os.getenv("USE_STOCK_FIRST", "false").lower() in {"1", "true", "yes"}
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "").strip()
-ELEVENLABS_MODEL_ID = os.getenv("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2").strip()
 
 # ─── EMOTION-DRIVEN VOICE SYSTEM ─────────────────────────────────────────────
-# AriaNeural: richest emotional range for storytelling in Edge TTS.
-# Each emotion has calibrated rate / pitch / volume for maximum impact.
+# One narrator voice for the whole channel, with calibrated rate / pitch / volume
+# per emotion so quiet dread, sharp fear, and matter-of-fact confession all feel
+# distinct without ever sounding like a different person.
 EMOTION_STYLE = {
-    # Awe-filled discovery — slightly lifted pitch, moderate pace
-    "wonder":   {"voice": "en-US-AriaNeural", "rate": "-10%", "pitch": "+2Hz",  "volume": "+0%"},
-    # Deep isolation — very slow, lower pitch, quieter
-    "lonely":   {"voice": "en-US-AriaNeural", "rate": "-20%", "pitch": "-4Hz",  "volume": "-3%"},
-    # Tense uncertainty — measured pace, slightly darker pitch
-    "worried":  {"voice": "en-US-AriaNeural", "rate": "-12%", "pitch": "-1Hz",  "volume": "+0%"},
-    # Sharp fear — faster staccato feel, lower pitch, louder presence
-    "afraid":   {"voice": "en-US-AriaNeural", "rate": "-8%",  "pitch": "-2Hz",  "volume": "+2%"},
-    # Quiet determination — confident, grounded, slightly forward
-    "brave":    {"voice": "en-US-AriaNeural", "rate": "-6%",  "pitch": "+1Hz",  "volume": "+4%"},
-    # Warm release — gentle pace, soft lift
-    "relieved": {"voice": "en-US-AriaNeural", "rate": "-14%", "pitch": "+1Hz",  "volume": "+0%"},
-    # Meditative calm — slowest delivery, soft and low
-    "peaceful": {"voice": "en-US-AriaNeural", "rate": "-18%", "pitch": "-3Hz",  "volume": "-2%"},
+    "dread":        {"voice": "en-US-AriaNeural", "rate": "-18%", "pitch": "-3Hz", "volume": "+0%"},
+    "tension":      {"voice": "en-US-AriaNeural", "rate": "-10%", "pitch": "-1Hz", "volume": "+2%"},
+    "eerie":        {"voice": "en-US-AriaNeural", "rate": "-16%", "pitch": "-4Hz", "volume": "-2%"},
+    "calm":         {"voice": "en-US-AriaNeural", "rate": "-20%", "pitch": "-2Hz", "volume": "-3%"},
+    "fear":         {"voice": "en-US-AriaNeural", "rate": "-8%",  "pitch": "-2Hz", "volume": "+3%"},
+    "relief":       {"voice": "en-US-AriaNeural", "rate": "-14%", "pitch": "+1Hz", "volume": "+0%"},
+    "mystery":      {"voice": "en-US-AriaNeural", "rate": "-14%", "pitch": "-2Hz", "volume": "+0%"},
+    "anger":        {"voice": "en-US-AriaNeural", "rate": "-6%",  "pitch": "-1Hz", "volume": "+4%"},
+    "satisfaction": {"voice": "en-US-AriaNeural", "rate": "-12%", "pitch": "+0Hz", "volume": "+1%"},
 }
 
 # Inter-sentence pause per emotion (used in SSML <break> tags)
 EMOTION_PAUSE = {
-    "wonder":   "480ms",
-    "lonely":   "750ms",
-    "worried":  "400ms",
-    "afraid":   "320ms",
-    "brave":    "260ms",
-    "relieved": "560ms",
-    "peaceful": "700ms",
+    "dread":        "700ms",
+    "tension":      "350ms",
+    "eerie":        "650ms",
+    "calm":         "750ms",
+    "fear":         "300ms",
+    "relief":       "500ms",
+    "mystery":      "550ms",
+    "anger":        "280ms",
+    "satisfaction": "450ms",
 }
 
 SEARCH_WORDS = {
-    "lonely":   "lonely animal forest cinematic sad",
-    "afraid":   "animal rain forest dark cinematic",
-    "worried":  "animal forest night cinematic",
-    "brave":    "animal rescue forest cinematic",
-    "relieved": "animal warm sunlight forest cinematic",
-    "peaceful": "peaceful animal nature cinematic",
-    "wonder":   "animal magical forest cinematic",
+    "dread":        "empty house night cinematic dark",
+    "tension":      "dark hallway suspense cinematic",
+    "eerie":        "foggy forest night eerie cinematic",
+    "calm":         "rain window night quiet cinematic",
+    "fear":         "dark figure shadow cinematic night",
+    "relief":       "warm light window night cinematic",
+    "mystery":      "dark room mystery cinematic",
+    "anger":        "storm dark intense cinematic",
+    "satisfaction": "quiet sunrise calm cinematic",
 }
 
 # ─── FONT HELPERS ─────────────────────────────────────────────────────────────
@@ -103,12 +101,12 @@ def load_font(size, bold=True):
 
 # ─── STOCK VISUAL HELPERS ────────────────────────────────────────────────────
 def safe_query(text, emotion):
-    raw = f"{text} {SEARCH_WORDS.get(str(emotion).lower(), 'animal nature cinematic')}"
+    raw = f"{text} {SEARCH_WORDS.get(str(emotion).lower(), 'dark cinematic night')}"
     raw = re.sub(r"[^A-Za-z0-9 ]+", " ", raw)
     words = [w for w in raw.split() if len(w) > 2]
-    banned = {"toby", "shot", "wide", "close", "vertical", "text", "watermark", "pixar", "storybook", "illustration"}
+    banned = {"shot", "wide", "close", "vertical", "text", "watermark", "cinematic", "illustration", "narrator"}
     words = [w for w in words if w.lower() not in banned]
-    return " ".join(words[:10]) or SEARCH_WORDS.get(str(emotion).lower(), "animal nature cinematic")
+    return " ".join(words[:10]) or SEARCH_WORDS.get(str(emotion).lower(), "dark cinematic night")
 
 def download_file(url, path, headers=None):
     r = requests.get(url, headers=headers or {}, timeout=90, stream=True)
@@ -188,7 +186,7 @@ def pixabay_photo(query, output_path):
     raise RuntimeError("No usable Pixabay photo")
 
 def fetch_stock_visual(shot, safe_id, index):
-    emotion = shot.get("emotion", "peaceful")
+    emotion = shot.get("emotion", "calm")
     query = safe_query(f"{shot.get('image_prompt','')} {shot.get('narration_en','')}", emotion)
     attempts = [
         ("pexels_video",  pexels_video,  VISUALS_DIR / f"visual_{safe_id}_{index:03d}.mp4"),
@@ -206,29 +204,23 @@ def fetch_stock_visual(shot, safe_id, index):
     raise RuntimeError("Stock visual failed. Add valid PEXELS_API_KEY and PIXABAY_API_KEY. " + " | ".join(errors[:4]))
 
 
-# ─── AI STORYBOOK IMAGE (Pixar / classic Tiny Brave Tails style) ─────────────
-def pollinations_storybook_image(prompt, output_path, seed):
+# ─── AI CINEMATIC IMAGE (dark, moody Nightfall Diaries look) ─────────────────
+def pollinations_cinematic_image(prompt, output_path, seed):
     """
-    Generates a vibrant Pixar-quality storybook image via Pollinations.ai.
-    Matches the classic Tiny Brave Tails aesthetic: cute, warm, expressive.
+    Generates a dark, moody cinematic still via Pollinations.ai, matching the
+    Nightfall Diaries aesthetic: restrained, atmospheric, low-light.
     """
     style_prefix = (
-        "ultra-detailed Pixar 3D animated film still, "
-        "adorable cute expressive cartoon animal character, "
-        "large round sparkling eyes with warm catchlights and light reflections, "
-        "cute appealing proportions, vibrant warm saturated colors with rich contrast, "
-        "beautiful soft golden bokeh painted forest background, "
-        "rich detailed painterly fur and feather textures, "
-        "warm cinematic glowing rim and fill lighting, "
-        "children's animated movie quality similar to Zootopia or DreamWorks Animation, "
-        "emotionally expressive cute face and body pose, "
-        "clean professional front-lit cinematic composition, "
+        "ultra-detailed dark cinematic still, moody late-night atmosphere, "
+        "deep shadows with a single warm or cold practical light source, subtle film grain, "
+        "muted desaturated color palette with one accent color, restrained and suggestive not graphic, "
+        "photoreal-painterly hybrid illustration, slow contemplative composition, "
+        "faces obscured, in shadow, turned away, or not shown, "
         "no text, no watermark, no logo, vertical 9:16 aspect ratio. "
         "Scene: "
     )
     full_prompt = style_prefix + str(prompt)
     encoded = quote_plus(full_prompt)
-    # Try flux model first (highest quality), then default
     urls = [
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=flux",
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true",
@@ -245,7 +237,7 @@ def pollinations_storybook_image(prompt, output_path, seed):
             return output_path
         except Exception as exc:
             last_error = exc
-    raise RuntimeError(f"AI storybook image failed: {last_error}")
+    raise RuntimeError(f"AI cinematic image failed: {last_error}")
 
 
 # ─── SUBTITLE / FRAME HELPERS ─────────────────────────────────────────────────
@@ -279,16 +271,15 @@ def draw_centered_lines(draw, lines, font, center_y, fill, spacing=9):
     for line, h in zip(lines, heights):
         bbox = draw.textbbox((0, 0), line, font=font)
         x = (WIDTH - (bbox[2] - bbox[0])) // 2
-        # Multi-layer shadow for clean readability over bright images
         for dx, dy in [(-3, -3), (3, -3), (-3, 3), (3, 3), (0, 4), (0, -4)]:
-            draw.text((x + dx, y + dy), line, font=font, fill=(0, 0, 0, 200))
+            draw.text((x + dx, y + dy), line, font=font, fill=(0, 0, 0, 210))
         draw.text((x, y), line, font=font, fill=fill)
         y += h + spacing
 
 def prepare_photo(path):
     """
-    Prepare a visual frame. Uses lighter overlays so vibrant Pixar-style
-    colors are not crushed by heavy darkening.
+    Prepare a visual frame. Darker overlays than a bright/warm channel would
+    use, to keep the late-night Nightfall Diaries mood consistent.
     """
     img = Image.open(path).convert("RGB")
     ratio = max(WIDTH / img.width, HEIGHT / img.height)
@@ -297,29 +288,28 @@ def prepare_photo(path):
     left = (img.width - WIDTH) // 2
     top  = (img.height - HEIGHT) // 2
     img = img.crop((left, top, left + WIDTH, top + HEIGHT)).convert("RGBA")
-    # Light header gradient (branding area)
-    img.alpha_composite(Image.new("RGBA", (WIDTH, 160), (0, 0, 0, 40)), (0, 0))
-    # Subtitle gradient at bottom — lighter so character colours stay vivid
-    img.alpha_composite(Image.new("RGBA", (WIDTH, 320), (0, 0, 0, 95)), (0, HEIGHT - 320))
+    # Header gradient (branding area)
+    img.alpha_composite(Image.new("RGBA", (WIDTH, 170), (0, 0, 0, 90)), (0, 0))
+    # Subtitle gradient at bottom
+    img.alpha_composite(Image.new("RGBA", (WIDTH, 340), (0, 0, 0, 150)), (0, HEIGHT - 340))
     return img
 
 def make_frame(video_id, shot_index, shot, title, image_path, total_shots):
     bg = prepare_photo(image_path)
     draw = ImageDraw.Draw(bg)
 
-    brand_font = load_font(42, bold=True)
-    title_font = load_font(28, bold=False)
-    sub_font   = load_font(46, bold=True)
+    brand_font = load_font(40, bold=True)
+    title_font = load_font(26, bold=False)
+    sub_font   = load_font(44, bold=True)
 
     # Brand name
-    draw.text((50, 32), "Tiny Brave Tails", font=brand_font, fill=(255, 238, 180, 255))
+    draw.text((50, 34), CHANNEL_NAME, font=brand_font, fill=(200, 210, 230, 255))
     # Episode title (2 lines max)
-    y = 96
+    y = 94
     for line in wrap_ltr(draw, title, title_font, 940, 2):
-        draw.text((50, y), line, font=title_font, fill=(240, 240, 240, 230))
-        y += 38
+        draw.text((50, y), line, font=title_font, fill=(225, 225, 230, 220))
+        y += 36
 
-    # Subtitle — centred near bottom
     subtitle = ""
     if os.getenv("SHOW_SUBTITLES", "true").lower() not in {"0", "false", "no"}:
         subtitle = (shot.get("subtitle_en") or shot.get("narration_en", "")).strip()
@@ -328,8 +318,8 @@ def make_frame(video_id, shot_index, shot, title, image_path, total_shots):
         draw,
         wrap_ltr(draw, subtitle, sub_font, 950, 3),
         sub_font,
-        HEIGHT - 200,
-        (255, 255, 255, 255),
+        HEIGHT - 210,
+        (235, 235, 240, 255),
         spacing=10,
     )
 
@@ -340,25 +330,14 @@ def make_frame(video_id, shot_index, shot, title, image_path, total_shots):
 
 # ─── VOICE: HUMANIZE + SSML AUDIO ────────────────────────────────────────────
 def humanize_text(text):
-    """Clean and subtly shape text for more natural narration."""
     clean = re.sub(r"\s+", " ", str(text or "").replace("\n", " ")).strip()
     if not clean:
         raise ValueError("Empty narration text")
-    # Light emphasis pauses — keep it natural, not over-processed
-    clean = re.sub(r"\bbut\b",         "but",          clean, flags=re.I)
-    clean = re.sub(r"\bfor a moment\b","for a moment",  clean, flags=re.I)
-    clean = re.sub(r"\bstill\b",       "still",         clean, flags=re.I)
-    clean = re.sub(r"\band yet\b",     "and yet",       clean, flags=re.I)
-    clean = re.sub(r"\bslowly\b",      "slowly",        clean, flags=re.I)
-    clean = re.sub(r"\.{4,}",          "...",           clean)
+    clean = re.sub(r"\.{4,}", "...", clean)
     return clean
 
 
 def _build_ssml(text: str, emotion: str, style: dict) -> str:
-    """
-    Build a full SSML document with per-sentence <break> pauses.
-    Sentence-level pacing gives the narration a natural, cinematic rhythm.
-    """
     pause = EMOTION_PAUSE.get(emotion, "480ms")
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
     if not sentences:
@@ -385,26 +364,19 @@ def _build_ssml(text: str, emotion: str, style: dict) -> str:
     )
 
 
-async def create_edge_audio_async(text, output_path, emotion="peaceful"):
-    """
-    Generate narration audio via Edge TTS.
-    Primary path: SSML with per-sentence breaks for smooth, flowing delivery.
-    Fallback: plain-text prosody (handles any SSML parsing edge-cases).
-    """
-    style = EMOTION_STYLE.get(str(emotion).lower(), EMOTION_STYLE["peaceful"])
+async def create_edge_audio_async(text, output_path, emotion="calm"):
+    style = EMOTION_STYLE.get(str(emotion).lower(), EMOTION_STYLE["calm"])
     voice = style["voice"]
     clean = humanize_text(text)
 
-    # ── SSML path (best quality) ──────────────────────────────────────────────
     try:
         ssml = _build_ssml(clean, emotion, style)
         communicate = edge_tts.Communicate(text=ssml, voice=voice)
         await communicate.save(str(output_path))
         return
     except Exception:
-        pass  # fall through to plain-text
+        pass
 
-    # ── Plain-text fallback ───────────────────────────────────────────────────
     communicate = edge_tts.Communicate(
         text=clean,
         voice=voice,
@@ -415,13 +387,13 @@ async def create_edge_audio_async(text, output_path, emotion="peaceful"):
     await communicate.save(str(output_path))
 
 
-def create_edge_audio(text, output_path, emotion="peaceful"):
+def create_edge_audio(text, output_path, emotion="calm"):
     asyncio.run(create_edge_audio_async(text, output_path, emotion))
     return output_path
 
 def create_espeak_audio(text, output_path):
     subprocess.run(
-        ["espeak-ng", "-v", "en-us", "-s", "118", "-p", "35", "-a", "145",
+        ["espeak-ng", "-v", "en-us", "-s", "112", "-p", "30", "-a", "140",
          "-w", str(output_path), humanize_text(text)],
         check=True,
     )
@@ -443,16 +415,82 @@ def normalize_audio(input_path, video_id, shot_index):
 
 def create_shot_audio(shot, video_id, shot_index):
     narration = shot.get("narration_en", "").strip()
-    emotion   = shot.get("emotion", "peaceful").strip().lower()
+    emotion   = shot.get("emotion", "calm").strip().lower()
     mp3_path  = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}.mp3"
     wav_path  = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}.wav"
     try:
         create_edge_audio(narration, mp3_path, emotion)
-        voice = EMOTION_STYLE.get(emotion, EMOTION_STYLE["peaceful"])["voice"]
+        voice = EMOTION_STYLE.get(emotion, EMOTION_STYLE["calm"])["voice"]
         return normalize_audio(mp3_path, video_id, shot_index), f"edge-ssml:{voice}:{emotion}"
     except Exception:
         create_espeak_audio(narration, wav_path)
         return normalize_audio(wav_path, video_id, shot_index), "espeak-ng:fallback"
+
+
+# ─── AMBIENT SOUND BED (generated, not sourced — zero copyright risk) ────────
+def build_ambient_bed(duration_seconds, output_path):
+    """
+    Generates a quiet rain/drone ambient bed entirely with ffmpeg's built-in
+    audio sources (anoisesrc + aevalsrc). Nothing is downloaded, so there is
+    no licensing risk, and it never depends on a third-party music API.
+    """
+    duration = max(3.0, float(duration_seconds))
+    fade_out_start = max(0.0, duration - 6.0)
+    filter_complex = (
+        "[0:a]lowpass=f=700,highpass=f=80,volume=0.5[rain];"
+        "[1:a]volume=0.35[drone];"
+        "[rain][drone]amix=inputs=2:duration=longest:normalize=0[bed];"
+        f"[bed]afade=t=in:st=0:d=5,afade=t=out:st={fade_out_start:.2f}:d=6[out]"
+    )
+    command = [
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-i", f"anoisesrc=color=brown:amplitude=1:duration={duration:.2f}",
+        "-f", "lavfi", "-i", f"aevalsrc=0.3*sin(2*PI*55*t):duration={duration:.2f}",
+        "-filter_complex", filter_complex,
+        "-map", "[out]", "-ac", "2", "-ar", "48000",
+        str(output_path),
+    ]
+    subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return output_path
+
+
+def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10) -> bool:
+    """
+    Mixes the generated ambient bed quietly under the video's existing
+    narration track. Wrapped so a failure here never breaks the whole render;
+    the video is still perfectly usable without the ambient layer.
+    """
+    bed_path = None
+    mixed_path = None
+    try:
+        with VideoFileClip(str(video_path)) as probe:
+            duration = probe.duration
+        bed_path = video_path.with_name(video_path.stem + "_ambient_bed.wav")
+        build_ambient_bed(duration, bed_path)
+        mixed_path = video_path.with_name(video_path.stem + "_mixed.mp4")
+        command = [
+            "ffmpeg", "-y",
+            "-i", str(video_path),
+            "-i", str(bed_path),
+            "-filter_complex",
+            f"[1:a]volume={ambient_volume}[amb];[0:a][amb]amix=inputs=2:duration=first:normalize=0[aout]",
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+            str(mixed_path),
+        ]
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        mixed_path.replace(video_path)
+        return True
+    except Exception as exc:
+        print(f"Ambient bed skipped (non-fatal): {exc}")
+        return False
+    finally:
+        for p in (bed_path, mixed_path):
+            try:
+                if p and p.exists():
+                    p.unlink()
+            except Exception:
+                pass
 
 
 # ─── VIDEO CLIP HELPERS ───────────────────────────────────────────────────────
@@ -490,16 +528,16 @@ def split_scene_to_shots(scene):
     parts = [x.strip() for x in re.split(r"(?<=[.!?])\s+", narration) if x.strip()]
     if len(parts) < 4:
         parts = [
-            narration or "The small animal waited in the quiet forest.",
-            "The night felt too large.",
+            narration or "The room was quiet, in a way that felt deliberate.",
+            "The night felt too large around it.",
             "A small sound changed everything.",
-            "Courage arrived softly.",
+            "Whatever it was, it was not finished yet.",
         ]
     motions = ["slow_zoom_in", "gentle_pan_left", "tiny_handheld", "slow_zoom_out"]
     return [
         {
             "shot_number":  i + 1,
-            "emotion":      scene.get("emotion", "peaceful"),
+            "emotion":      scene.get("emotion", "calm"),
             "narration_en": part,
             "subtitle_en":  part,
             "image_prompt": f"{scene.get('image_prompt','')} {part}",
@@ -511,18 +549,16 @@ def split_scene_to_shots(scene):
 
 def flatten_story(scene_payload):
     shots = []
-    character = scene_payload.get("character", {})
-    char_desc  = character.get("description", "")
     for scene_index, scene in enumerate(scene_payload.get("scenes", []), start=1):
         for shot in split_scene_to_shots(scene):
             prompt = shot.get("image_prompt") or scene.get("image_prompt", "")
             shots.append({
                 "scene_number": scene_index,
                 "shot_number":  shot.get("shot_number", len(shots) + 1),
-                "emotion":      shot.get("emotion", scene.get("emotion", "peaceful")),
+                "emotion":      shot.get("emotion", scene.get("emotion", "calm")),
                 "narration_en": shot.get("narration_en") or scene.get("narration_en", ""),
                 "subtitle_en":  shot.get("subtitle_en") or shot.get("narration_en") or scene.get("subtitle_en", ""),
-                "image_prompt": f"{char_desc}. {prompt}",
+                "image_prompt": prompt,
                 "camera_motion": shot.get("camera_motion") or scene.get("camera_motion", "slow_zoom_in"),
                 "pause_after":  shot.get("pause_after", 0.25),
             })
@@ -533,25 +569,25 @@ def flatten_story(scene_payload):
 def fetch_visual(shot, safe_id, index, numeric_seed):
     prompt = (
         f"{shot.get('image_prompt','')} "
-        f"Emotion: {shot.get('emotion','peaceful')}. "
+        f"Emotion: {shot.get('emotion','calm')}. "
         f"Moment: {shot.get('narration_en','')}"
     )
-    storybook_path = VISUALS_DIR / f"visual_{safe_id}_{index:03d}.jpg"
+    cinematic_path = VISUALS_DIR / f"visual_{safe_id}_{index:03d}.jpg"
     if not USE_STOCK_FIRST:
         try:
-            pollinations_storybook_image(prompt, storybook_path, seed=numeric_seed * 1000 + index)
-            return storybook_path, "ai_storybook", "storybook cartoon animal"
+            pollinations_cinematic_image(prompt, cinematic_path, seed=numeric_seed * 1000 + index)
+            return cinematic_path, "ai_cinematic", "dark cinematic still"
         except Exception as exc:
-            print(f"AI storybook image failed for shot {index}, trying stock backup: {exc}")
+            print(f"AI cinematic image failed for shot {index}, trying stock backup: {exc}")
     try:
         return fetch_stock_visual(shot, safe_id, index)
     except Exception as stock_exc:
         if USE_STOCK_FIRST:
-            pollinations_storybook_image(prompt, storybook_path, seed=numeric_seed * 1000 + index)
-            return storybook_path, "ai_storybook_after_stock", "storybook cartoon animal"
+            pollinations_cinematic_image(prompt, cinematic_path, seed=numeric_seed * 1000 + index)
+            return cinematic_path, "ai_cinematic_after_stock", "dark cinematic still"
         raise RuntimeError(
             f"All visual sources failed for shot {index}. "
-            f"AI storybook + stock backup failed: {stock_exc}"
+            f"AI cinematic + stock backup failed: {stock_exc}"
         ) from stock_exc
 
 
@@ -561,7 +597,7 @@ def create_video(video_id, title, scene_payload):
     if len(shots) < 8:
         raise ValueError(f"Too few shots ({len(shots)}). Regenerate story first.")
     safe_id    = re.sub(r"[^A-Za-z0-9_-]", "_", str(video_id).strip() or "video")
-    video_path = VIDEO_DIR / f"tiny_brave_tails_{safe_id}.mp4"
+    video_path = VIDEO_DIR / f"nightfall_diaries_{safe_id}.mp4"
     clips, voice_sources, visual_sources = [], [], []
 
     for i, shot in enumerate(shots, start=1):
@@ -602,10 +638,15 @@ def create_video(video_id, title, scene_payload):
         except Exception:
             pass
 
+    ambient_applied = False
+    if ENABLE_AMBIENT_BED:
+        ambient_applied = add_ambient_bed(video_path, AMBIENT_BED_VOLUME)
+
     summary = (
         ",".join(sorted(set(voice_sources)))
         + f" | visuals={','.join(sorted(set(visual_sources)))}"
         + f" | shots={len(shots)}"
+        + f" | ambient={'on' if ambient_applied else 'off'}"
     )
     return video_path, summary
 
@@ -663,7 +704,7 @@ def main():
         raise
 
     update_cell(content_sheet, target_row_number, status_col,       "VIDEO_CREATED")
-    update_cell(content_sheet, target_row_number, image_status_col, "STOCK_CREATED")
+    update_cell(content_sheet, target_row_number, image_status_col, "CREATED")
     update_cell(content_sheet, target_row_number, audio_status_col, voice_source)
     if error_message_col:
         update_cell(content_sheet, target_row_number, error_message_col, "")

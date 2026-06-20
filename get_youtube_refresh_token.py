@@ -26,7 +26,7 @@ auth_url, _ = flow.authorization_url(
     include_granted_scopes="true",
 )
 
-print("\nOpen this URL in your browser:\n")
+print("\nOpen this URL in your browser, while logged into the Nightfall Diaries YouTube/Google account:\n")
 print(auth_url)
 print("\nAfter approving, copy the final URL from your browser and paste it here.\n")
 

@@ -9,7 +9,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 
-from tbt_common import (
+from nd_common import (
     find_column,
     find_optional_column,
     get_all_values,
@@ -27,8 +27,7 @@ from tbt_common import (
 CONTENT_SHEET_NAME = "Content"
 OUTPUT_DIR = Path("output")
 
-# Keep this scope because your current refresh token already works for uploading.
-# Do not change it to youtube.force-ssl unless you intentionally generate a new refresh token.
+# Keep this scope unless you intentionally generate a new refresh token.
 YOUTUBE_SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 
@@ -119,7 +118,6 @@ def add_to_playlist_if_configured(youtube, youtube_video_id: str, category: Opti
         ).execute()
         print(f"Added to playlist: {playlist_id}")
     except Exception as exc:
-        # Upload already succeeded. Playlist failure must not fail the Action.
         if is_permission_error(exc):
             print("Playlist insert skipped: current token can upload but cannot manage playlists.")
             return
@@ -160,9 +158,8 @@ def upload_video_to_youtube(video_path: Path, title: str, description: str, cate
 
     print(f"YouTube upload returned video id: {youtube_video_id}")
 
-    # Critical fix:
-    # Do NOT call videos.list here. Your token has youtube.upload scope only.
-    # The upload can succeed, then videos.list fails with 403 insufficient scopes.
+    # Do NOT call videos.list here. The token has youtube.upload scope only,
+    # so the upload can succeed and videos.list would still fail with 403.
     add_to_playlist_if_configured(youtube, youtube_video_id, category)
     return youtube_video_id
 
@@ -219,8 +216,8 @@ def main():
     video_id = get_cell(target_row, id_col)
     title = get_cell(target_row, title_col)
     description = get_cell(target_row, description_col) or (
-        "A long emotional animal story for a general audience. Not made for kids.\n\n"
-        "#animalstory #emotionalstory #bedtimestory #tinybravetails"
+        "A late-night story for a general adult audience.\n\n"
+        "#nightfalldiaries #truestory #scarystories"
     )
     category = get_cell(target_row, video_type_col) if video_type_col else None
 
