@@ -25,10 +25,25 @@ STARTER_ROWS = [
 ]
 
 
+def col_letter(n):
+    """Convert a 1-indexed column number to A1 notation letters (handles columns past Z)."""
+    s = ""
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
 def ensure_headers(sheet):
     values = get_all_values(sheet)
-    if not values:
-        run_with_retry("Writing header row", lambda: sheet.update("A1:W1", [REQUIRED_HEADERS], value_input_option="USER_ENTERED"))
+    # No data rows beyond (or including) a header row means there is nothing real
+    # to preserve -- this also covers sheets where Google Sheets auto-generated a
+    # placeholder "Table" header row (e.g. "Column 1", "Column 2", ...): in that
+    # case we overwrite it cleanly instead of appending our headers after the junk.
+    has_real_data = len(values) > 1
+    if not has_real_data:
+        end_col = col_letter(len(REQUIRED_HEADERS))
+        run_with_retry("Writing header row", lambda: sheet.update(f"A1:{end_col}1", [REQUIRED_HEADERS], value_input_option="USER_ENTERED"))
         return REQUIRED_HEADERS
     headers = values[0]
     changed = False
@@ -37,7 +52,7 @@ def ensure_headers(sheet):
             headers.append(h)
             changed = True
     if changed:
-        end_col = chr(ord('A') + len(headers) - 1) if len(headers) <= 26 else 'W'
+        end_col = col_letter(len(headers))
         run_with_retry("Updating header row", lambda: sheet.update(f"A1:{end_col}1", [headers], value_input_option="USER_ENTERED"))
     return headers
 
