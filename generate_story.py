@@ -412,6 +412,36 @@ def fallback_expand_scenes(data: Dict[str, Any], scene_count: int, story_context
     return data
 
 
+def trim_payload_for_cell(payload: Dict[str, Any], max_chars: int = 49000) -> str:
+    """Serialize scene_payload and trim if needed to fit Google Sheets 50k char cell limit."""
+    serialized = json.dumps(payload, ensure_ascii=False)
+    if len(serialized) <= max_chars:
+        return serialized
+    # Step 1: strip redundant scene-level fields already present in shots
+    for scene in payload.get("scenes", []):
+        scene.pop("image_prompt", None)
+        scene.pop("narration_en", None)
+        scene.pop("subtitle_en", None)
+    serialized = json.dumps(payload, ensure_ascii=False)
+    if len(serialized) <= max_chars:
+        return serialized
+    # Step 2: truncate shot image_prompts
+    for scene in payload.get("scenes", []):
+        for shot in scene.get("shots", []):
+            if len(shot.get("image_prompt", "")) > 280:
+                shot["image_prompt"] = shot["image_prompt"][:280]
+    serialized = json.dumps(payload, ensure_ascii=False)
+    if len(serialized) <= max_chars:
+        return serialized
+    # Step 3: truncate shot narration too
+    for scene in payload.get("scenes", []):
+        for shot in scene.get("shots", []):
+            if len(shot.get("narration_en", "")) > 200:
+                shot["narration_en"] = shot["narration_en"][:200]
+            shot.pop("subtitle_en", None)
+    return json.dumps(payload, ensure_ascii=False)
+
+
 def generate_story_package(topic: str, characters: str, theme: str, video_type="horror_story", target_minutes=18, narrator_pov="", setting="", audience="general audience") -> Dict[str, Any]:
     video_type = normalize_type(video_type)
     settings = VIDEO_TYPES[video_type]
@@ -523,7 +553,7 @@ def main():
         update_cell(content_sheet, target_row_number, title_col, package["title"])
         update_cell(content_sheet, target_row_number, script_col, package["script"])
         update_cell(content_sheet, target_row_number, description_col, package["description"])
-        update_cell(content_sheet, target_row_number, scene_prompts_col, json.dumps(scene_payload, ensure_ascii=False))
+        update_cell(content_sheet, target_row_number, scene_prompts_col, trim_payload_for_cell(scene_payload))
         update_cell(content_sheet, target_row_number, status_col, "GENERATED")
         update_cell(content_sheet, target_row_number, created_at_col, utc_now())
         update_cell(content_sheet, target_row_number, image_status_col, "PENDING")
