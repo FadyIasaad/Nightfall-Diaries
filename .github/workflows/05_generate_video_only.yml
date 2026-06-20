@@ -1,0 +1,54 @@
+name: "05 - Generate Video Only"
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_type:
+        description: "Which type to render (must already be GENERATED)"
+        required: true
+        default: "horror_story"
+        type: choice
+        options:
+          - short
+          - horror_story
+          - confession_story
+
+jobs:
+  generate-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng fonts-dejavu-core fonts-liberation
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run generate_video.py
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          TBT_VIDEO_TYPE: ${{ inputs.video_type }}
+        run: python generate_video.py
+
+      - name: Upload render artifacts (debug aid, kept for 5 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightfall-diaries-video-${{ github.run_id }}
+          path: output/
+          retention-days: 5
