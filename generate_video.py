@@ -504,7 +504,7 @@ def normalize_audio(input_path, video_id, shot_index):
     normalized = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}_norm.m4a"
     command = [
         "ffmpeg", "-y", "-i", str(input_path),
-        "-af", "loudnorm=I=-18:TP=-1.5:LRA=9,acompressor=threshold=-22dB:ratio=2.2:attack=20:release=250",
+        "-af", "loudnorm=I=-14:TP=-1.5:LRA=11,acompressor=threshold=-22dB:ratio=2.2:attack=20:release=250",
         "-ar", "48000", "-ac", "2", "-c:a", "aac", "-b:a", "192k",
         str(normalized),
     ]
@@ -657,6 +657,48 @@ def normalize_final_loudness(video_path: Path, target_lufs: float = -14.0) -> bo
         except Exception:
             pass
 
+
+def add_audio_sting(video_path: Path) -> bool:
+    """
+    Prepends a 1.2-second low-volume brand sting (soft sine sweep 220→440 Hz)
+    to the video. Fails silently so a missing ffmpeg filter never blocks the render.
+    """
+    sting_path = None
+    output_path = None
+    try:
+        sting_path = video_path.with_name(video_path.stem + "_sting.wav")
+        output_path = video_path.with_name(video_path.stem + "_stinged.mp4")
+        # Generate sting: 1.2s sine sweep 220→440 Hz, fade in+out, very quiet (-20 dB)
+        subprocess.run([
+            "ffmpeg", "-y",
+            "-f", "lavfi",
+            "-i", "sine=frequency=220:beep_factor=2:duration=1.2",
+            "-af", "volume=-20dB,afade=t=in:ss=0:d=0.15,afade=t=out:st=1.0:d=0.2",
+            str(sting_path),
+        ], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Mix sting quietly under the start of the video audio
+        subprocess.run([
+            "ffmpeg", "-y",
+            "-i", str(video_path),
+            "-i", str(sting_path),
+            "-filter_complex",
+            "[1:a]volume=0.35[s];[0:a][s]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]",
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+            str(output_path),
+        ], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output_path.replace(video_path)
+        return True
+    except Exception as exc:
+        print(f"Audio sting skipped (non-fatal): {exc}")
+        return False
+    finally:
+        for p in (sting_path, output_path):
+            try:
+                if p and p.exists():
+                    p.unlink()
+            except Exception:
+                pass
 
 # ─── VIDEO CLIP HELPERS ───────────────────────────────────────────────────────
 def motion_params(motion, duration):
