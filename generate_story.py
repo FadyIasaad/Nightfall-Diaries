@@ -412,6 +412,20 @@ def fallback_expand_scenes(data: Dict[str, Any], scene_count: int, story_context
     return data
 
 
+def clamp_cell(text: str, max_chars: int = 49000) -> str:
+    """
+    Google Sheets rejects any single cell longer than 50,000 characters with a
+    400 error. Long-form narration (an 18-minute horror story) can exceed that,
+    so any plain-text field written to a cell is clamped to a safe length. The
+    full narration is rebuilt per-shot from scene_prompts at video time anyway,
+    so the script cell is only a human-readable reference.
+    """
+    s = str(text or "")
+    if len(s) <= max_chars:
+        return s
+    return s[:max_chars - 20].rstrip() + " […truncated]"
+
+
 def trim_payload_for_cell(payload: Dict[str, Any], max_chars: int = 49000) -> str:
     """Serialize scene_payload and trim if needed to fit Google Sheets 50k char cell limit."""
     serialized = json.dumps(payload, ensure_ascii=False)
@@ -551,8 +565,8 @@ def main():
             "scenes": package["scenes"],
         }
         update_cell(content_sheet, target_row_number, title_col, package["title"])
-        update_cell(content_sheet, target_row_number, script_col, package["script"])
-        update_cell(content_sheet, target_row_number, description_col, package["description"])
+        update_cell(content_sheet, target_row_number, script_col, clamp_cell(package["script"]))
+        update_cell(content_sheet, target_row_number, description_col, clamp_cell(package["description"]))
         update_cell(content_sheet, target_row_number, scene_prompts_col, trim_payload_for_cell(scene_payload))
         update_cell(content_sheet, target_row_number, status_col, "GENERATED")
         update_cell(content_sheet, target_row_number, created_at_col, utc_now())
