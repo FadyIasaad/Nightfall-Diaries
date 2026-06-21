@@ -427,34 +427,70 @@ def clamp_cell(text: str, max_chars: int = 49000) -> str:
 
 
 def trim_payload_for_cell(payload: Dict[str, Any], max_chars: int = 49000) -> str:
-    """Serialize scene_payload and trim if needed to fit Google Sheets 50k char cell limit."""
-    serialized = json.dumps(payload, ensure_ascii=False)
-    if len(serialized) <= max_chars:
-        return serialized
-    # Step 1: strip redundant scene-level fields already present in shots
-    for scene in payload.get("scenes", []):
-        scene.pop("image_prompt", None)
-        scene.pop("narration_en", None)
-        scene.pop("subtitle_en", None)
-    serialized = json.dumps(payload, ensure_ascii=False)
-    if len(serialized) <= max_chars:
-        return serialized
-    # Step 2: truncate shot image_prompts
-    for scene in payload.get("scenes", []):
-        for shot in scene.get("shots", []):
-            if len(shot.get("image_prompt", "")) > 280:
-                shot["image_prompt"] = shot["image_prompt"][:280]
-    serialized = json.dumps(payload, ensure_ascii=False)
-    if len(serialized) <= max_chars:
-        return serialized
-    # Step 3: truncate shot narration too
-    for scene in payload.get("scenes", []):
-        for shot in scene.get("shots", []):
-            if len(shot.get("narration_en", "")) > 200:
-                shot["narration_en"] = shot["narration_en"][:200]
-            shot.pop("subtitle_en", None)
-    return json.dumps(payload, ensure_ascii=False)
+    """Serialize scene_payload, progressively stripping fields until it fits the 50k cell limit."""
+    import copy
+    p = copy.deepcopy(payload)
 
+    def _s() -> str:
+        return json.dumps(p, ensure_ascii=False)
+
+    if len(_s()) <= max_chars:
+        return _s()
+
+    # Step 1: remove scene-level verbose fields (duplicated in shots)
+    for scene in p.get("scenes", []):
+        for key in ("beat", "voice_style", "subtitle_en"):
+            scene.pop(key, None)
+    if len(_s()) <= max_chars:
+        return _s()
+
+    # Step 2: drop subtitle_en / pause_after from shots; truncate shot image_prompts
+    for scene in p.get("scenes", []):
+        for shot in scene.get("shots", []):
+            shot.pop("subtitle_en", None)
+            shot.pop("pause_after", None)
+            if len(shot.get("image_prompt", "")) > 200:
+                shot["image_prompt"] = shot["image_prompt"][:200]
+    if len(_s()) <= max_chars:
+        return _s()
+
+    # Step 3: truncate shot narration_en and image_prompt more aggressively
+    for scene in p.get("scenes", []):
+        for shot in scene.get("shots", []):
+            if len(shot.get("narration_en", "")) > 120:
+                shot["narration_en"] = shot["narration_en"][:120]
+            if len(shot.get("image_prompt", "")) > 100:
+                shot["image_prompt"] = shot["image_prompt"][:100]
+    if len(_s()) <= max_chars:
+        return _s()
+
+    # Step 4: drop shot-level image_prompts entirely (video gen falls back to scene image_prompt)
+    for scene in p.get("scenes", []):
+        for shot in scene.get("shots", []):
+            shot.pop("image_prompt", None)
+    if len(_s()) <= max_chars:
+        return _s()
+
+    # Step 5: drop shots entirely — generate_video.py re-splits from scene narration_en
+    for scene in p.get("scenes", []):
+        scene.pop("shots", None)
+    if len(_s()) <= max_chars:
+        return _s()
+
+    # Step 6: truncate scene-level narration_en and image_prompt
+    for scene in p.get("scenes", []):
+        if len(scene.get("narration_en", "")) > 400:
+            scene["narration_en"] = scene["narration_en"][:400]
+        if len(scene.get("image_prompt", "")) > 150:
+            scene["image_prompt"] = scene["image_prompt"][:150]
+    if len(_s()) <= max_chars:
+        return _s()
+
+    # Final safety: drop scenes from the end until it fits
+    scenes = p.get("scenes", [])
+    while scenes and len(_s()) > max_chars:
+        scenes.pop()
+    return _s()
 
 def generate_story_package(topic: str, characters: str, theme: str, video_type="horror_story", target_minutes=18, narrator_pov="", setting="", audience="general audience") -> Dict[str, Any]:
     video_type = normalize_type(video_type)
