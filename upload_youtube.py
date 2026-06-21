@@ -272,9 +272,16 @@ def main():
 
     video_id = get_cell(target_row, id_col)
     title = get_cell(target_row, title_col)
+    row_video_type = normalize_type(get_cell(target_row, video_type_col)) if video_type_col else ""
+    is_short = row_video_type == "short"
+
     description = get_cell(target_row, description_col) or (
         "A late-night story for a general adult audience."
     )
+    # Ensure #Shorts tag is present for short-form videos (YouTube Shorts algorithm requirement)
+    if is_short and "Shorts" not in description:
+        description = description.rstrip() + "\n#Shorts"
+
     category = get_cell(target_row, video_type_col) if video_type_col else None
     thumbnail_path = get_cell(target_row, thumbnail_path_col) if thumbnail_path_col else None
 
