@@ -10,13 +10,22 @@ from urllib.parse import quote_plus
 
 import edge_tts
 import requests
-from moviepy.editor import AudioFileClip, ImageClip, VideoFileClip, concatenate_videoclips
+from moviepy.editor import AudioFileClip, CompositeVideoClip, ImageClip, VideoFileClip, concatenate_videoclips
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 if not hasattr(Image, "ANTIALIAS"):
     Image.ANTIALIAS = Image.LANCZOS
 
-from config import AMBIENT_BED_VOLUME, CHANNEL_NAME, ENABLE_AMBIENT_BED
+from config import (
+    AMBIENT_BED_VOLUME,
+    BRAND_STING_VOLUME,
+    CHANNEL_NAME,
+    DEFAULT_AMBIENT_BED_VOLUME,
+    ENABLE_AMBIENT_BED,
+    ENABLE_BRAND_STING,
+    LOUDNESS_TARGET_LUFS,
+    THUMBNAIL_DIR,
+)
 from nd_common import (
     find_optional_column,
     find_column,
@@ -28,6 +37,7 @@ from nd_common import (
     log,
     open_spreadsheet,
     update_cell,
+    update_optional,
 )
 
 CONTENT_SHEET_NAME = "Content"
@@ -37,7 +47,8 @@ FRAMES_DIR = OUTPUT_DIR / "frames"
 VISUALS_DIR = OUTPUT_DIR / "visuals"
 AUDIO_DIR = OUTPUT_DIR / "audio"
 VIDEO_DIR = OUTPUT_DIR / "videos"
-for folder in [OUTPUT_DIR, FRAMES_DIR, VISUALS_DIR, AUDIO_DIR, VIDEO_DIR]:
+THUMB_DIR = THUMBNAIL_DIR
+for folder in [OUTPUT_DIR, FRAMES_DIR, VISUALS_DIR, AUDIO_DIR, VIDEO_DIR, THUMB_DIR]:
     folder.mkdir(parents=True, exist_ok=True)
 
 WIDTH = 1080
@@ -328,6 +339,96 @@ def make_frame(video_id, shot_index, shot, title, image_path, total_shots):
     return frame_path
 
 
+def make_subtitle_overlay(video_id, shot_index, shot, title):
+    """
+    Same caption styling as make_frame, but rendered onto a transparent layer
+    instead of a background photo. Used to burn captions onto stock video
+    clips, which previously had no subtitle text at all.
+    """
+    overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+
+    brand_font = load_font(40, bold=True)
+    title_font = load_font(26, bold=False)
+    sub_font   = load_font(44, bold=True)
+
+    # Soft gradient strips behind the brand/title area and the subtitle area
+    # so captions stay readable over busy stock footage.
+    overlay.alpha_composite(Image.new("RGBA", (WIDTH, 170), (0, 0, 0, 90)), (0, 0))
+    overlay.alpha_composite(Image.new("RGBA", (WIDTH, 340), (0, 0, 0, 150)), (0, HEIGHT - 340))
+
+    draw.text((50, 34), CHANNEL_NAME, font=brand_font, fill=(200, 210, 230, 255))
+    y = 94
+    for line in wrap_ltr(draw, title, title_font, 940, 2):
+        draw.text((50, y), line, font=title_font, fill=(225, 225, 230, 220))
+        y += 36
+
+    subtitle = ""
+    if os.getenv("SHOW_SUBTITLES", "true").lower() not in {"0", "false", "no"}:
+        subtitle = (shot.get("subtitle_en") or shot.get("narration_en", "")).strip()
+
+    draw_centered_lines(
+        draw,
+        wrap_ltr(draw, subtitle, sub_font, 950, 3),
+        sub_font,
+        HEIGHT - 210,
+        (235, 235, 240, 255),
+        spacing=10,
+    )
+
+    overlay_path = FRAMES_DIR / f"caption_{video_id}_{shot_index:03d}.png"
+    overlay.save(overlay_path)
+    return overlay_path
+
+
+# ─── THUMBNAIL GENERATION ──────────────────────────────────────────────────────
+def generate_thumbnail(video_id, title, image_path):
+    """
+    Builds a simple high-contrast custom thumbnail from one of the episode's
+    own cinematic stills: dark gradient band, bold title text. No extra API
+    calls or paid tools, just PIL on an image already generated for the video.
+    """
+    thumb_w, thumb_h = 1280, 720
+    try:
+        img = Image.open(image_path).convert("RGB")
+    except Exception:
+        img = Image.new("RGB", (thumb_w, thumb_h), (10, 10, 14))
+
+    ratio = max(thumb_w / img.width, thumb_h / img.height)
+    new_size = (int(img.width * ratio), int(img.height * ratio))
+    img = img.resize(new_size, Image.LANCZOS)
+    left = (img.width - thumb_w) // 2
+    top = (img.height - thumb_h) // 2
+    img = img.crop((left, top, left + thumb_w, top + thumb_h)).convert("RGBA")
+
+    # Darken slightly overall, then a stronger gradient band behind the title
+    # so bold text stays readable over any background.
+    img.alpha_composite(Image.new("RGBA", (thumb_w, thumb_h), (0, 0, 0, 60)))
+    band_h = 260
+    img.alpha_composite(Image.new("RGBA", (thumb_w, band_h), (0, 0, 0, 175)), (0, thumb_h - band_h))
+
+    draw = ImageDraw.Draw(img)
+    title_font = load_font(72, bold=True)
+    brand_font = load_font(34, bold=True)
+
+    lines = wrap_ltr(draw, title, title_font, thumb_w - 100, max_lines=2)
+    total_h = len(lines) * 84
+    y = thumb_h - band_h + (band_h - total_h) // 2 - 10
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=title_font)
+        x = (thumb_w - (bbox[2] - bbox[0])) // 2
+        for dx, dy in [(-4, -4), (4, -4), (-4, 4), (4, 4)]:
+            draw.text((x + dx, y + dy), line, font=title_font, fill=(0, 0, 0, 230))
+        draw.text((x, y), line, font=title_font, fill=(245, 245, 250, 255))
+        y += 84
+
+    draw.text((40, 30), CHANNEL_NAME.upper(), font=brand_font, fill=(230, 200, 120, 255))
+
+    thumb_path = THUMB_DIR / f"thumb_{video_id}.jpg"
+    img.convert("RGB").save(thumb_path, quality=92)
+    return thumb_path
+
+
 # ─── VOICE: HUMANIZE + SSML AUDIO ────────────────────────────────────────────
 def humanize_text(text):
     clean = re.sub(r"\s+", " ", str(text or "").replace("\n", " ")).strip()
@@ -454,13 +555,38 @@ def build_ambient_bed(duration_seconds, output_path):
     return output_path
 
 
-def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10) -> bool:
+def build_brand_sting(output_path, duration=1.6):
+    """
+    Generates a short two-tone chime entirely with ffmpeg's built-in audio
+    sources, the same zero-copyright-risk approach as the ambient bed. Mixed
+    in at the very start of every video for channel recognition.
+    """
+    filter_complex = (
+        "[0:a]volume=1.0,afade=t=in:st=0:d=0.05,afade=t=out:st=0.55:d=0.35[note1];"
+        "[1:a]volume=0.8,afade=t=in:st=0:d=0.05,afade=t=out:st=0.85:d=0.45[note2];"
+        "[note1][note2]concat=n=2:v=0:a=1[chime]"
+    )
+    command = [
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-i", "aevalsrc=0.35*sin(2*PI*392*t):duration=0.65",
+        "-f", "lavfi", "-i", "aevalsrc=0.30*sin(2*PI*523*t):duration=0.95",
+        "-filter_complex", filter_complex,
+        "-map", "[chime]", "-ac", "2", "-ar", "48000",
+        str(output_path),
+    ]
+    subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return output_path
+
+
+def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10, sting_volume: float = 0.0) -> bool:
     """
     Mixes the generated ambient bed quietly under the video's existing
-    narration track. Wrapped so a failure here never breaks the whole render;
-    the video is still perfectly usable without the ambient layer.
+    narration track, and (if sting_volume > 0) overlays the brand sting at the
+    very start. Wrapped so a failure here never breaks the whole render; the
+    video is still perfectly usable without these layers.
     """
     bed_path = None
+    sting_path = None
     mixed_path = None
     try:
         with VideoFileClip(str(video_path)) as probe:
@@ -468,12 +594,23 @@ def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10) -> bool:
         bed_path = video_path.with_name(video_path.stem + "_ambient_bed.wav")
         build_ambient_bed(duration, bed_path)
         mixed_path = video_path.with_name(video_path.stem + "_mixed.mp4")
+
+        inputs = ["-i", str(video_path), "-i", str(bed_path)]
+        if sting_volume > 0:
+            sting_path = video_path.with_name(video_path.stem + "_sting.wav")
+            build_brand_sting(sting_path)
+            inputs += ["-i", str(sting_path)]
+            filter_complex = (
+                f"[1:a]volume={ambient_volume}[amb];"
+                f"[2:a]volume={sting_volume}[sting];"
+                "[0:a][amb][sting]amix=inputs=3:duration=first:normalize=0[aout]"
+            )
+        else:
+            filter_complex = f"[1:a]volume={ambient_volume}[amb];[0:a][amb]amix=inputs=2:duration=first:normalize=0[aout]"
+
         command = [
-            "ffmpeg", "-y",
-            "-i", str(video_path),
-            "-i", str(bed_path),
-            "-filter_complex",
-            f"[1:a]volume={ambient_volume}[amb];[0:a][amb]amix=inputs=2:duration=first:normalize=0[aout]",
+            "ffmpeg", "-y", *inputs,
+            "-filter_complex", filter_complex,
             "-map", "0:v", "-map", "[aout]",
             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
             str(mixed_path),
@@ -482,15 +619,43 @@ def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10) -> bool:
         mixed_path.replace(video_path)
         return True
     except Exception as exc:
-        print(f"Ambient bed skipped (non-fatal): {exc}")
+        print(f"Ambient bed / sting skipped (non-fatal): {exc}")
         return False
     finally:
-        for p in (bed_path, mixed_path):
+        for p in (bed_path, sting_path, mixed_path):
             try:
                 if p and p.exists():
                     p.unlink()
             except Exception:
                 pass
+
+
+def normalize_final_loudness(video_path: Path, target_lufs: float = -14.0) -> bool:
+    """
+    Final loudness pass over the fully mixed video (narration + ambient + sting
+    already combined), so every upload lands at the same perceived loudness
+    regardless of how the layers above summed. Non-fatal on failure.
+    """
+    normalized_path = video_path.with_name(video_path.stem + "_loudnorm.mp4")
+    try:
+        command = [
+            "ffmpeg", "-y", "-i", str(video_path),
+            "-af", f"loudnorm=I={target_lufs}:TP=-1.5:LRA=11",
+            "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+            str(normalized_path),
+        ]
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        normalized_path.replace(video_path)
+        return True
+    except Exception as exc:
+        print(f"Final loudness normalization skipped (non-fatal): {exc}")
+        return False
+    finally:
+        try:
+            if normalized_path.exists():
+                normalized_path.unlink()
+        except Exception:
+            pass
 
 
 # ─── VIDEO CLIP HELPERS ───────────────────────────────────────────────────────
@@ -592,13 +757,26 @@ def fetch_visual(shot, safe_id, index, numeric_seed):
 
 
 # ─── MAIN VIDEO BUILDER ───────────────────────────────────────────────────────
-def create_video(video_id, title, scene_payload):
+def extract_thumbnail_source_frame(video_path: Path) -> Path:
+    """Fallback for when every shot used stock video (no still image to reuse)."""
+    frame_path = video_path.with_name(video_path.stem + "_thumb_source.jpg")
+    try:
+        with VideoFileClip(str(video_path)) as clip:
+            t = min(2.0, max(0.0, clip.duration * 0.1))
+            clip.save_frame(str(frame_path), t=t)
+    except Exception as exc:
+        print(f"Thumbnail source frame extraction failed (non-fatal): {exc}")
+    return frame_path
+
+
+def create_video(video_id, title, scene_payload, video_type="horror_story"):
     shots = flatten_story(scene_payload)
     if len(shots) < 8:
         raise ValueError(f"Too few shots ({len(shots)}). Regenerate story first.")
     safe_id    = re.sub(r"[^A-Za-z0-9_-]", "_", str(video_id).strip() or "video")
     video_path = VIDEO_DIR / f"nightfall_diaries_{safe_id}.mp4"
     clips, voice_sources, visual_sources = [], [], []
+    thumb_source_path = None
 
     for i, shot in enumerate(shots, start=1):
         audio_path, voice_source = create_shot_audio(shot, safe_id, i)
@@ -610,8 +788,13 @@ def create_video(video_id, title, scene_payload):
         visual_sources.append(visual_source)
 
         if visual_path.suffix.lower() == ".mp4":
-            clip = stock_video_clip(visual_path, duration).set_audio(audio_clip)
+            base_clip = stock_video_clip(visual_path, duration)
+            caption_path = make_subtitle_overlay(safe_id, i, shot, title)
+            caption_clip = ImageClip(str(caption_path)).set_duration(duration)
+            clip = CompositeVideoClip([base_clip, caption_clip], size=(WIDTH, HEIGHT)).set_audio(audio_clip)
         else:
+            if thumb_source_path is None:
+                thumb_source_path = visual_path
             frame_path = make_frame(safe_id, i, shot, title, visual_path, len(shots))
             clip = animated_photo_clip(frame_path, duration, shot.get("camera_motion", "slow_zoom_in")).set_audio(audio_clip)
 
@@ -638,17 +821,28 @@ def create_video(video_id, title, scene_payload):
         except Exception:
             pass
 
+    normalized_type = str(video_type or "horror_story").strip().lower().replace("-", "_").replace(" ", "_")
+    ambient_volume = AMBIENT_BED_VOLUME.get(normalized_type, DEFAULT_AMBIENT_BED_VOLUME)
+    sting_volume = BRAND_STING_VOLUME if ENABLE_BRAND_STING else 0.0
+
     ambient_applied = False
-    if ENABLE_AMBIENT_BED:
-        ambient_applied = add_ambient_bed(video_path, AMBIENT_BED_VOLUME)
+    if ENABLE_AMBIENT_BED or sting_volume > 0:
+        ambient_applied = add_ambient_bed(video_path, ambient_volume, sting_volume)
+
+    loudness_applied = normalize_final_loudness(video_path, LOUDNESS_TARGET_LUFS)
+
+    if thumb_source_path is None:
+        thumb_source_path = extract_thumbnail_source_frame(video_path)
+    thumb_path = generate_thumbnail(safe_id, title, thumb_source_path)
 
     summary = (
         ",".join(sorted(set(voice_sources)))
         + f" | visuals={','.join(sorted(set(visual_sources)))}"
         + f" | shots={len(shots)}"
         + f" | ambient={'on' if ambient_applied else 'off'}"
+        + f" | loudnorm={'on' if loudness_applied else 'off'}"
     )
-    return video_path, summary
+    return video_path, summary, thumb_path
 
 
 # ─── ENTRY POINT ─────────────────────────────────────────────────────────────
@@ -668,6 +862,7 @@ def main():
     audio_status_col = find_column(headers, "audio_status")
     video_type_col   = find_optional_column(headers, "video_type")
     error_message_col = find_optional_column(headers, "error_message")
+    thumbnail_path_col = find_optional_column(headers, "thumbnail_path")
 
     requested_video_type = (
         (os.getenv("TBT_VIDEO_TYPE", "") or "")
@@ -691,12 +886,13 @@ def main():
     video_id   = get_cell(target_row, id_col)
     title      = get_cell(target_row, title_col)
     scene_raw  = get_cell(target_row, scene_prompts_col)
+    row_video_type = get_cell(target_row, video_type_col) if video_type_col else "horror_story"
     if not title or not scene_raw:
         raise ValueError("Missing title or scene_prompts.")
     scene_payload = json.loads(scene_raw)
 
     try:
-        video_path, voice_source = create_video(video_id, title, scene_payload)
+        video_path, voice_source, thumb_path = create_video(video_id, title, scene_payload, row_video_type)
     except Exception as exc:
         if error_message_col:
             update_cell(content_sheet, target_row_number, error_message_col, str(exc)[:1500])
@@ -706,12 +902,14 @@ def main():
     update_cell(content_sheet, target_row_number, status_col,       "VIDEO_CREATED")
     update_cell(content_sheet, target_row_number, image_status_col, "CREATED")
     update_cell(content_sheet, target_row_number, audio_status_col, voice_source)
+    update_optional(content_sheet, target_row_number, thumbnail_path_col, str(thumb_path))
     if error_message_col:
         update_cell(content_sheet, target_row_number, error_message_col, "")
     log(logs_sheet, video_id, "GENERATE_VIDEO",
-        f"Created video: {video_path}. Voice: {voice_source}")
+        f"Created video: {video_path}. Voice: {voice_source}. Thumbnail: {thumb_path}")
     print(f"Video created: {video_path}")
     print(f"Voice source: {voice_source}")
+    print(f"Thumbnail created: {thumb_path}")
 
 
 if __name__ == "__main__":

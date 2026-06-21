@@ -10,16 +10,31 @@ IDEAS_FILE = Path(os.getenv("TBT_IDEAS_FILE", "content_ideas_by_type.csv"))
 REQUIRED_HEADERS = [
     "id", "topic", "characters", "theme", "video_type", "target_minutes", "narrator_pov", "setting", "audience", "made_for_kids",
     "script", "title", "description", "status", "video_url", "created_at", "scene_prompts", "image_status", "audio_status",
-    "youtube_status", "youtube_video_id", "video_file_path", "error_message"
+    "youtube_status", "youtube_video_id", "video_file_path", "error_message", "thumbnail_path"
 ]
 
 VALID_TYPES = {"short", "horror_story", "confession_story"}
 
 
+def col_letter(n):
+    """Convert a 1-indexed column number to A1 notation letters (handles columns past Z)."""
+    s = ""
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
 def ensure_headers(sheet):
     values = get_all_values(sheet)
-    if not values:
-        run_with_retry("Writing Content headers", lambda: sheet.update("A1:W1", [REQUIRED_HEADERS], value_input_option="USER_ENTERED"))
+    # No data rows beyond (or including) a header row means there is nothing real
+    # to preserve -- this also covers sheets where Google Sheets auto-generated a
+    # placeholder "Table" header row: in that case we overwrite it cleanly
+    # instead of appending our headers after the junk.
+    has_real_data = len(values) > 1
+    if not has_real_data:
+        end_col = col_letter(len(REQUIRED_HEADERS))
+        run_with_retry("Writing Content headers", lambda: sheet.update(f"A1:{end_col}1", [REQUIRED_HEADERS], value_input_option="USER_ENTERED"))
         return REQUIRED_HEADERS, []
     headers = values[0]
     changed = False
@@ -28,7 +43,8 @@ def ensure_headers(sheet):
             headers.append(h)
             changed = True
     if changed:
-        run_with_retry("Updating Content headers", lambda: sheet.update("A1:W1", [headers], value_input_option="USER_ENTERED"))
+        end_col = col_letter(len(headers))
+        run_with_retry("Updating Content headers", lambda: sheet.update(f"A1:{end_col}1", [headers], value_input_option="USER_ENTERED"))
     return headers, values[1:]
 
 

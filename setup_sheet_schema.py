@@ -6,22 +6,22 @@ LOGS_SHEET_NAME = "Logs"
 REQUIRED_HEADERS = [
     "id", "topic", "characters", "theme", "video_type", "target_minutes", "narrator_pov", "setting", "audience", "made_for_kids",
     "script", "title", "description", "status", "video_url", "created_at", "scene_prompts", "image_status", "audio_status",
-    "youtube_status", "youtube_video_id", "video_file_path", "error_message"
+    "youtube_status", "youtube_video_id", "video_file_path", "error_message", "thumbnail_path"
 ]
 
 STARTER_ROWS = [
     ["ND-HOR-001", "A woman house-sitting a remote cabin notices the photos on the wall change slightly each night",
      "the house-sitter, the absent owners", "what you stop questioning becomes what controls you", "horror_story", 18,
      "an anonymous adult narrator, calm and a little tired", "a remote cabin in the woods", "general audience", "FALSE",
-     "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
+     "", "", "", "IDEA", "", "", "", "", "", "", "", "", "", ""],
     ["ND-CONF-001", "A woman spends a year quietly building the case that ends her husband's affair and his career in the same week",
      "the narrator, her husband, his coworker", "patience can be its own kind of justice", "confession_story", 16,
      "the woman herself, calm and exact, telling it after the fact", "a quiet suburban home", "general audience", "FALSE",
-     "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
+     "", "", "", "IDEA", "", "", "", "", "", "", "", "", "", ""],
     ["ND-SH-001", "A woman gets a porch-camera notification from a doorbell that was unplugged three years ago",
      "the narrator", "some things don't stop just because you disconnect them", "short", 1,
      "an anonymous adult narrator, calm and unsettled", "a quiet front porch at night", "general audience", "FALSE",
-     "", "", "", "IDEA", "", "", "", "", "", "", "", "", ""],
+     "", "", "", "IDEA", "", "", "", "", "", "", "", "", "", ""],
 ]
 
 

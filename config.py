@@ -83,4 +83,29 @@ VIDEO_TYPES = {
 # narration track. Generated, not downloaded, so there is zero copyright risk.
 # This is what gives the channel its "fall asleep to" quality.
 ENABLE_AMBIENT_BED = True
-AMBIENT_BED_VOLUME = 0.10  # 0.0–1.0, relative level under the narration
+# Shorts are usually watched on a phone speaker in a noisier environment, so the
+# bed sits quieter there; long-form is usually watched with headphones at night,
+# so it can sit a little more present. Falls back to "horror_story" level for
+# any video_type not listed here.
+AMBIENT_BED_VOLUME = {
+    "short": 0.06,
+    "horror_story": 0.10,
+    "confession_story": 0.10,
+}
+DEFAULT_AMBIENT_BED_VOLUME = 0.10
+
+# ─── FINAL LOUDNESS NORMALIZATION ────────────────────────────────────────────
+# Applied as the last pass on the fully mixed video so every upload lands at a
+# consistent loudness and viewers never have to reach for the volume knob
+# between videos. -14 LUFS is YouTube's own reference target.
+LOUDNESS_TARGET_LUFS = -14.0
+
+# ─── BRAND STING ──────────────────────────────────────────────────────────────
+# A short, fully generated (not sourced) two-tone chime mixed in at the very
+# start of every video for channel recognition. Same zero-copyright-risk
+# approach as the ambient bed: synthesized with ffmpeg, nothing downloaded.
+ENABLE_BRAND_STING = True
+BRAND_STING_VOLUME = 0.45
+
+# ─── THUMBNAILS ───────────────────────────────────────────────────────────────
+THUMBNAIL_DIR = OUTPUT_DIR / "thumbnails"

@@ -124,7 +124,62 @@ def add_to_playlist_if_configured(youtube, youtube_video_id: str, category: Opti
         print(f"Playlist insert skipped after upload because it failed: {exc}")
 
 
-def upload_video_to_youtube(video_path: Path, title: str, description: str, category: Optional[str] = None) -> str:
+def set_thumbnail_if_available(youtube, youtube_video_id: str, thumbnail_path: Optional[str]) -> bool:
+    """
+    Uploads a custom thumbnail if one was generated and the file still exists.
+    Some channels need phone/identity verification before YouTube allows
+    custom thumbnails, so this is wrapped to never break the upload itself.
+    """
+    if not thumbnail_path:
+        print("No thumbnail path recorded. Skipping custom thumbnail.")
+        return False
+    path = Path(thumbnail_path)
+    if not path.exists():
+        print(f"Thumbnail file not found on disk: {path}. Skipping custom thumbnail.")
+        return False
+    try:
+        youtube.thumbnails().set(
+            videoId=youtube_video_id,
+            media_body=MediaFileUpload(str(path), mimetype="image/jpeg"),
+        ).execute()
+        print(f"Custom thumbnail set from {path}")
+        return True
+    except Exception as exc:
+        if is_permission_error(exc):
+            print("Thumbnail upload skipped: channel is not yet verified for custom thumbnails.")
+        else:
+            print(f"Thumbnail upload skipped (non-fatal): {exc}")
+        return False
+
+
+def build_final_description(description: str, video_type: Optional[str]) -> str:
+    """
+    Appends type-appropriate hashtags. Shorts get #Shorts so YouTube reliably
+    classifies them into the Shorts shelf; long-form gets topical tags instead.
+    """
+    base = (description or "").strip() or (
+        "A late-night story for a general adult audience."
+    )
+    normalized = normalize_type(video_type)
+    if normalized == "short":
+        tags_line = "#Shorts #nightfalldiaries #scarystories"
+    elif normalized == "confession_story":
+        tags_line = "#nightfalldiaries #truestory #confession"
+    else:
+        tags_line = "#nightfalldiaries #truestory #scarystories"
+
+    if tags_line.split()[0].lower() not in base.lower():
+        base = f"{base}\n\n{tags_line}"
+    return base[:5000]
+
+
+def upload_video_to_youtube(
+    video_path: Path,
+    title: str,
+    description: str,
+    category: Optional[str] = None,
+    thumbnail_path: Optional[str] = None,
+) -> str:
     youtube = get_youtube_service()
 
     privacy = os.getenv("YOUTUBE_PRIVACY", "private").strip().lower()
@@ -134,7 +189,7 @@ def upload_video_to_youtube(video_path: Path, title: str, description: str, cate
     request_body = {
         "snippet": {
             "title": title[:100],
-            "description": description[:5000],
+            "description": build_final_description(description, category)[:5000],
             "categoryId": os.getenv("YOUTUBE_CATEGORY_ID", "24"),
         },
         "status": {
@@ -161,6 +216,7 @@ def upload_video_to_youtube(video_path: Path, title: str, description: str, cate
     # Do NOT call videos.list here. The token has youtube.upload scope only,
     # so the upload can succeed and videos.list would still fail with 403.
     add_to_playlist_if_configured(youtube, youtube_video_id, category)
+    set_thumbnail_if_available(youtube, youtube_video_id, thumbnail_path)
     return youtube_video_id
 
 
@@ -185,6 +241,7 @@ def main():
     video_file_path_col = find_optional_column(headers, "video_file_path")
     error_message_col = find_optional_column(headers, "error_message")
     video_type_col = find_optional_column(headers, "video_type")
+    thumbnail_path_col = find_optional_column(headers, "thumbnail_path")
 
     requested_video_type = normalize_type(os.getenv("TBT_VIDEO_TYPE", ""))
 
@@ -216,10 +273,10 @@ def main():
     video_id = get_cell(target_row, id_col)
     title = get_cell(target_row, title_col)
     description = get_cell(target_row, description_col) or (
-        "A late-night story for a general adult audience.\n\n"
-        "#nightfalldiaries #truestory #scarystories"
+        "A late-night story for a general adult audience."
     )
     category = get_cell(target_row, video_type_col) if video_type_col else None
+    thumbnail_path = get_cell(target_row, thumbnail_path_col) if thumbnail_path_col else None
 
     if not title:
         raise ValueError(f"Missing title in row {target_row_number}")
@@ -228,7 +285,7 @@ def main():
         video_path = find_video_for_id(video_id)
         update_optional(content_sheet, target_row_number, video_file_path_col, str(video_path))
 
-        youtube_video_id = upload_video_to_youtube(video_path, title, description, category)
+        youtube_video_id = upload_video_to_youtube(video_path, title, description, category, thumbnail_path)
         youtube_url = f"https://youtu.be/{youtube_video_id}"
 
         update_cell(content_sheet, target_row_number, youtube_status_col, "UPLOADED_PRIVATE")
