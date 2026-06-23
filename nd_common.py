@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import re
 import time
 from datetime import datetime, timezone
 
@@ -37,7 +38,32 @@ def is_retryable_error(error: Exception) -> bool:
     return any(signal in text for signal in TRANSIENT_ERROR_TEXT)
 
 
-def run_with_retry(action_name, func, max_attempts=5, max_wait_seconds=45):
+def extract_retry_after_seconds(error: Exception):
+    """
+    Gemini 429 (quota) errors carry the exact number of seconds to wait before
+    the quota window resets, e.g. 'Please retry in 46.3s' and a
+    'retry_delay { seconds: 46 }' block. Honor that instead of guessing with a
+    short exponential backoff that just keeps firing inside the same exhausted
+    minute. Returns a float of seconds, or None if no hint is present.
+    """
+    text = str(error)
+    # Pattern 1: "Please retry in 46.328613312s"
+    m = re.search(r"retry in\s+([0-9]+(?:\.[0-9]+)?)\s*s", text, re.IGNORECASE)
+    if m:
+        return float(m.group(1))
+    # Pattern 2: "retry_delay { seconds: 46 }"
+    m = re.search(r"retry_delay\s*\{[^}]*seconds:\s*([0-9]+)", text, re.IGNORECASE)
+    if m:
+        return float(m.group(1))
+    return None
+
+
+def is_quota_error(error: Exception) -> bool:
+    text = str(error).lower()
+    return "429" in text or "quota" in text or "resource_exhausted" in text or "rate limit" in text
+
+
+def run_with_retry(action_name, func, max_attempts=6, max_wait_seconds=75):
     last_error = None
     for attempt in range(1, max_attempts + 1):
         try:
@@ -47,7 +73,17 @@ def run_with_retry(action_name, func, max_attempts=5, max_wait_seconds=45):
             last_error = exc
             if not is_retryable_error(exc) or attempt == max_attempts:
                 raise
-            wait_seconds = min(max_wait_seconds, (2 ** attempt) + random.uniform(0, 2.5))
+            # For quota/rate-limit errors, wait the exact time the server told
+            # us to (plus a small buffer) so the per-minute window fully resets.
+            server_delay = extract_retry_after_seconds(exc)
+            if server_delay is not None:
+                wait_seconds = min(max_wait_seconds, server_delay + random.uniform(1.5, 4.0))
+            elif is_quota_error(exc):
+                # No explicit hint but it is a quota error: wait out a full
+                # minute window rather than a few seconds.
+                wait_seconds = min(max_wait_seconds, 62 + random.uniform(0, 5))
+            else:
+                wait_seconds = min(max_wait_seconds, (2 ** attempt) + random.uniform(0, 2.5))
             print(f"Temporary error during {action_name}: {exc}")
             print(f"Waiting {wait_seconds:.1f} seconds before retry...")
             time.sleep(wait_seconds)
