@@ -1,11 +1,21 @@
 import json
 import os
 import re
+import time
 from typing import Any, Dict, List
 
 import google.generativeai as genai
 
-from config import CINEMATIC_VISUAL_STYLE, DEFAULT_NARRATOR_STYLE, VIDEO_TYPES
+from config import (
+    CHANNEL_NAME,
+    CINEMATIC_VISUAL_STYLE,
+    DEFAULT_NARRATOR_STYLE,
+    VIDEO_TYPES,
+    ENABLE_STORY_CHUNKING,
+    STORY_CHUNK_MIN_MINUTES,
+    GEMINI_MODEL_FALLBACKS,
+    STORY_BACKUP_DIR,
+)
 from nd_common import (
     find_column,
     find_optional_column,
@@ -427,70 +437,90 @@ def clamp_cell(text: str, max_chars: int = 49000) -> str:
 
 
 def trim_payload_for_cell(payload: Dict[str, Any], max_chars: int = 49000) -> str:
-    """Serialize scene_payload, progressively stripping fields until it fits the 50k cell limit."""
-    import copy
-    p = copy.deepcopy(payload)
-
-    def _s() -> str:
-        return json.dumps(p, ensure_ascii=False)
-
-    if len(_s()) <= max_chars:
-        return _s()
-
-    # Step 1: remove scene-level verbose fields (duplicated in shots)
-    for scene in p.get("scenes", []):
-        for key in ("beat", "voice_style", "subtitle_en"):
-            scene.pop(key, None)
-    if len(_s()) <= max_chars:
-        return _s()
-
-    # Step 2: drop subtitle_en / pause_after from shots; truncate shot image_prompts
-    for scene in p.get("scenes", []):
+    """Serialize scene_payload and trim if needed to fit Google Sheets 50k char cell limit."""
+    serialized = json.dumps(payload, ensure_ascii=False)
+    if len(serialized) <= max_chars:
+        return serialized
+    # Step 1: strip redundant scene-level fields already present in shots
+    for scene in payload.get("scenes", []):
+        scene.pop("image_prompt", None)
+        scene.pop("narration_en", None)
+        scene.pop("subtitle_en", None)
+    serialized = json.dumps(payload, ensure_ascii=False)
+    if len(serialized) <= max_chars:
+        return serialized
+    # Step 2: truncate shot image_prompts
+    for scene in payload.get("scenes", []):
         for shot in scene.get("shots", []):
+            if len(shot.get("image_prompt", "")) > 280:
+                shot["image_prompt"] = shot["image_prompt"][:280]
+    serialized = json.dumps(payload, ensure_ascii=False)
+    if len(serialized) <= max_chars:
+        return serialized
+    # Step 3: truncate shot narration too
+    for scene in payload.get("scenes", []):
+        for shot in scene.get("shots", []):
+            if len(shot.get("narration_en", "")) > 200:
+                shot["narration_en"] = shot["narration_en"][:200]
             shot.pop("subtitle_en", None)
-            shot.pop("pause_after", None)
-            if len(shot.get("image_prompt", "")) > 200:
-                shot["image_prompt"] = shot["image_prompt"][:200]
-    if len(_s()) <= max_chars:
-        return _s()
+    return json.dumps(payload, ensure_ascii=False)
 
-    # Step 3: truncate shot narration_en and image_prompt more aggressively
-    for scene in p.get("scenes", []):
-        for shot in scene.get("shots", []):
-            if len(shot.get("narration_en", "")) > 120:
-                shot["narration_en"] = shot["narration_en"][:120]
-            if len(shot.get("image_prompt", "")) > 100:
-                shot["image_prompt"] = shot["image_prompt"][:100]
-    if len(_s()) <= max_chars:
-        return _s()
 
-    # Step 4: drop shot-level image_prompts entirely (video gen falls back to scene image_prompt)
-    for scene in p.get("scenes", []):
-        for shot in scene.get("shots", []):
-            shot.pop("image_prompt", None)
-    if len(_s()) <= max_chars:
-        return _s()
+def _precall_pacing_delay():
+    """
+    Free-tier Gemini allows only 5 requests/minute. Pace before each model call
+    so back-to-back runs don't immediately trip the per-minute quota. Set
+    GEMINI_PRECALL_DELAY=0 once billing is enabled.
+    """
+    try:
+        delay = float(os.getenv("GEMINI_PRECALL_DELAY", "13"))
+    except ValueError:
+        delay = 13.0
+    if delay > 0:
+        print(f"Pacing for free-tier quota: waiting {delay:.0f}s before the model call...")
+        time.sleep(delay)
 
-    # Step 5: drop shots entirely — generate_video.py re-splits from scene narration_en
-    for scene in p.get("scenes", []):
-        scene.pop("shots", None)
-    if len(_s()) <= max_chars:
-        return _s()
 
-    # Step 6: truncate scene-level narration_en and image_prompt
-    for scene in p.get("scenes", []):
-        if len(scene.get("narration_en", "")) > 400:
-            scene["narration_en"] = scene["narration_en"][:400]
-        if len(scene.get("image_prompt", "")) > 150:
-            scene["image_prompt"] = scene["image_prompt"][:150]
-    if len(_s()) <= max_chars:
-        return _s()
+def generate_json_with_models(prompt: str, max_output_tokens: int = 32768, label: str = "model call") -> Dict[str, Any]:
+    """
+    Runs a single prompt against the configured model, falling back through
+    GEMINI_MODEL_FALLBACKS if one model is quota-blocked or errors. Each model
+    attempt still gets the full retry/backoff treatment from run_with_retry, so
+    a transient 429 on the primary is waited out before we ever fall back.
+    Returns parsed JSON.
+    """
+    genai.configure(api_key=require_env("GEMINI_API_KEY"))
+    # De-duplicate while preserving order.
+    seen = set()
+    models = []
+    for name in GEMINI_MODEL_FALLBACKS:
+        if name and name not in seen:
+            seen.add(name)
+            models.append(name)
 
-    # Final safety: drop scenes from the end until it fits
-    scenes = p.get("scenes", [])
-    while scenes and len(_s()) > max_chars:
-        scenes.pop()
-    return _s()
+    last_error = None
+    for model_name in models:
+        model = genai.GenerativeModel(model_name)
+
+        def call_model():
+            response = model.generate_content(
+                prompt,
+                generation_config={"temperature": 0.88, "top_p": 0.93, "max_output_tokens": max_output_tokens},
+            )
+            return json.loads(clean_json_response(response.text))
+
+        try:
+            _precall_pacing_delay()
+            print(f"{label}: using model {model_name}")
+            return run_with_retry(f"{label} ({model_name})", call_model, max_attempts=6)
+        except Exception as exc:
+            last_error = exc
+            print(f"Model {model_name} failed after retries: {exc}")
+            print("Falling back to the next model if one is available...")
+            continue
+
+    raise RuntimeError(f"All models failed for {label}. Last error: {last_error}")
+
 
 def generate_story_package(topic: str, characters: str, theme: str, video_type="horror_story", target_minutes=18, narrator_pov="", setting="", audience="general audience") -> Dict[str, Any]:
     video_type = normalize_type(video_type)
@@ -502,17 +532,26 @@ def generate_story_package(topic: str, characters: str, theme: str, video_type="
         scene_count = clamp_int(settings.get("scene_count", 24), 18, 14, 60)
     story_context = build_story_context(characters, narrator_pov, setting)
 
-    genai.configure(api_key=require_env("GEMINI_API_KEY"))
-    model = genai.GenerativeModel(MODEL_NAME)
+    prompt = build_prompt(topic, characters, theme, video_type, target_minutes, scene_count, story_context, audience)
+    data = generate_json_with_models(prompt, max_output_tokens=32768, label="Generating story package")
 
-    def call_model():
-        response = model.generate_content(
-            build_prompt(topic, characters, theme, video_type, target_minutes, scene_count, story_context, audience),
-            generation_config={"temperature": 0.88, "top_p": 0.93, "max_output_tokens": 32768},
-        )
-        return json.loads(clean_json_response(response.text))
+    # Optional chunked deepening for long-form, off by default (free-tier safe).
+    # When enabled (billing on), we ask the model to expand the middle of the
+    # story in a second pass for richer, longer narration. Single model call
+    # otherwise. Shorts are never chunked.
+    if (
+        ENABLE_STORY_CHUNKING
+        and video_type != "short"
+        and target_minutes >= STORY_CHUNK_MIN_MINUTES
+        and isinstance(data.get("scenes"), list)
+        and len(data["scenes"]) >= 4
+    ):
+        try:
+            data = _expand_story_middle(data, topic, characters, theme, video_type, target_minutes, scene_count, story_context, audience)
+        except Exception as exc:
+            # Non-fatal: keep the perfectly good single-call story if expansion fails.
+            print(f"Chunked expansion skipped (non-fatal): {exc}")
 
-    data = run_with_retry("Generating story package", call_model, max_attempts=4)
     if "title" not in data or not data["title"]:
         data["title"] = "A Story From Nightfall Diaries"
     if "description" not in data or not data["description"]:
@@ -524,6 +563,35 @@ def generate_story_package(topic: str, characters: str, theme: str, video_type="
     data["scenes"] = [normalize_scene(scene, i, story_context, video_type) for i, scene in enumerate(data["scenes"], start=1)]
     data["script"] = " ".join(scene["narration_en"] for scene in data["scenes"])
     data["emotional_score"] = emotional_score(data)
+    return data
+
+
+def _expand_story_middle(data, topic, characters, theme, video_type, target_minutes, scene_count, story_context, audience):
+    """
+    Second-pass deepening for long-form stories (only when chunking is enabled).
+    Asks the model to lengthen and enrich the existing middle scenes without
+    changing the plot, then merges the richer narration back in. Uses one extra
+    model call (hence free-tier-gated upstream).
+    """
+    existing = data.get("scenes", [])
+    middle = existing[1:-1] if len(existing) >= 3 else existing
+    middle_json = json.dumps({"scenes": middle}, ensure_ascii=False)
+    expand_prompt = (
+        f"You are deepening the MIDDLE of an existing {video_type.replace('_',' ')} for {CHANNEL_NAME}.\n"
+        f"Theme: {theme}\nStory context: {story_context}\n\n"
+        "Here are the current middle scenes as JSON. Rewrite ONLY their narration to be richer, "
+        "slower, and more sensory, keeping the exact same events, order, and number of scenes. "
+        "Do not add or remove scenes. Do not change image_prompt. Keep each scene's emotion field. "
+        "Return ONLY valid JSON of the form {\"scenes\": [...]} with the same length and keys.\n\n"
+        f"{middle_json}"
+    )
+    expanded = generate_json_with_models(expand_prompt, max_output_tokens=32768, label="Deepening story middle")
+    new_middle = expanded.get("scenes", [])
+    if isinstance(new_middle, list) and len(new_middle) == len(middle):
+        data["scenes"] = [existing[0]] + new_middle + [existing[-1]] if len(existing) >= 3 else new_middle
+        print(f"Chunked expansion merged {len(new_middle)} middle scenes.")
+    else:
+        print("Chunked expansion returned mismatched scenes; keeping original.")
     return data
 
 
@@ -600,6 +668,33 @@ def main():
             "target_minutes": package.get("target_minutes", target_minutes),
             "scenes": package["scenes"],
         }
+
+        # Save a local backup of the full story BEFORE touching the sheet, so the
+        # generated work is never lost even if a sheet write fails. Picked up by
+        # the workflow's upload-artifact step. Non-fatal if it can't be written.
+        try:
+            STORY_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+            safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", str(video_id).strip() or "story")
+            backup_path = STORY_BACKUP_DIR / f"story_{safe_id}.json"
+            with open(backup_path, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {
+                        "id": video_id,
+                        "title": package.get("title", ""),
+                        "description": package.get("description", ""),
+                        "script": package.get("script", ""),
+                        "video_type": video_type,
+                        "target_minutes": package.get("target_minutes", target_minutes),
+                        "scene_payload": scene_payload,
+                    },
+                    fh,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            print(f"Story backup saved: {backup_path}")
+        except Exception as backup_exc:
+            print(f"Story backup skipped (non-fatal): {backup_exc}")
+
         update_cell(content_sheet, target_row_number, title_col, package["title"])
         update_cell(content_sheet, target_row_number, script_col, clamp_cell(package["script"]))
         update_cell(content_sheet, target_row_number, description_col, clamp_cell(package["description"]))
