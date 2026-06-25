@@ -836,28 +836,15 @@ def flatten_story(scene_payload):
 
 # ─── VISUAL FETCH (AI primary, stock fallback) ────────────────────────────────
 def fetch_visual(shot, safe_id, index, numeric_seed):
+    """Generate a cinematic AI image for this shot (Pollinations.ai, no stock APIs)."""
     prompt = (
         f"{shot.get('image_prompt','')} "
         f"Emotion: {shot.get('emotion','calm')}. "
         f"Moment: {shot.get('narration_en','')}"
     )
     cinematic_path = VISUALS_DIR / f"visual_{safe_id}_{index:03d}.jpg"
-    if not USE_STOCK_FIRST:
-        try:
-            pollinations_cinematic_image(prompt, cinematic_path, seed=numeric_seed * 1000 + index)
-            return cinematic_path, "ai_cinematic", "dark cinematic still"
-        except Exception as exc:
-            print(f"AI cinematic image failed for shot {index}, trying stock backup: {exc}")
-    try:
-        return fetch_stock_visual(shot, safe_id, index)
-    except Exception as stock_exc:
-        if USE_STOCK_FIRST:
-            pollinations_cinematic_image(prompt, cinematic_path, seed=numeric_seed * 1000 + index)
-            return cinematic_path, "ai_cinematic_after_stock", "dark cinematic still"
-        raise RuntimeError(
-            f"All visual sources failed for shot {index}. "
-            f"AI cinematic + stock backup failed: {stock_exc}"
-        ) from stock_exc
+    pollinations_cinematic_image(prompt, cinematic_path, seed=numeric_seed * 1000 + index)
+    return cinematic_path, "ai_cinematic", "dark cinematic still"
 
 
 # ─── MAIN VIDEO BUILDER ───────────────────────────────────────────────────────
@@ -936,6 +923,7 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
     thumb_source_path = None
     shot_durations = []
     n_shots = len(shots)
+    numeric_seed = abs(hash(safe_id)) % (10 ** 8)
 
     for i, shot in enumerate(shots, start=1):
         audio_path, voice_source = create_shot_audio(shot, safe_id, i)
@@ -944,7 +932,7 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
         duration = max(3.0, audio_clip.duration + min(0.6, max(0.15, float(shot.get("pause_after", 0.25) or 0.25))))
         shot_durations.append(duration)
 
-        visual_path, visual_source, query = fetch_stock_visual(shot, safe_id, i)
+        visual_path, visual_source, query = fetch_visual(shot, safe_id, i, numeric_seed)
         visual_sources.append(visual_source)
 
         if visual_path.suffix.lower() == ".mp4":
