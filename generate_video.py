@@ -540,26 +540,53 @@ def _build_ssml(text: str, emotion: str, style: dict) -> str:
 
 
 async def create_edge_audio_async(text, output_path, emotion="calm"):
+    """
+    Generate audio with edge-tts using SSML for per-emotion prosody.
+    Retries up to 3 times with exponential backoff on network errors.
+    Does NOT fall back to espeak — if all attempts fail the exception propagates
+    so the job fails loudly with a clear error instead of producing robotic audio.
+    """
     style = EMOTION_STYLE.get(str(emotion).lower(), EMOTION_STYLE["calm"])
     voice = style["voice"]
     clean = humanize_text(text)
+    last_error = None
 
-    try:
-        ssml = _build_ssml(clean, emotion, style)
-        communicate = edge_tts.Communicate(text=ssml, voice=voice)
-        await communicate.save(str(output_path))
-        return
-    except Exception:
-        pass
+    for attempt in range(3):
+        if attempt > 0:
+            wait = 2 ** attempt  # 2s, 4s
+            print(f"edge-tts attempt {attempt + 1}/3 after {wait}s delay (last error: {last_error})")
+            await asyncio.sleep(wait)
 
-    communicate = edge_tts.Communicate(
-        text=clean,
-        voice=voice,
-        rate=style["rate"],
-        pitch=style["pitch"],
-        volume=style["volume"],
+        # First try: SSML with per-emotion prosody (best quality)
+        try:
+            ssml = _build_ssml(clean, emotion, style)
+            communicate = edge_tts.Communicate(ssml, voice=voice)
+            await communicate.save(str(output_path))
+            print(f"edge-tts SSML succeeded on attempt {attempt + 1}")
+            return
+        except Exception as exc:
+            last_error = exc
+
+        # Second try (same attempt): plain text with prosody params
+        try:
+            communicate = edge_tts.Communicate(
+                text=clean,
+                voice=voice,
+                rate=style["rate"],
+                pitch=style["pitch"],
+                volume=style["volume"],
+            )
+            await communicate.save(str(output_path))
+            print(f"edge-tts plain succeeded on attempt {attempt + 1}")
+            return
+        except Exception as exc:
+            last_error = exc
+
+    raise RuntimeError(
+        f"edge-tts failed after 3 attempts for emotion='{emotion}', voice='{voice}'. "
+        f"Last error: {last_error}. "
+        "Check GitHub Actions network access to Microsoft TTS servers."
     )
-    await communicate.save(str(output_path))
 
 
 def create_edge_audio(text, output_path, emotion="calm"):
@@ -578,7 +605,7 @@ def normalize_audio(input_path, video_id, shot_index):
     normalized = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}_norm.m4a"
     command = [
         "ffmpeg", "-y", "-i", str(input_path),
-        "-af", "loudnorm=I=-18:TP=-1.5:LRA=9,acompressor=threshold=-22dB:ratio=2.2:attack=20:release=250",
+        "-af", "loudnorm=I=-14:TP=-1.5:LRA=11,acompressor=threshold=-22dB:ratio=2.2:attack=20:release=250",
         "-ar", "48000", "-ac", "2", "-c:a", "aac", "-b:a", "192k",
         str(normalized),
     ]
@@ -589,17 +616,17 @@ def normalize_audio(input_path, video_id, shot_index):
         return input_path
 
 def create_shot_audio(shot, video_id, shot_index):
+    """
+    Generate narration audio for a single shot using edge-tts (neural voice).
+    espeak-ng fallback is intentionally removed — robotic audio is not acceptable.
+    If edge-tts fails, the job will fail with a clear error message.
+    """
     narration = shot.get("narration_en", "").strip()
     emotion   = shot.get("emotion", "calm").strip().lower()
     mp3_path  = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}.mp3"
-    wav_path  = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}.wav"
-    try:
-        create_edge_audio(narration, mp3_path, emotion)
-        voice = EMOTION_STYLE.get(emotion, EMOTION_STYLE["calm"])["voice"]
-        return normalize_audio(mp3_path, video_id, shot_index), f"edge-ssml:{voice}:{emotion}"
-    except Exception:
-        create_espeak_audio(narration, wav_path)
-        return normalize_audio(wav_path, video_id, shot_index), "espeak-ng:fallback"
+    create_edge_audio(narration, mp3_path, emotion)
+    voice = EMOTION_STYLE.get(emotion, EMOTION_STYLE["calm"])["voice"]
+    return normalize_audio(mp3_path, video_id, shot_index), f"edge-ssml:{voice}:{emotion}"
 
 
 # ─── AMBIENT SOUND BED (generated, not sourced — zero copyright risk) ────────
@@ -964,15 +991,18 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
         clips = faded
 
     video = concatenate_videoclips(clips, method="compose")
+    # Use "faster" preset (not "medium") so long horror/confession renders don't
+    # hit the GitHub Actions 6-hour limit.  YouTube re-encodes anyway, so the
+    # small quality trade-off is invisible to viewers.
     video.write_videofile(
         str(video_path),
         fps=FPS,
         codec="libx264",
         audio_codec="aac",
-        preset="medium",
+        preset="faster",
         threads=2,
-        bitrate="9000k",
-        ffmpeg_params=["-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart"],
+        bitrate="4000k",
+        ffmpeg_params=["-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart"],
     )
     video.close()
     for clip in clips:

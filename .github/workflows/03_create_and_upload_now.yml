@@ -50,6 +50,7 @@ jobs:
         run: python generate_story.py
 
       - name: Generate video
+        timeout-minutes: 300
         env:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
@@ -65,7 +66,7 @@ jobs:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          YOUTUBE_PRIVACY: "private"
+          YOUTUBE_PRIVACY: "public"
           TBT_VIDEO_TYPE: ${{ inputs.video_type }}
         run: python upload_youtube.py
 
