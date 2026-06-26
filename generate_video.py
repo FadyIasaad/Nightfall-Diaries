@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed as futures_as_completed
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -925,14 +926,51 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
     n_shots = len(shots)
     numeric_seed = abs(hash(safe_id)) % (10 ** 8)
 
+    # ── Parallel pre-fetch: audio + visuals ──────────────────────────────────
+    # Both are network-bound (edge-tts → Microsoft, images → Pollinations.ai).
+    # Running them in parallel cuts total I/O wait from N×(audio+image) to
+    # roughly max(single_audio, single_image). Rendering stays sequential so
+    # peak RAM stays flat (the OOM fix).
+    print(f"[prefetch] Starting parallel fetch of {n_shots} audio clips and visuals…")
+    audio_cache  = {}   # {1-based index: (path, voice_source)}
+    visual_cache = {}   # {1-based index: (path, visual_source, query)}
+
+    def _fetch_audio_task(args):
+        idx, shot = args
+        return idx, create_shot_audio(shot, safe_id, idx)
+
+    def _fetch_visual_task(args):
+        idx, shot = args
+        return idx, fetch_visual(shot, safe_id, idx, numeric_seed)
+
+    # Audio and visuals can run truly concurrently in one pool.
+    # Cap audio at 4 workers (edge-tts rate limits) and visuals at 6 (Pollinations).
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        audio_futs  = {pool.submit(_fetch_audio_task,  (i, s)): i for i, s in enumerate(shots, 1)}
+        visual_futs = {pool.submit(_fetch_visual_task, (i, s)): i for i, s in enumerate(shots, 1)}
+        all_futs = {**audio_futs, **visual_futs}
+        done_a = done_v = 0
+        for fut in futures_as_completed(all_futs):
+            if fut in audio_futs:
+                idx, result = fut.result()
+                audio_cache[idx] = result
+                done_a += 1
+                print(f"[prefetch] audio {done_a}/{n_shots}")
+            else:
+                idx, result = fut.result()
+                visual_cache[idx] = result
+                done_v += 1
+                print(f"[prefetch] visual {done_v}/{n_shots}")
+    print(f"[prefetch] Done. Starting render loop…")
+
     for i, shot in enumerate(shots, start=1):
-        audio_path, voice_source = create_shot_audio(shot, safe_id, i)
+        audio_path, voice_source = audio_cache[i]
         voice_sources.append(voice_source)
         audio_clip = AudioFileClip(str(audio_path))
         duration = max(3.0, audio_clip.duration + min(0.6, max(0.15, float(shot.get("pause_after", 0.25) or 0.25))))
         shot_durations.append(duration)
 
-        visual_path, visual_source, query = fetch_visual(shot, safe_id, i, numeric_seed)
+        visual_path, visual_source, query = visual_cache[i]
         visual_sources.append(visual_source)
 
         if visual_path.suffix.lower() == ".mp4":
