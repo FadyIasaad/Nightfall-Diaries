@@ -233,20 +233,20 @@ def pollinations_cinematic_image(prompt, output_path, seed):
     Nightfall Diaries aesthetic: restrained, atmospheric, low-light.
     """
     style_prefix = (
-        "ultra-detailed dark cinematic still, moody late-night atmosphere, "
-        "deep shadows with a single warm or cold practical light source, subtle film grain, "
-        "muted desaturated color palette with one accent color, restrained and suggestive not graphic, "
-        "photoreal-painterly hybrid illustration, slow contemplative composition, "
-        "faces obscured, in shadow, turned away, or not shown, "
+        "semi-realistic dark animation, atmospheric illustrated artwork, "
+        "moody late-night scene, deep cinematic shadows, rich saturated dark tones, "
+        "digital painting style, detailed background environment, "
+        "anime-inspired semi-realistic illustration, dramatic lighting, "
+        "faces stylized or partially hidden, no graphic gore, "
         "no text, no watermark, no logo, vertical 9:16 aspect ratio. "
         "Scene: "
     )
     full_prompt = style_prefix + str(prompt)
     encoded = quote_plus(full_prompt)
     urls = [
+        f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=flux-anime",
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=flux",
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true",
-        f"https://pollinations.ai/p/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true",
     ]
     last_error = None
     for url in urls:
