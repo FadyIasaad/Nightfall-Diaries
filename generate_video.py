@@ -2,8 +2,10 @@ import asyncio
 import json
 import math
 import os
+import random
 import re
 import subprocess
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed as futures_as_completed
 from pathlib import Path
@@ -228,10 +230,24 @@ def fetch_stock_visual(shot, safe_id, index):
 
 
 # ─── AI CINEMATIC IMAGE (dark, moody Nightfall Diaries look) ─────────────────
-def pollinations_cinematic_image(prompt, output_path, seed):
+_POLLINATIONS_MAX_CONCURRENCY = int(os.getenv("ND_POLLINATIONS_CONCURRENCY", "2"))
+_POLLINATIONS_SEMAPHORE = threading.Semaphore(_POLLINATIONS_MAX_CONCURRENCY)
+_POLLINATIONS_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+
+def _status_code_of(exc):
+    resp = getattr(exc, "response", None)
+    return getattr(resp, "status_code", None)
+
+
+def pollinations_cinematic_image(prompt, output_path, seed, max_attempts=6):
     """
     Generates a dark, moody cinematic still via Pollinations.ai, matching the
     Nightfall Diaries aesthetic: restrained, atmospheric, low-light.
+
+    Robust against rate limiting: limits concurrent requests via a global
+    semaphore and retries each image with exponential backoff on 429 / transient
+    server errors so a momentary rate limit no longer fails the whole render.
     """
     style_prefix = (
         "semi-realistic dark animation, atmospheric illustrated artwork, "
@@ -250,17 +266,30 @@ def pollinations_cinematic_image(prompt, output_path, seed):
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true",
     ]
     last_error = None
-    for url in urls:
-        try:
-            r = requests.get(url, timeout=150)
-            r.raise_for_status()
-            output_path.write_bytes(r.content)
-            with Image.open(output_path) as img:
-                img.verify()
-            return output_path
-        except Exception as exc:
-            last_error = exc
-    raise RuntimeError(f"AI cinematic image failed: {last_error}")
+    for attempt in range(1, max_attempts + 1):
+        saw_retryable = False
+        for url in urls:
+            try:
+                with _POLLINATIONS_SEMAPHORE:
+                    r = requests.get(url, timeout=150)
+                r.raise_for_status()
+                output_path.write_bytes(r.content)
+                with Image.open(output_path) as img:
+                    img.verify()
+                return output_path
+            except Exception as exc:
+                last_error = exc
+                status = _status_code_of(exc)
+                if status is None or status in _POLLINATIONS_RETRYABLE_STATUS:
+                    saw_retryable = True
+        if attempt < max_attempts and saw_retryable:
+            wait = min(45.0, (2 ** attempt) + random.uniform(0, 3))
+            print(f"[pollinations] attempt {attempt}/{max_attempts} rate-limited/failed "
+                  f"({last_error}); retrying in {wait:.1f}s")
+            time.sleep(wait)
+        elif not saw_retryable:
+            break
+    raise RuntimeError(f"AI cinematic image failed after retries: {last_error}")
 
 
 # ─── SUBTITLE / FRAME HELPERS ─────────────────────────────────────────────────
