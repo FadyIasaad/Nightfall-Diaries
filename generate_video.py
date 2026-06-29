@@ -865,16 +865,64 @@ def flatten_story(scene_payload):
 
 
 # ─── VISUAL FETCH (AI primary, stock fallback) ────────────────────────────────
+def make_placeholder_visual(shot, output_path, seed):
+    """Atmospheric dark placeholder frame, generated locally with no network.
+
+    Used when AI image generation is unavailable (e.g. Pollinations.ai rate
+    limiting / 429s). This guarantees every shot has a valid full-size frame so
+    a single failed image can never abort the whole render. Real AI images are
+    still used whenever the provider cooperates.
+    """
+    rnd = random.Random(seed)
+    top = (rnd.randint(8, 16), rnd.randint(8, 18), rnd.randint(16, 30))
+    bottom = (max(0, top[0] - 6), max(0, top[1] - 6), max(0, top[2] - 10))
+    # Build the vertical gradient as a 1px-wide column, then stretch to width
+    # (fast: HEIGHT iterations instead of WIDTH*HEIGHT).
+    column = Image.new("RGB", (1, HEIGHT))
+    cpx = column.load()
+    for y in range(HEIGHT):
+        t = y / max(1, HEIGHT - 1)
+        cpx[0, y] = (
+            int(top[0] + (bottom[0] - top[0]) * t),
+            int(top[1] + (bottom[1] - top[1]) * t),
+            int(top[2] + (bottom[2] - top[2]) * t),
+        )
+    base = column.resize((WIDTH, HEIGHT)).convert("RGB")
+    # Soft atmospheric glow blob (distant light) for a less flat look.
+    glow = Image.new("L", (WIDTH, HEIGHT), 0)
+    gd = ImageDraw.Draw(glow)
+    gx = rnd.randint(int(WIDTH * 0.25), int(WIDTH * 0.75))
+    gy = rnd.randint(int(HEIGHT * 0.2), int(HEIGHT * 0.6))
+    gr = rnd.randint(int(WIDTH * 0.25), int(WIDTH * 0.5))
+    gd.ellipse([gx - gr, gy - gr, gx + gr, gy + gr], fill=55)
+    glow = glow.filter(ImageFilter.GaussianBlur(gr * 0.6))
+    tint = Image.new("RGB", (WIDTH, HEIGHT), (38, 42, 64))
+    base = Image.composite(tint, base, glow)
+    base = base.filter(ImageFilter.GaussianBlur(2))
+    base.save(output_path, "JPEG", quality=88)
+    return output_path
+
+
 def fetch_visual(shot, safe_id, index, numeric_seed):
-    """Generate a cinematic AI image for this shot (Pollinations.ai, no stock APIs)."""
+    """Generate a cinematic AI image for this shot (Pollinations.ai).
+
+    Falls back to a locally-generated atmospheric placeholder if the AI provider
+    is unavailable, so rate limiting degrades quality gracefully instead of
+    failing the entire render.
+    """
     prompt = (
         f"{shot.get('image_prompt','')} "
         f"Emotion: {shot.get('emotion','calm')}. "
         f"Moment: {shot.get('narration_en','')}"
     )
     cinematic_path = VISUALS_DIR / f"visual_{safe_id}_{index:03d}.jpg"
-    pollinations_cinematic_image(prompt, cinematic_path, seed=numeric_seed * 1000 + index)
-    return cinematic_path, "ai_cinematic", "dark cinematic still"
+    try:
+        pollinations_cinematic_image(prompt, cinematic_path, seed=numeric_seed * 1000 + index)
+        return cinematic_path, "ai_cinematic", "dark cinematic still"
+    except Exception as exc:
+        print(f"[visual] AI image failed for shot {index} ({exc}); using atmospheric placeholder.")
+        make_placeholder_visual(shot, cinematic_path, seed=numeric_seed * 1000 + index)
+        return cinematic_path, "placeholder", "atmospheric placeholder"
 
 
 # ─── MAIN VIDEO BUILDER ───────────────────────────────────────────────────────
