@@ -230,9 +230,31 @@ def fetch_stock_visual(shot, safe_id, index):
 
 
 # ─── AI CINEMATIC IMAGE (dark, moody Nightfall Diaries look) ─────────────────
-_POLLINATIONS_MAX_CONCURRENCY = int(os.getenv("ND_POLLINATIONS_CONCURRENCY", "2"))
+_POLLINATIONS_MAX_CONCURRENCY = int(os.getenv("ND_POLLINATIONS_CONCURRENCY", "1"))
 _POLLINATIONS_SEMAPHORE = threading.Semaphore(_POLLINATIONS_MAX_CONCURRENCY)
 _POLLINATIONS_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_POLLINATIONS_TOKEN = os.getenv("POLLINATIONS_TOKEN", "").strip()
+# Respect Pollinations rate tiers: anonymous = 1 req/15s, Seed (free token) = 1
+# req/5s. Space requests globally and send the token so we stop tripping 429s.
+_POLLINATIONS_MIN_INTERVAL = float(
+    os.getenv("ND_POLLINATIONS_MIN_INTERVAL", "5.5" if _POLLINATIONS_TOKEN else "16")
+)
+_POLLINATIONS_RATE_LOCK = threading.Lock()
+_POLLINATIONS_LAST_TS = [0.0]
+
+
+def _pollinations_headers():
+    return {"Authorization": f"Bearer {_POLLINATIONS_TOKEN}"} if _POLLINATIONS_TOKEN else {}
+
+
+def _pollinations_wait_turn():
+    """Block until at least _POLLINATIONS_MIN_INTERVAL has passed since the last
+    request, so concurrent shots don't burst past the provider's rate tier."""
+    with _POLLINATIONS_RATE_LOCK:
+        wait = _POLLINATIONS_MIN_INTERVAL - (time.monotonic() - _POLLINATIONS_LAST_TS[0])
+        if wait > 0:
+            time.sleep(wait)
+        _POLLINATIONS_LAST_TS[0] = time.monotonic()
 
 
 def _status_code_of(exc):
@@ -271,7 +293,8 @@ def pollinations_cinematic_image(prompt, output_path, seed, max_attempts=6):
         for url in urls:
             try:
                 with _POLLINATIONS_SEMAPHORE:
-                    r = requests.get(url, timeout=150)
+                    _pollinations_wait_turn()
+                    r = requests.get(url, timeout=150, headers=_pollinations_headers())
                 r.raise_for_status()
                 output_path.write_bytes(r.content)
                 with Image.open(output_path) as img:

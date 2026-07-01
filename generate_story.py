@@ -176,9 +176,12 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
         beats = HOOK_BEATS
         target_words = "110 to 170"
         instruction = (
-            "Create a sharp, unsettling YouTube Short hook story. It must work as a single complete "
-            "moment, not a trailer for a longer story: a fast, real-feeling account with an immediate "
-            "hook and a final line that lands hard."
+            "Create a sharp, unsettling YouTube Short hook story of about 50-70 SECONDS. It must work as a "
+            "single complete moment, not a trailer for a longer story: a fast, real-feeling account with an "
+            "immediate hook and a final line that lands hard. CRITICAL LENGTH RULE: the ENTIRE narration, "
+            "across every scene and every shot combined, must total only 110-160 English words. Each shot's "
+            "narration_en is exactly ONE short spoken sentence of about 6-12 words. Never write paragraphs "
+            "in a short."
         )
     elif video_type == "confession_story":
         beats = CONFESSION_BEATS
@@ -202,7 +205,11 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
         )
 
     beat_text = "\n".join(f"{i+1}. {beat}" for i, beat in enumerate(beats[:scene_count])) if video_type != "short" else "\n".join(f"{i+1}. {beat}" for i, beat in enumerate(beats))
-    title_rule = "under 70 characters, no clickbait ALL CAPS" if video_type == "short" else "under 95 characters, intriguing but not clickbait-spam"
+    title_rule = (
+        "a punchy, curiosity-driven title under 70 characters that makes someone need to click it; no ALL CAPS, no clickbait spam"
+        if video_type == "short"
+        else "a curiosity-driven title under 95 characters that opens a question in the viewer's mind; intriguing but not clickbait-spam"
+    )
 
     return f"""
 You are the showrunner, novelist, and voice director for the YouTube channel Nightfall Diaries.
@@ -226,6 +233,9 @@ Hard quality rules:
   violence, no sexual content, no step-by-step instructions for harming anyone or anything. This must stay
   comfortably general-audience and monetization-safe.
 - No moral lecture at the end. Let the story land on its own.
+- The story must have ONE clear throughline from hook to payoff: a single situation that escalates and then
+  resolves with a final line that recontextualizes what came before. It must actually tell a complete story,
+  never a set of disconnected, repetitive vignettes.
 - English narration only.
 - Every scene needs a distinct location/action/emotional beat so the video never repeats the same visual.
   The first scene must hook within 2 seconds.
@@ -244,7 +254,7 @@ Scene beats:
 Return valid JSON only, exactly in this shape:
 {{
   "title": "YouTube title {title_rule}",
-  "description": "YouTube description for a general adult audience. Include a few relevant hashtags.",
+  "description": "A 2-3 sentence YouTube description that hooks the viewer and teases the premise without spoiling the ending, for a general adult audience. End it with a final line of 4-6 relevant lowercase hashtags, e.g. #nightfalldiaries #scarystories #truestory #horror #creepy",
   "audience": "general audience",
   "video_type": "{video_type}",
   "target_minutes": {target_minutes},
@@ -582,7 +592,7 @@ def generate_story_package(topic: str, characters: str, theme: str, video_type="
     settings = VIDEO_TYPES[video_type]
     target_minutes = clamp_int(target_minutes, int(settings.get("duration_minutes", 18)), 1, 60)
     if video_type == "short":
-        scene_count = 6
+        scene_count = 3
     else:
         scene_count = clamp_int(settings.get("scene_count", 24), 18, 14, 60)
     story_context = build_story_context(characters, narrator_pov, setting)
