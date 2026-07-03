@@ -856,14 +856,48 @@ def distribute_narration(narration, max_shots=4):
     return chunks
 
 
+def dedupe_sentences(text):
+    """Join text keeping each distinct sentence only once (kills the repeats)."""
+    sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", (text or "").strip()) if s.strip()]
+    seen, out = set(), []
+    for s in sents:
+        key = re.sub(r"\s+", " ", s.lower())
+        if key not in seen:
+            seen.add(key)
+            out.append(s)
+    return " ".join(out)
+
+
+def scene_full_narration(scene, raw_shots):
+    """Return the fullest, de-duplicated narration for a scene. Newer stories put
+    the complete narration in scene['narration_en']; older ones keep the real
+    detail in the per-shot narration and leave only a one-line summary at the
+    scene level. Pick whichever source carries more words so a scene is never
+    starved down to a single sentence, while still de-duplicating to avoid loops."""
+    scene_text = str(scene.get("narration_en", "") or "").strip()
+    shot_text = dedupe_sentences(
+        " ".join(
+            str(s.get("narration_en", "")).strip()
+            for s in (raw_shots or [])
+            if str(s.get("narration_en", "")).strip()
+        )
+    )
+    wc = lambda t: len(re.findall(r"\b[\w']+\b", t or ""))
+    if wc(shot_text) > wc(scene_text):
+        return shot_text or scene_text
+    return scene_text or shot_text
+
+
 def split_scene_to_shots(scene):
-    scene_narration = str(scene.get("narration_en", "") or "").strip()
     raw = scene.get("shots") if isinstance(scene.get("shots"), list) else []
     raw = raw[:4]
     motions = ["slow_zoom_in", "gentle_pan_left", "tiny_handheld", "slow_zoom_out"]
+    # Use the fullest narration available (older stories keep the real content in
+    # the per-shot fields, not the scene summary), de-duplicated so it never loops.
+    scene_narration = scene_full_narration(scene, raw)
     if raw:
-        # Distribute the scene narration across the stored shots with NO overlap so
-        # the voice never repeats a line. Keep each shot's own image_prompt/visuals.
+        # Distribute that narration across the stored shots with NO overlap so the
+        # voice never repeats a line. Keep each shot's own image_prompt/visuals.
         chunks = distribute_narration(scene_narration, len(raw))
         out = []
         for i, shot in enumerate(raw):
