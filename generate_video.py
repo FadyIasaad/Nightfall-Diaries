@@ -667,8 +667,12 @@ def create_shot_audio(shot, video_id, shot_index):
     espeak-ng fallback is intentionally removed — robotic audio is not acceptable.
     If edge-tts fails, the job will fail with a clear error message.
     """
-    narration = shot.get("narration_en", "").strip()
-    emotion   = shot.get("emotion", "calm").strip().lower()
+    narration = (shot.get("narration_en") or "").strip()
+    if not narration:
+        # Backstop: a shot with no narration must not crash the whole render.
+        # Fall back to its subtitle, else a soft neutral beat.
+        narration = (shot.get("subtitle_en") or "").strip() or "A quiet moment passed."
+    emotion   = (shot.get("emotion", "calm") or "calm").strip().lower()
     mp3_path  = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}.mp3"
     create_edge_audio(narration, mp3_path, emotion)
     voice = EMOTION_STYLE.get(emotion, EMOTION_STYLE["calm"])["voice"]
@@ -869,7 +873,15 @@ def split_scene_to_shots(scene):
             s["subtitle_en"] = chunk
             out.append(s)
         out = [s for s in out if str(s.get("narration_en", "")).strip()]
-        return out or [dict(raw[0], narration_en=scene_narration, subtitle_en=scene_narration)]
+        if out:
+            return out
+        # Every chunk was empty (blank scene narration) — emit one shot with a
+        # guaranteed non-empty line so audio generation never receives empty text.
+        safe = scene_narration or "A long, deliberate silence settled over the room."
+        base = dict(raw[0]) if raw else {"shot_number": 1, "emotion": scene.get("emotion", "calm")}
+        base["narration_en"] = safe
+        base["subtitle_en"] = safe
+        return [base]
     # No stored shots: derive up to 4 visual shots from the narration sentences.
     parts = [x.strip() for x in re.split(r"(?<=[.!?])\s+", scene_narration) if x.strip()]
     if not parts:
