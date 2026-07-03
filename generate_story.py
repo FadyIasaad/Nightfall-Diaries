@@ -118,6 +118,80 @@ def clean_json_response(text: str) -> str:
     return text[start : end + 1]
 
 
+def _balance_close(s: str) -> str:
+    """Best-effort repair for a truncated JSON string: drop a dangling trailing
+    comma, close an unterminated string, and append the closing brackets needed
+    to balance any still-open objects/arrays. String contents are respected so
+    braces inside text don't confuse the counter."""
+    stack = []
+    in_str = False
+    esc = False
+    for ch in s:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            stack.append("}")
+        elif ch == "[":
+            stack.append("]")
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+    t = s.rstrip()
+    if in_str:
+        t += '"'          # close a string that was cut off mid-value
+    t = t.rstrip()
+    if t.endswith(","):
+        t = t[:-1].rstrip()
+    return t + "".join(reversed(stack))
+
+
+def parse_model_json(raw: str) -> Dict[str, Any]:
+    """Parse the model's JSON. With JSON mode the output is normally already
+    valid; if a long generation still gets truncated, repair it by balance-closing
+    and, if needed, trimming back to the last complete top-level object boundary
+    so a partial response degrades gracefully instead of hard-failing the run."""
+    cleaned = clean_json_response(raw)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    # 1) Try to simply balance-close the whole thing.
+    try:
+        return json.loads(_balance_close(cleaned))
+    except json.JSONDecodeError:
+        pass
+    # 2) Trim back through each '}' boundary (outside strings) and retry.
+    positions, in_str, esc = [], False, False
+    for i, ch in enumerate(cleaned):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "}":
+            positions.append(i)
+    for i in reversed(positions):
+        try:
+            return json.loads(_balance_close(cleaned[: i + 1]))
+        except json.JSONDecodeError:
+            continue
+    # Nothing parsed — surface a clear, retryable error.
+    raise ValueError("Could not parse or repair JSON from model response")
+
+
 def word_count(text: str) -> int:
     return len(re.findall(r"\b[\w']+\b", text or ""))
 
@@ -598,9 +672,17 @@ def generate_json_with_models(prompt: str, max_output_tokens: int = 32768, label
         def call_model():
             response = model.generate_content(
                 prompt,
-                generation_config={"temperature": 0.88, "top_p": 0.93, "max_output_tokens": max_output_tokens},
+                generation_config={
+                    "temperature": 0.88,
+                    "top_p": 0.93,
+                    "max_output_tokens": max_output_tokens,
+                    # JSON mode (structured output): constrain the model to emit
+                    # syntactically valid JSON, eliminating the free-form
+                    # "Expecting ',' delimiter" parse failures on long stories.
+                    "response_mime_type": "application/json",
+                },
             )
-            return json.loads(clean_json_response(response.text))
+            return parse_model_json(response.text)
 
         try:
             _precall_pacing_delay()
@@ -629,7 +711,10 @@ def generate_story_package(topic: str, characters: str, theme: str, video_type="
     story_context = build_story_context(characters, narrator_pov, setting)
 
     prompt = build_prompt(topic, characters, theme, video_type, target_minutes, scene_count, story_context, audience)
-    data = generate_json_with_models(prompt, max_output_tokens=32768, label="Generating story package")
+    # Long-form stories need generous output headroom so the JSON isn't truncated
+    # mid-generation (a source of malformed JSON). Shorts are tiny.
+    max_tokens = 16384 if video_type == "short" else 65536
+    data = generate_json_with_models(prompt, max_output_tokens=max_tokens, label="Generating story package")
 
     # Optional chunked deepening for long-form, off by default (free-tier safe).
     # When enabled (billing on), we ask the model to expand the middle of the
@@ -681,7 +766,7 @@ def _expand_story_middle(data, topic, characters, theme, video_type, target_minu
         "Return ONLY valid JSON of the form {\"scenes\": [...]} with the same length and keys.\n\n"
         f"{middle_json}"
     )
-    expanded = generate_json_with_models(expand_prompt, max_output_tokens=32768, label="Deepening story middle")
+    expanded = generate_json_with_models(expand_prompt, max_output_tokens=65536, label="Deepening story middle")
     new_middle = expanded.get("scenes", [])
     if isinstance(new_middle, list) and len(new_middle) == len(middle):
         data["scenes"] = [existing[0]] + new_middle + [existing[-1]] if len(existing) >= 3 else new_middle

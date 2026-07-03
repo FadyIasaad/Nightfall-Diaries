@@ -123,11 +123,14 @@ ENABLE_STORY_CHUNKING = os.getenv("ENABLE_STORY_CHUNKING", "0").strip().lower() 
 STORY_CHUNK_MIN_MINUTES = 8  # only chunk stories at/above this target length
 
 # If the primary model fails (quota, transient error), try these in order.
-# All are free-tier eligible. The first that succeeds wins.
+# The first that succeeds wins. Only currently free-tier-eligible models:
+# gemini-2.0-flash / gemini-2.0-flash-lite were retired on 2026-03-03 (free-tier
+# quota went to 0), so they are removed. As of 2026 the free text models are
+# gemini-2.5-flash (250 req/day) and gemini-2.5-flash-lite (1000 req/day) — the
+# lite model has the higher daily quota, making it a strong last-resort fallback.
 GEMINI_MODEL_FALLBACKS = [
     os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash-lite",
 ]
 
 # ─── LOCAL STORY BACKUP (artifact) ───────────────────────────────────────────
