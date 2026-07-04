@@ -89,11 +89,11 @@ ENABLE_AMBIENT_BED = True
 # so it can sit a little more present. Falls back to "horror_story" level for
 # any video_type not listed here.
 AMBIENT_BED_VOLUME = {
-    "short": 0.06,
-    "horror_story": 0.10,
-    "confession_story": 0.10,
+    "short": 0.09,
+    "horror_story": 0.14,
+    "confession_story": 0.14,
 }
-DEFAULT_AMBIENT_BED_VOLUME = 0.10
+DEFAULT_AMBIENT_BED_VOLUME = 0.14
 
 # ─── FINAL LOUDNESS NORMALIZATION ────────────────────────────────────────────
 # Applied as the last pass on the fully mixed video so every upload lands at a

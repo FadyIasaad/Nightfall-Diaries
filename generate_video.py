@@ -16,6 +16,8 @@ import requests
 from moviepy.editor import AudioFileClip, CompositeVideoClip, ImageClip, VideoFileClip, concatenate_videoclips
 from moviepy.video.fx.fadein import fadein
 from moviepy.video.fx.fadeout import fadeout
+from moviepy.audio.fx.audio_fadein import audio_fadein
+from moviepy.audio.fx.audio_fadeout import audio_fadeout
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 if not hasattr(Image, "ANTIALIAS"):
@@ -695,16 +697,21 @@ def build_ambient_bed(duration_seconds, output_path):
     """
     duration = max(3.0, float(duration_seconds))
     fade_out_start = max(0.0, duration - 6.0)
+    # Soft minor-chord synth pad (A2 + C3 + E3) with a slow tremolo = the gentle
+    # "instrument" under the narration, over a quiet rain layer. Fully generated
+    # with ffmpeg, so zero copyright risk and nothing is downloaded.
+    pad = ("(0.16*sin(2*PI*110*t)+0.12*sin(2*PI*130.81*t)+0.10*sin(2*PI*164.81*t))"
+           "*(0.82+0.18*sin(2*PI*0.07*t))")
     filter_complex = (
-        "[0:a]lowpass=f=700,highpass=f=80,volume=0.5[rain];"
-        "[1:a]volume=0.35[drone];"
-        "[rain][drone]amix=inputs=2:duration=longest:normalize=0[bed];"
+        "[0:a]lowpass=f=700,highpass=f=80,volume=0.35[rain];"
+        "[1:a]lowpass=f=1400,volume=0.9[pad];"
+        "[rain][pad]amix=inputs=2:duration=longest:normalize=0[bed];"
         f"[bed]afade=t=in:st=0:d=5,afade=t=out:st={fade_out_start:.2f}:d=6[out]"
     )
     command = [
         "ffmpeg", "-y",
         "-f", "lavfi", "-i", f"anoisesrc=color=brown:amplitude=1:duration={duration:.2f}",
-        "-f", "lavfi", "-i", f"aevalsrc=0.3*sin(2*PI*55*t):duration={duration:.2f}",
+        "-f", "lavfi", "-i", f"aevalsrc={pad}:duration={duration:.2f}",
         "-filter_complex", filter_complex,
         "-map", "[out]", "-ac", "2", "-ar", "48000",
         str(output_path),
@@ -1142,6 +1149,14 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
         audio_path, voice_source = audio_cache[i]
         voice_sources.append(voice_source)
         audio_clip = AudioFileClip(str(audio_path))
+        # Soften every voice cut: a short fade in/out so narration segments don't
+        # start or stop abruptly between shots.
+        _fi = min(0.06, max(0.0, audio_clip.duration / 8.0))
+        _fo = min(0.18, max(0.0, audio_clip.duration / 5.0))
+        if _fi > 0:
+            audio_clip = audio_fadein(audio_clip, _fi)
+        if _fo > 0:
+            audio_clip = audio_fadeout(audio_clip, _fo)
         duration = max(3.0, audio_clip.duration + min(0.6, max(0.15, float(shot.get("pause_after", 0.25) or 0.25))))
         shot_durations.append(duration)
 
