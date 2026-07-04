@@ -262,7 +262,7 @@ def _status_code_of(exc):
     return getattr(resp, "status_code", None)
 
 
-def pollinations_cinematic_image(prompt, output_path, seed, max_attempts=6):
+def pollinations_cinematic_image(prompt, output_path, seed, max_attempts=3):
     """
     Generates a dark, moody cinematic still via Pollinations.ai, matching the
     Nightfall Diaries aesthetic: restrained, atmospheric, low-light.
@@ -295,29 +295,30 @@ def pollinations_cinematic_image(prompt, output_path, seed, max_attempts=6):
     ]
     last_error = None
     for attempt in range(1, max_attempts + 1):
-        saw_retryable = False
-        for url in urls:
-            try:
-                with _POLLINATIONS_SEMAPHORE:
-                    _pollinations_wait_turn()
-                    r = requests.get(url, timeout=150, headers=_pollinations_headers())
-                r.raise_for_status()
-                output_path.write_bytes(r.content)
-                with Image.open(output_path) as img:
-                    img.verify()
-                return output_path
-            except Exception as exc:
-                last_error = exc
-                status = _status_code_of(exc)
-                if status is None or status in _POLLINATIONS_RETRYABLE_STATUS:
-                    saw_retryable = True
-        if attempt < max_attempts and saw_retryable:
-            wait = min(45.0, (2 ** attempt) + random.uniform(0, 3))
-            print(f"[pollinations] attempt {attempt}/{max_attempts} rate-limited/failed "
+        # One rate-throttled request per attempt (cycling model variants), NOT one
+        # per model per attempt. This is what stops a Pollinations outage from
+        # turning a render into a multi-hour grind: a down server falls back to a
+        # placeholder in seconds instead of paying the 16s throttle ~18 times.
+        url = urls[min(attempt - 1, len(urls) - 1)]
+        try:
+            with _POLLINATIONS_SEMAPHORE:
+                _pollinations_wait_turn()
+                r = requests.get(url, timeout=90, headers=_pollinations_headers())
+            r.raise_for_status()
+            output_path.write_bytes(r.content)
+            with Image.open(output_path) as img:
+                img.verify()
+            return output_path
+        except Exception as exc:
+            last_error = exc
+            status = _status_code_of(exc)
+            retryable = status is None or status in _POLLINATIONS_RETRYABLE_STATUS
+            if not retryable or attempt == max_attempts:
+                break
+            wait = min(8.0, 1.5 * attempt + random.uniform(0, 1.0))
+            print(f"[pollinations] attempt {attempt}/{max_attempts} failed "
                   f"({last_error}); retrying in {wait:.1f}s")
             time.sleep(wait)
-        elif not saw_retryable:
-            break
     raise RuntimeError(f"AI cinematic image failed after retries: {last_error}")
 
 
