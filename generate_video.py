@@ -280,7 +280,13 @@ def pollinations_cinematic_image(prompt, output_path, seed, max_attempts=6):
         "no text, no watermark, no logo, vertical 9:16 aspect ratio. "
         "Scene: "
     )
-    full_prompt = style_prefix + str(prompt)
+    # Keep the prompt compact. Over-long, redundant prompts (repeated scene
+    # context + shot style + narration) make Pollinations far more likely to
+    # return 500s and bloat the request URL, so trim the scene text hard.
+    scene_text = re.sub(r"\s+", " ", str(prompt or "")).strip()
+    if len(scene_text) > 480:
+        scene_text = scene_text[:480].rsplit(" ", 1)[0]
+    full_prompt = (style_prefix + scene_text)[:900]
     encoded = quote_plus(full_prompt)
     urls = [
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=flux-anime",
