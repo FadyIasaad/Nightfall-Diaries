@@ -29,6 +29,10 @@ from config import (
     CHANNEL_NAME,
     DEFAULT_AMBIENT_BED_VOLUME,
     ENABLE_AMBIENT_BED,
+    ENABLE_MUSIC_BED,
+    MUSIC_BED_DIR,
+    MUSIC_BED_VOLUME,
+    DEFAULT_MUSIC_BED_VOLUME,
     ENABLE_BRAND_STING,
     LOUDNESS_TARGET_LUFS,
     THUMBNAIL_DIR,
@@ -689,12 +693,71 @@ def create_shot_audio(shot, video_id, shot_index):
 
 
 # ─── AMBIENT SOUND BED (generated, not sourced — zero copyright risk) ────────
+_MUSIC_EXTS = {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac"}
+
+
+def list_music_tracks():
+    """Real, cleared music files dropped into assets/music. Empty list means the
+    pipeline transparently falls back to the generated synth pad."""
+    try:
+        if not ENABLE_MUSIC_BED or not MUSIC_BED_DIR.exists():
+            return []
+        return sorted(
+            p for p in MUSIC_BED_DIR.iterdir()
+            if p.is_file() and p.suffix.lower() in _MUSIC_EXTS
+        )
+    except Exception:
+        return []
+
+
+def music_bed_available() -> bool:
+    return len(list_music_tracks()) > 0
+
+
+def build_music_bed_from_file(track_path, duration_seconds, output_path):
+    """
+    Builds the background bed from a REAL music file: loops it to cover the whole
+    video, trims to exact length, and adds gentle in/out fades. Volume is applied
+    later at mix time (kept low so it sits 'a little, in the background'). A soft
+    high-shelf cut keeps the melody from fighting the narration's midrange.
+    """
+    duration = max(3.0, float(duration_seconds))
+    fade_out_start = max(0.0, duration - 6.0)
+    af = (
+        "aresample=48000,"
+        "lowpass=f=3400,"
+        "afade=t=in:st=0:d=3,"
+        f"afade=t=out:st={fade_out_start:.2f}:d=6"
+    )
+    command = [
+        "ffmpeg", "-y",
+        "-stream_loop", "-1", "-i", str(track_path),
+        "-t", f"{duration:.2f}",
+        "-af", af,
+        "-ac", "2", "-ar", "48000",
+        str(output_path),
+    ]
+    subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return output_path
+
+
 def build_ambient_bed(duration_seconds, output_path):
     """
-    Generates a quiet rain/drone ambient bed entirely with ffmpeg's built-in
-    audio sources (anoisesrc + aevalsrc). Nothing is downloaded, so there is
-    no licensing risk, and it never depends on a third-party music API.
+    Builds the background bed under the narration. Prefers a REAL music track
+    from assets/music (violin/piano/cinematic, cleared via the YouTube Audio
+    Library) when one is present; otherwise generates a quiet rain/drone synth
+    bed entirely with ffmpeg's built-in sources (anoisesrc + aevalsrc) so there
+    is never a hard dependency on a downloaded file.
     """
+    tracks = list_music_tracks()
+    if tracks:
+        track = random.choice(tracks)
+        try:
+            print(f"Music bed: using real track '{track.name}'")
+            return build_music_bed_from_file(track, duration_seconds, output_path)
+        except Exception as exc:
+            print(f"Real music bed failed ({exc}); falling back to synth pad.")
+
     duration = max(3.0, float(duration_seconds))
     fade_out_start = max(0.0, duration - 6.0)
     # Soft minor-chord synth pad (A2 + C3 + E3) with a slow tremolo = the gentle
@@ -1266,7 +1329,12 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
             pass
 
     normalized_type = str(video_type or "horror_story").strip().lower().replace("-", "_").replace(" ", "_")
-    ambient_volume = AMBIENT_BED_VOLUME.get(normalized_type, DEFAULT_AMBIENT_BED_VOLUME)
+    # Real melodic music needs to sit quieter than the synth pad so it stays
+    # "a little, in the background" under the voice.
+    if music_bed_available():
+        ambient_volume = MUSIC_BED_VOLUME.get(normalized_type, DEFAULT_MUSIC_BED_VOLUME)
+    else:
+        ambient_volume = AMBIENT_BED_VOLUME.get(normalized_type, DEFAULT_AMBIENT_BED_VOLUME)
     sting_volume = BRAND_STING_VOLUME if ENABLE_BRAND_STING else 0.0
 
     ambient_applied = False

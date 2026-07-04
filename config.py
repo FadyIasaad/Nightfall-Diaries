@@ -95,6 +95,23 @@ AMBIENT_BED_VOLUME = {
 }
 DEFAULT_AMBIENT_BED_VOLUME = 0.14
 
+# ─── REAL MUSIC BED (violin/piano etc.) ──────────────────────────────────────
+# If real, royalty-free, cleared music files are placed in assets/music, one is
+# chosen at random per render and mixed VERY quietly under the narration
+# ("a little, in the background"), replacing the synthesized pad. These come from
+# the YouTube Audio Library (free + cleared for this channel), so there is no
+# copyright risk. If the folder is empty, the pipeline falls back to the
+# generated synth bed automatically. Volumes are deliberately low so real music
+# with melody sits behind the voice instead of competing with it.
+ENABLE_MUSIC_BED = True
+MUSIC_BED_DIR = BASE_DIR / "assets" / "music"
+MUSIC_BED_VOLUME = {
+    "short": 0.05,
+    "horror_story": 0.07,
+    "confession_story": 0.07,
+}
+DEFAULT_MUSIC_BED_VOLUME = 0.07
+
 # ─── FINAL LOUDNESS NORMALIZATION ────────────────────────────────────────────
 # Applied as the last pass on the fully mixed video so every upload lands at a
 # consistent loudness and viewers never have to reach for the volume knob

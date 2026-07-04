@@ -15,3 +15,6 @@ output/metadata/
 __pycache__/
 *.pyc
 .DS_Store
+# Stray copy of the Downloads folder accidentally pasted here during setup;
+# ignored so it never gets committed. Safe to delete that folder manually.
+/Downloads/
