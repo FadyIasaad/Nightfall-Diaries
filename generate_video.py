@@ -1150,6 +1150,25 @@ def fetch_visual(shot, safe_id, index, numeric_seed):
         return cinematic_path, "placeholder", "atmospheric placeholder"
 
 
+def expand_short_shots(shots, min_needed=4):
+    """For shorts only: when the story arrived with too few shots, split the
+    wordiest narrations at a comma/semicolon/dash so the video still gets
+    enough distinct visual beats instead of aborting the render."""
+    shots = [dict(s) for s in shots]
+    while len(shots) < min_needed:
+        idx = max(range(len(shots)),
+                  key=lambda i: len(str(shots[i].get("narration_en", "")).split()))
+        text = str(shots[idx].get("narration_en", "")).strip()
+        parts = re.split(r",\s+|;\s+|\s+\u2014\s+|\s+-\s+", text, maxsplit=1)
+        if len(parts) < 2 or not parts[0].strip() or not parts[1].strip():
+            break  # nothing left to split — render with what we have
+        first, rest = parts[0].strip(), parts[1].strip()
+        a = dict(shots[idx]); a["narration_en"] = first; a["subtitle_en"] = first
+        b = dict(shots[idx]); b["narration_en"] = rest; b["subtitle_en"] = rest
+        shots[idx:idx + 1] = [a, b]
+    return shots
+
+
 # ─── MAIN VIDEO BUILDER ───────────────────────────────────────────────────────
 def extract_thumbnail_source_frame(video_path: Path) -> Path:
     """Fallback for when every shot used stock video (no still image to reuse)."""
@@ -1219,8 +1238,15 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
     shots = flatten_story(scene_payload)
     _nt = str(video_type or "").strip().lower().replace("-", "_").replace(" ", "_")
     min_shots = 4 if _nt == "short" else 8
-    if len(shots) < min_shots:
-        raise ValueError(f"Too few shots ({len(shots)}, need {min_shots}). Regenerate story first.")
+    if _nt == "short" and 0 < len(shots) < min_shots:
+        # The model sometimes writes a short with too few sentences. Instead of
+        # failing the whole render, split the longest narrations on natural
+        # clause boundaries (commas/dashes) until there are enough shots.
+        shots = expand_short_shots(shots, min_shots)
+        print(f"Short had too few shots; expanded to {len(shots)} by clause-splitting.")
+    hard_min = 2 if _nt == "short" else 8
+    if len(shots) < hard_min:
+        raise ValueError(f"Too few shots ({len(shots)}, need {hard_min}). Regenerate story first.")
     safe_id    = re.sub(r"[^A-Za-z0-9_-]", "_", str(video_id).strip() or "video")
     video_path = VIDEO_DIR / f"nightfall_diaries_{safe_id}.mp4"
     seg_paths, voice_sources, visual_sources = [], [], []
