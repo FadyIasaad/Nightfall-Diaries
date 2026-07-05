@@ -260,8 +260,8 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
         )
     elif video_type == "confession_story":
         beats = CONFESSION_BEATS
-        min_words = max(1500, target_minutes * 95)
-        max_words = max(2000, target_minutes * 135)
+        min_words = max(1800, target_minutes * 115)
+        max_words = max(2400, target_minutes * 160)
         target_words = f"{min_words} to {max_words}"
         instruction = (
             "Create a long-form, real-feeling first-person confession story about betrayal, deception, "
@@ -270,14 +270,33 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
         )
     else:
         beats = HORROR_BEATS
-        min_words = max(1500, target_minutes * 95)
-        max_words = max(2000, target_minutes * 135)
+        min_words = max(1800, target_minutes * 115)
+        max_words = max(2400, target_minutes * 160)
         target_words = f"{min_words} to {max_words}"
         instruction = (
             "Create a long-form, slow-burn psychological horror story for a general adult audience. "
             "It should feel like a calm, real-feeling late-night account, not a jump-scare video and "
-            "not an over-explained plot. Dread builds through small details, not gore."
+            "not an over-explained plot. Dread builds through small details, not gore — but it must "
+            "genuinely frighten: the threat gets closer and more personal in every act, and the ending "
+            "reveals something that quietly recontextualizes the whole story."
         )
+
+    if video_type == "short":
+        depth_rules = ""
+    else:
+        depth_rules = """
+- LENGTH IS MANDATORY: every scene's narration_en must be 80-130 words (5-8 full spoken sentences).
+  Never write a scene with only one or two sentences. If a scene feels thin, slow down and add
+  sensory detail, interior thought, and small physical actions instead of skipping ahead.
+- ESCALATION: the tension must be stronger in every act. By the midpoint the threat is undeniable;
+  by the final quarter it is personal and unavoidable. Include at least three distinct, memorable
+  set-piece moments the listener could retell afterwards.
+- COMPLETENESS: the story must finish its arc. The central question raised in the opening scenes is
+  answered (even darkly), the confrontation actually happens on-page, and consequences land. Never
+  end on an unexplained shrug or an arbitrary cutoff.
+- MEANING: the story is ABOUT something — guilt, grief, denial, trust, obsession, the cost of
+  silence. Weave that theme through the narrator's choices and let the final line land on it, so a
+  listener could say in one sentence what the story meant."""
 
     beat_text = "\n".join(f"{i+1}. {beat}" for i, beat in enumerate(beats[:scene_count])) if video_type != "short" else "\n".join(f"{i+1}. {beat}" for i, beat in enumerate(beats))
     title_rule = (
@@ -330,6 +349,8 @@ Hard quality rules:
 - Narration must sound like a real person speaking slowly and carefully, not an essay. Short sentences. Real pauses.
 - Each scene's "emotion" must be exactly one of: dread, tension, eerie, calm, fear, relief, mystery, anger, satisfaction.
 
+{depth_rules}
+
 Scene beats:
 {beat_text}
 
@@ -341,6 +362,7 @@ Return valid JSON only, exactly in this shape:
   "video_type": "{video_type}",
   "target_minutes": {target_minutes},
   "emotional_arc": "one sentence describing the feeling journey",
+  "theme": "one sentence: the deeper idea this story is about (guilt, grief, trust, obsession, ...)",
   "scenes": [
     {{
       "scene_number": 1,
