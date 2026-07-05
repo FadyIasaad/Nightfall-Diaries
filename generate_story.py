@@ -311,6 +311,13 @@ Hard quality rules:
 - The story must have ONE clear throughline from hook to payoff: a single situation that escalates and then
   resolves with a final line that recontextualizes what came before. It must actually tell a complete story,
   never a set of disconnected, repetitive vignettes.
+- CONTINUITY IS MANDATORY: in scene 1, establish the narrator's first name, the names of the other
+  characters, and ONE specific setting. Reuse exactly those names and that setting in every later scene.
+  Each scene must continue directly from where the previous scene ended — one continuous chain of events in
+  chronological order. Never restart the story, never jump to an unrelated event or new characters, and
+  never contradict an earlier detail. Repeat the names often enough that the listener never loses track.
+- Every image_prompt must mention the same setting and time of day established in scene 1, so every visual
+  clearly belongs to the same story.
 - English narration only.
 - Every scene needs a distinct location/action/emotional beat so the video never repeats the same visual.
   The first scene must hook within 2 seconds.
@@ -674,7 +681,7 @@ def generate_json_with_models(prompt: str, max_output_tokens: int = 32768, label
             response = model.generate_content(
                 prompt,
                 generation_config={
-                    "temperature": 0.88,
+                    "temperature": 0.8,
                     "top_p": 0.93,
                     "max_output_tokens": max_output_tokens,
                     # JSON mode (structured output): constrain the model to emit

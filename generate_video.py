@@ -857,17 +857,27 @@ def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10, sting_volume
             build_brand_sting(sting_path)
             inputs += ["-i", str(sting_path)]
             filter_complex = (
+                "[0:a]aresample=async=1:first_pts=0,apad[voice];"
                 f"[1:a]volume={ambient_volume}[amb];"
                 f"[2:a]volume={sting_volume}[sting];"
-                "[0:a][amb][sting]amix=inputs=3:duration=first:normalize=0[aout]"
+                "[voice][amb][sting]amix=inputs=3:duration=longest:normalize=0[aout]"
             )
         else:
-            filter_complex = f"[1:a]volume={ambient_volume}[amb];[0:a][amb]amix=inputs=2:duration=first:normalize=0[aout]"
+            filter_complex = (
+                "[0:a]aresample=async=1:first_pts=0,apad[voice];"
+                f"[1:a]volume={ambient_volume}[amb];"
+                "[voice][amb]amix=inputs=2:duration=longest:normalize=0[aout]"
+            )
 
+        # aresample=async smooths out the tiny timestamp gaps between narration
+        # segments (they made the music seem to hiccup at every pause) and apad +
+        # duration=longest keeps the music playing seamlessly through silences;
+        # -t caps the result at the video's real length.
         command = [
             "ffmpeg", "-y", *inputs,
             "-filter_complex", filter_complex,
             "-map", "0:v", "-map", "[aout]",
+            "-t", f"{duration:.2f}",
             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
             str(mixed_path),
         ]
@@ -894,9 +904,28 @@ def normalize_final_loudness(video_path: Path, target_lufs: float = -14.0) -> bo
     """
     normalized_path = video_path.with_name(video_path.stem + "_loudnorm.mp4")
     try:
+        # Pass 1: measure. Pass 2: apply ONE fixed gain (linear=true). The old
+        # single-pass mode adjusted gain dynamically, which audibly pumped the
+        # quiet music bed up and down around every narration pause.
+        af_base = f"loudnorm=I={target_lufs}:TP=-1.5:LRA=11"
+        af = af_base
+        try:
+            probe = subprocess.run(
+                ["ffmpeg", "-i", str(video_path),
+                 "-af", af_base + ":print_format=json", "-f", "null", "-"],
+                capture_output=True, text=True,
+            )
+            match = re.search(r"\{[^{}]*\}\s*$", probe.stderr.strip())
+            m = json.loads(match.group(0))
+            af = (af_base
+                  + f":measured_I={m['input_i']}:measured_TP={m['input_tp']}"
+                  + f":measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}"
+                  + f":offset={m['target_offset']}:linear=true")
+        except Exception as measure_exc:
+            print(f"Loudness measurement failed ({measure_exc}); using single-pass mode.")
         command = [
             "ffmpeg", "-y", "-i", str(video_path),
-            "-af", f"loudnorm=I={target_lufs}:TP=-1.5:LRA=11",
+            "-af", af,
             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
             str(normalized_path),
         ]
