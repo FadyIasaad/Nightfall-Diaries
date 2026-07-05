@@ -33,6 +33,8 @@ from config import (
     MUSIC_BED_DIR,
     MUSIC_BED_VOLUME,
     DEFAULT_MUSIC_BED_VOLUME,
+    MUSIC_BED_MOOD,
+    MUSIC_TRACK_MOODS,
     ENABLE_BRAND_STING,
     LOUDNESS_TARGET_LUFS,
     THUMBNAIL_DIR,
@@ -714,6 +716,32 @@ def music_bed_available() -> bool:
     return len(list_music_tracks()) > 0
 
 
+def _track_mood(track_path):
+    """Mood of a track based on filename keywords in MUSIC_TRACK_MOODS."""
+    name = track_path.stem.lower()
+    for keyword, mood in MUSIC_TRACK_MOODS.items():
+        if keyword in name:
+            return mood
+    return None
+
+
+def pick_music_track(story_type=None):
+    """
+    Picks the bed track for this video: ambient tracks for long stories,
+    the cinematic track for shorts (per MUSIC_BED_MOOD). Falls back to a
+    random pick from all tracks when nothing matches the wanted mood.
+    """
+    tracks = list_music_tracks()
+    if not tracks:
+        return None
+    wanted = MUSIC_BED_MOOD.get(str(story_type or "").strip().lower())
+    if wanted:
+        matching = [t for t in tracks if _track_mood(t) == wanted]
+        if matching:
+            return random.choice(matching)
+    return random.choice(tracks)
+
+
 def build_music_bed_from_file(track_path, duration_seconds, output_path):
     """
     Builds the background bed from a REAL music file: loops it to cover the whole
@@ -741,19 +769,19 @@ def build_music_bed_from_file(track_path, duration_seconds, output_path):
     return output_path
 
 
-def build_ambient_bed(duration_seconds, output_path):
+def build_ambient_bed(duration_seconds, output_path, story_type=None):
     """
     Builds the background bed under the narration. Prefers a REAL music track
     from assets/music (violin/piano/cinematic, cleared via the YouTube Audio
-    Library) when one is present; otherwise generates a quiet rain/drone synth
-    bed entirely with ffmpeg's built-in sources (anoisesrc + aevalsrc) so there
-    is never a hard dependency on a downloaded file.
+    Library) when one is present — chosen by mood to match the story type —
+    otherwise generates a quiet rain/drone synth bed entirely with ffmpeg's
+    built-in sources (anoisesrc + aevalsrc) so there is never a hard
+    dependency on a downloaded file.
     """
-    tracks = list_music_tracks()
-    if tracks:
-        track = random.choice(tracks)
+    track = pick_music_track(story_type)
+    if track:
         try:
-            print(f"Music bed: using real track '{track.name}'")
+            print(f"Music bed: using real track '{track.name}' (type={story_type})")
             return build_music_bed_from_file(track, duration_seconds, output_path)
         except Exception as exc:
             print(f"Real music bed failed ({exc}); falling back to synth pad.")
@@ -806,7 +834,7 @@ def build_brand_sting(output_path, duration=1.6):
     return output_path
 
 
-def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10, sting_volume: float = 0.0) -> bool:
+def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10, sting_volume: float = 0.0, story_type=None) -> bool:
     """
     Mixes the generated ambient bed quietly under the video's existing
     narration track, and (if sting_volume > 0) overlays the brand sting at the
@@ -820,7 +848,7 @@ def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10, sting_volume
         with VideoFileClip(str(video_path)) as probe:
             duration = probe.duration
         bed_path = video_path.with_name(video_path.stem + "_ambient_bed.wav")
-        build_ambient_bed(duration, bed_path)
+        build_ambient_bed(duration, bed_path, story_type)
         mixed_path = video_path.with_name(video_path.stem + "_mixed.mp4")
 
         inputs = ["-i", str(video_path), "-i", str(bed_path)]
@@ -1339,7 +1367,7 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
 
     ambient_applied = False
     if ENABLE_AMBIENT_BED or sting_volume > 0:
-        ambient_applied = add_ambient_bed(video_path, ambient_volume, sting_volume)
+        ambient_applied = add_ambient_bed(video_path, ambient_volume, sting_volume, normalized_type)
 
     loudness_applied = normalize_final_loudness(video_path, LOUDNESS_TARGET_LUFS)
 

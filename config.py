@@ -106,11 +106,26 @@ DEFAULT_AMBIENT_BED_VOLUME = 0.14
 ENABLE_MUSIC_BED = True
 MUSIC_BED_DIR = BASE_DIR / "assets" / "music"
 MUSIC_BED_VOLUME = {
-    "short": 0.05,
-    "horror_story": 0.07,
-    "confession_story": 0.07,
+    "short": 0.10,
+    "horror_story": 0.10,
+    "confession_story": 0.10,
 }
-DEFAULT_MUSIC_BED_VOLUME = 0.07
+DEFAULT_MUSIC_BED_VOLUME = 0.10
+
+# Which music mood fits each story type. Tracks are matched by filename keyword
+# (case-insensitive substring of the file name). If no track matches the wanted
+# mood — e.g. new tracks with unknown names — the pipeline just picks randomly
+# from everything, so dropping new files in assets/music always keeps working.
+MUSIC_BED_MOOD = {
+    "short": "cinematic",
+    "horror_story": "ambient",
+    "confession_story": "ambient",
+}
+MUSIC_TRACK_MOODS = {
+    "obon fog": "ambient",
+    "drifting memories": "ambient",
+    "conspiracy theory": "cinematic",
+}
 
 # ─── FINAL LOUDNESS NORMALIZATION ────────────────────────────────────────────
 # Applied as the last pass on the fully mixed video so every upload lands at a
