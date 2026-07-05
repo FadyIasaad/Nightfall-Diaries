@@ -16,6 +16,23 @@ on:
         description: "Target length in minutes (ignored for short)"
         required: false
         default: ""
+  # Editing render_request.txt and pushing = "render this type now", no UI needed.
+  push:
+    branches: [main]
+    paths:
+      - render_request.txt
+  # Fully automatic schedule (times are UTC):
+  #   daily short at 17:00, horror Wednesday 14:00, confession Saturday 14:00.
+  schedule:
+    - cron: "0 17 * * *"
+    - cron: "0 14 * * 3"
+    - cron: "0 14 * * 6"
+
+# Never let two renders run at once (they race on the sheet row and quotas).
+# A new one queues until the current one finishes.
+concurrency:
+  group: create-and-upload
+  cancel-in-progress: false
 
 jobs:
   create-and-upload:
@@ -24,6 +41,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Resolve video type
+        id: vt
+        run: |
+          TYPE="${{ inputs.video_type }}"
+          MINUTES="${{ inputs.target_minutes }}"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            case "${{ github.event.schedule }}" in
+              "0 17 * * *") TYPE="short" ;;
+              "0 14 * * 3") TYPE="horror_story" ;;
+              "0 14 * * 6") TYPE="confession_story" ;;
+            esac
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            TYPE="$(head -1 render_request.txt | tr -d ' \r')"
+          fi
+          case "$TYPE" in
+            short|horror_story|confession_story) ;;
+            *) TYPE="horror_story" ;;
+          esac
+          echo "type=$TYPE" >> "$GITHUB_OUTPUT"
+          echo "minutes=$MINUTES" >> "$GITHUB_OUTPUT"
+          echo "Producing video_type=$TYPE (event: ${{ github.event_name }})"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -45,8 +84,8 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TBT_VIDEO_TYPE: ${{ inputs.video_type }}
-          TBT_TARGET_MINUTES: ${{ inputs.target_minutes }}
+          TBT_VIDEO_TYPE: ${{ steps.vt.outputs.type }}
+          TBT_TARGET_MINUTES: ${{ steps.vt.outputs.minutes }}
         run: python generate_story.py
 
       - name: Generate video
@@ -57,7 +96,7 @@ jobs:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           POLLINATIONS_TOKEN: ${{ secrets.POLLINATIONS_TOKEN }}
-          TBT_VIDEO_TYPE: ${{ inputs.video_type }}
+          TBT_VIDEO_TYPE: ${{ steps.vt.outputs.type }}
         run: python generate_video.py
 
       - name: Upload to YouTube
@@ -68,7 +107,7 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_PRIVACY: "public"
-          TBT_VIDEO_TYPE: ${{ inputs.video_type }}
+          TBT_VIDEO_TYPE: ${{ steps.vt.outputs.type }}
         run: python upload_youtube.py
 
       - name: Upload render artifacts (debug aid, kept for 5 days)
