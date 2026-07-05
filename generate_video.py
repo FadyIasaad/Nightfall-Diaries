@@ -1188,8 +1188,10 @@ def build_chapters(shots, shot_durations, video_type):
 
 def create_video(video_id, title, scene_payload, video_type="horror_story"):
     shots = flatten_story(scene_payload)
-    if len(shots) < 8:
-        raise ValueError(f"Too few shots ({len(shots)}). Regenerate story first.")
+    _nt = str(video_type or "").strip().lower().replace("-", "_").replace(" ", "_")
+    min_shots = 4 if _nt == "short" else 8
+    if len(shots) < min_shots:
+        raise ValueError(f"Too few shots ({len(shots)}, need {min_shots}). Regenerate story first.")
     safe_id    = re.sub(r"[^A-Za-z0-9_-]", "_", str(video_id).strip() or "video")
     video_path = VIDEO_DIR / f"nightfall_diaries_{safe_id}.mp4"
     seg_paths, voice_sources, visual_sources = [], [], []

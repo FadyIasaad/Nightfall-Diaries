@@ -255,7 +255,8 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
             "immediate hook and a final line that lands hard. CRITICAL LENGTH RULE: the ENTIRE narration, "
             "across every scene and every shot combined, must total only 110-160 English words. Each shot's "
             "narration_en is exactly ONE short spoken sentence of about 6-12 words. Never write paragraphs "
-            "in a short."
+            "in a short. Each scene's narration_en must contain exactly 4 short sentences "
+            "(one per shot), so the whole short has 12 spoken sentences total."
         )
     elif video_type == "confession_story":
         beats = CONFESSION_BEATS
