@@ -83,14 +83,20 @@ jobs:
             short|horror_story|confession_story) ;;
             *) TYPE="horror_story" ;;
           esac
-          # Parts: only meaningful on manual runs. Clamp to 1..10.
+          # Parts: from the Run-workflow form, clamped to 1..10.
           PARTS="${PARTS_IN:-1}"
           case "$PARTS" in ''|*[!0-9]*) PARTS=1 ;; esac
           [ "$PARTS" -lt 1 ] && PARTS=1
           [ "$PARTS" -gt 10 ] && PARTS=10
           MODE="${MODE_IN:-separate_videos}"
+          # Growth: the Friday scheduled short is a 3-part cliffhanger series
+          # (Part 1/3, 2/3, 3/3 uploaded in order - pulls viewers to the channel).
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$TYPE" = "short" ] && [ "$(date -u +%u)" = "5" ]; then
+            PARTS=3
+            MODE="separate_videos"
+          fi
           RUNS=1
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$MODE" = "separate_videos" ] && [ "$PARTS" -gt 1 ]; then
+          if [ "$MODE" = "separate_videos" ] && [ "$PARTS" -gt 1 ]; then
             RUNS="$PARTS"
           fi
           echo "type=$TYPE" >> "$GITHUB_OUTPUT"

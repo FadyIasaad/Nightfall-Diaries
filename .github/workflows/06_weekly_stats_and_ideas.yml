@@ -1,0 +1,37 @@
+name: "06 - Weekly Stats and Idea Seeding"
+
+on:
+  workflow_dispatch:
+  # Every Sunday at 12:00 UTC: refresh view counts, seed ideas from winners.
+  schedule:
+    - cron: "0 12 * * 0"
+
+concurrency:
+  group: weekly-stats
+  cancel-in-progress: false
+
+jobs:
+  stats-and-ideas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update stats and seed ideas
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python update_video_stats.py
