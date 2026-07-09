@@ -16,6 +16,26 @@ on:
         description: "Target length in minutes (ignored for short)"
         required: false
         default: ""
+      custom_title:
+        description: "Your exact video title. AI writes the story from it. Leave empty to use the next sheet idea."
+        required: false
+        default: ""
+      custom_story:
+        description: "Write the story yourself: paste the full story text here and it is used as the narration. Leave empty to let AI write it."
+        required: false
+        default: ""
+      parts:
+        description: "How many parts (1 = one normal video)"
+        required: false
+        default: "1"
+      parts_mode:
+        description: "If parts > 1: separate uploads (Part 1, 2, ...) or chapters inside one video"
+        required: false
+        default: "separate_videos"
+        type: choice
+        options:
+          - separate_videos
+          - chapters
   # Editing render_request.txt and pushing = "render this type now", no UI needed.
   push:
     branches: [main]
@@ -44,6 +64,9 @@ jobs:
 
       - name: Resolve video type
         id: vt
+        env:
+          PARTS_IN: ${{ inputs.parts }}
+          MODE_IN: ${{ inputs.parts_mode }}
         run: |
           TYPE="${{ inputs.video_type }}"
           MINUTES="${{ inputs.target_minutes }}"
@@ -60,9 +83,22 @@ jobs:
             short|horror_story|confession_story) ;;
             *) TYPE="horror_story" ;;
           esac
+          # Parts: only meaningful on manual runs. Clamp to 1..10.
+          PARTS="${PARTS_IN:-1}"
+          case "$PARTS" in ''|*[!0-9]*) PARTS=1 ;; esac
+          [ "$PARTS" -lt 1 ] && PARTS=1
+          [ "$PARTS" -gt 10 ] && PARTS=10
+          MODE="${MODE_IN:-separate_videos}"
+          RUNS=1
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$MODE" = "separate_videos" ] && [ "$PARTS" -gt 1 ]; then
+            RUNS="$PARTS"
+          fi
           echo "type=$TYPE" >> "$GITHUB_OUTPUT"
           echo "minutes=$MINUTES" >> "$GITHUB_OUTPUT"
-          echo "Producing video_type=$TYPE (event: ${{ github.event_name }})"
+          echo "parts=$PARTS" >> "$GITHUB_OUTPUT"
+          echo "parts_mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "runs=$RUNS" >> "$GITHUB_OUTPUT"
+          echo "Producing video_type=$TYPE parts=$PARTS mode=$MODE render_passes=$RUNS (event: ${{ github.event_name }})"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -86,6 +122,10 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TBT_VIDEO_TYPE: ${{ steps.vt.outputs.type }}
           TBT_TARGET_MINUTES: ${{ steps.vt.outputs.minutes }}
+          TBT_CUSTOM_TITLE: ${{ github.event_name == 'workflow_dispatch' && inputs.custom_title || '' }}
+          TBT_CUSTOM_STORY: ${{ github.event_name == 'workflow_dispatch' && inputs.custom_story || '' }}
+          TBT_PARTS: ${{ steps.vt.outputs.parts }}
+          TBT_PARTS_MODE: ${{ steps.vt.outputs.parts_mode }}
         run: python generate_story.py
 
       - name: Generate video
@@ -97,7 +137,12 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           POLLINATIONS_TOKEN: ${{ secrets.POLLINATIONS_TOKEN }}
           TBT_VIDEO_TYPE: ${{ steps.vt.outputs.type }}
-        run: python generate_video.py
+        # Multi-part (separate videos): each pass renders the next GENERATED part row.
+        run: |
+          for i in $(seq 1 "${{ steps.vt.outputs.runs }}"); do
+            echo "=== Render pass $i of ${{ steps.vt.outputs.runs }} ==="
+            python generate_video.py
+          done
 
       - name: Upload to YouTube
         env:
@@ -108,7 +153,12 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_PRIVACY: "public"
           TBT_VIDEO_TYPE: ${{ steps.vt.outputs.type }}
-        run: python upload_youtube.py
+        # Multi-part (separate videos): each pass uploads the next VIDEO_CREATED part.
+        run: |
+          for i in $(seq 1 "${{ steps.vt.outputs.runs }}"); do
+            echo "=== Upload pass $i of ${{ steps.vt.outputs.runs }} ==="
+            python upload_youtube.py
+          done
 
       - name: Upload render artifacts (debug aid, kept for 5 days)
         if: always()
@@ -117,3 +167,4 @@ jobs:
           name: nightfall-diaries-output-${{ github.run_id }}
           path: output/
           retention-days: 5
+# end of workflow

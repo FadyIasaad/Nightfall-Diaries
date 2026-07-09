@@ -17,6 +17,7 @@ from config import (
     STORY_BACKUP_DIR,
 )
 from nd_common import (
+    append_row,
     find_column,
     find_optional_column,
     get_all_values,
@@ -245,7 +246,7 @@ def emotional_score(data: Dict[str, Any]) -> int:
     return score
 
 
-def build_prompt(topic: str, characters: str, theme: str, video_type: str, target_minutes: int, scene_count: int, story_context: str, audience: str) -> str:
+def build_prompt(topic: str, characters: str, theme: str, video_type: str, target_minutes: int, scene_count: int, story_context: str, audience: str, forced_title: str = "", chapters: int = 1, split_parts: int = 1) -> str:
     if video_type == "short":
         beats = HOOK_BEATS
         target_words = "110 to 170"
@@ -304,6 +305,32 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
         if video_type == "short"
         else "a curiosity-driven title under 95 characters that opens a question in the viewer's mind; intriguing but not clickbait-spam"
     )
+    if forced_title:
+        title_rule = f'that is EXACTLY this text, character for character, unchanged: "{forced_title}"'
+
+    # Multi-part / chapter rules (both default to 1 = a normal single video).
+    extra_rules = ""
+    if chapters > 1:
+        extra_rules += (
+            f"\n- PARTS: structure the story into exactly {chapters} clearly labeled parts inside this ONE video. "
+            f"Split the {scene_count} scenes as evenly as possible across the parts. The FIRST scene of each part "
+            f"must begin its narration_en with 'Part N.' (e.g. 'Part 2.'). Every part except the last must end on "
+            f"a strong mini-cliffhanger; the last part resolves the story."
+        )
+    if split_parts > 1:
+        block = max(1, scene_count // split_parts)
+        extra_rules += (
+            f"\n- SPLIT RELEASE: this single continuous story will be published as {split_parts} separate videos, "
+            f"in order. Make the act boundaries fall cleanly every {block} scenes: each block of {block} scenes "
+            f"must end on a strong cliffhanger (except the final block, which resolves the story), and the first "
+            f"scene of each block must re-hook a brand-new viewer in its opening line without a long recap."
+        )
+        if video_type == "short":
+            extra_rules += (
+                f"\n- LENGTH OVERRIDE FOR SPLIT SHORTS: total narration across ALL scenes is "
+                f"{110 * split_parts}-{160 * split_parts} words, and each block of 3 scenes must total only "
+                f"110-160 words so each published short stays 50-70 seconds."
+            )
 
     return f"""
 You are the showrunner, novelist, and voice director for the YouTube channel Nightfall Diaries.
@@ -350,6 +377,7 @@ Hard quality rules:
 - Each scene's "emotion" must be exactly one of: dread, tension, eerie, calm, fear, relief, mystery, anger, satisfaction.
 
 {depth_rules}
+{extra_rules}
 
 Scene beats:
 {beat_text}
@@ -727,12 +755,12 @@ def generate_json_with_models(prompt: str, max_output_tokens: int = 32768, label
     raise RuntimeError(f"All models failed for {label}. Last error: {last_error}")
 
 
-def generate_story_package(topic: str, characters: str, theme: str, video_type="horror_story", target_minutes=18, narrator_pov="", setting="", audience="general audience") -> Dict[str, Any]:
+def generate_story_package(topic: str, characters: str, theme: str, video_type="horror_story", target_minutes=18, narrator_pov="", setting="", audience="general audience", forced_title="", chapters=1, split_parts=1) -> Dict[str, Any]:
     video_type = normalize_type(video_type)
     settings = VIDEO_TYPES[video_type]
     target_minutes = clamp_int(target_minutes, int(settings.get("duration_minutes", 18)), 1, 60)
     if video_type == "short":
-        scene_count = 3
+        scene_count = 3 * max(1, split_parts)
     else:
         # Scale scene count with duration and keep it modest: fewer, richer scenes
         # produce smaller, valid JSON (the model was emitting broken JSON at ~24
@@ -740,10 +768,10 @@ def generate_story_package(topic: str, characters: str, theme: str, video_type="
         scene_count = clamp_int(round(target_minutes * 1.2), 12, 8, 24)
     story_context = build_story_context(characters, narrator_pov, setting)
 
-    prompt = build_prompt(topic, characters, theme, video_type, target_minutes, scene_count, story_context, audience)
+    prompt = build_prompt(topic, characters, theme, video_type, target_minutes, scene_count, story_context, audience, forced_title=forced_title, chapters=chapters, split_parts=split_parts)
     # Long-form stories need generous output headroom so the JSON isn't truncated
     # mid-generation (a source of malformed JSON). Shorts are tiny.
-    max_tokens = 16384 if video_type == "short" else 65536
+    max_tokens = (16384 * max(1, split_parts)) if video_type == "short" else 65536
     data = generate_json_with_models(prompt, max_output_tokens=max_tokens, label="Generating story package")
 
     # Optional chunked deepening for long-form, off by default (free-tier safe).
@@ -763,6 +791,8 @@ def generate_story_package(topic: str, characters: str, theme: str, video_type="
             # Non-fatal: keep the perfectly good single-call story if expansion fails.
             print(f"Chunked expansion skipped (non-fatal): {exc}")
 
+    if forced_title:
+        data["title"] = forced_title
     if "title" not in data or not data["title"]:
         data["title"] = "A Story From Nightfall Diaries"
     if "description" not in data or not data["description"]:
@@ -806,6 +836,168 @@ def _expand_story_middle(data, topic, characters, theme, video_type, target_minu
     return data
 
 
+def package_from_user_story(story_text: str, forced_title: str, video_type: str, target_minutes, chapters: int = 1, split_parts: int = 1) -> Dict[str, Any]:
+    """
+    The channel owner wrote the story themselves (TBT_CUSTOM_STORY). Instead of
+    inventing a story, ask the model only to SEGMENT the given text into the
+    standard scene/shot JSON (keeping the narration verbatim) and to add the
+    production metadata: title, description, emotions, and image prompts.
+    """
+    video_type = normalize_type(video_type)
+    wc = word_count(story_text)
+    if video_type == "short":
+        scene_count = 3 * max(1, split_parts)
+    else:
+        scene_count = clamp_int(round(wc / 110.0), 12, 3, 24)
+    est_minutes = clamp_int(round(wc / 130.0), clamp_int(target_minutes, 18, 1, 60), 1, 60)
+    story_context = build_story_context("", "", "")
+
+    title_rule = (
+        f'EXACTLY this text, character for character, unchanged: "{forced_title}"'
+        if forced_title
+        else "a curiosity-driven YouTube title under 95 characters based on the story; no ALL CAPS, no clickbait spam"
+    )
+    parts_rule = ""
+    if chapters > 1:
+        parts_rule = (
+            f"\n- Split the scenes as evenly as possible into {chapters} labeled parts: the first scene of each "
+            f"part must begin its narration_en with 'Part N.' (add only that label, change nothing else)."
+        )
+    if split_parts > 1:
+        block = max(1, scene_count // split_parts)
+        parts_rule += (
+            f"\n- The scenes will later be published as {split_parts} separate videos, split every {block} scenes "
+            f"in order. Choose scene boundaries so each block of {block} scenes ends at a natural break in the text."
+        )
+
+    prompt = f"""
+You are the production editor for the YouTube channel Nightfall Diaries. The channel owner has written
+this story themselves. Your job is ONLY to prepare it for production. Do NOT rewrite, improve, shorten,
+extend, or censor the story: the narration must be the owner's text, split in original order.
+
+THE OWNER'S STORY:
+\"\"\"{story_text}\"\"\"
+
+Rules:
+- Split the story text into exactly {scene_count} scenes IN ORDER. Together, the scenes' narration_en must
+  contain the entire story text, once, with nothing added and nothing left out (you may only fix obvious
+  typos and normalize whitespace).
+- Every scene needs exactly 4 shots. Distribute that scene's narration across its shots in order.
+- Each scene's "emotion" must be exactly one of: dread, tension, eerie, calm, fear, relief, mystery, anger, satisfaction.
+- Every image_prompt: a vertical 9:16 dark cinematic still matching that exact moment; describe camera framing,
+  lighting, location, and action; faces obscured or not shown; no text, no watermark. Keep every prompt in the
+  same setting the story establishes so all visuals belong to one story.{parts_rule}
+
+Return valid JSON only, exactly in this shape:
+{{
+  "title": "{title_rule}",
+  "description": "A 2-3 sentence YouTube description that hooks the viewer without spoiling the ending. End with a final line of 4-6 relevant lowercase hashtags, e.g. #nightfalldiaries #scarystories #truestory #horror #creepy",
+  "audience": "general audience",
+  "video_type": "{video_type}",
+  "target_minutes": {est_minutes},
+  "emotional_arc": "one sentence describing the feeling journey",
+  "scenes": [
+    {{
+      "scene_number": 1,
+      "beat": "narrative purpose of this scene",
+      "emotion": "one of the allowed emotions",
+      "voice_style": "specific direction for narrator performance",
+      "pause_after": 0.45,
+      "camera_motion": "one of: slow_zoom_in, slow_zoom_out, gentle_pan_left, gentle_pan_right, tiny_handheld, still_soft",
+      "narration_en": "this scene's portion of the owner's story text, verbatim",
+      "subtitle_en": "short English subtitle only",
+      "image_prompt": "main scene visual prompt",
+      "shots": [
+        {{"shot_number": 1, "emotion": "...", "narration_en": "...", "subtitle_en": "...", "image_prompt": "...", "camera_motion": "slow_zoom_in"}},
+        {{"shot_number": 2, "emotion": "...", "narration_en": "...", "subtitle_en": "...", "image_prompt": "...", "camera_motion": "gentle_pan_left"}},
+        {{"shot_number": 3, "emotion": "...", "narration_en": "...", "subtitle_en": "...", "image_prompt": "...", "camera_motion": "tiny_handheld"}},
+        {{"shot_number": 4, "emotion": "...", "narration_en": "...", "subtitle_en": "...", "image_prompt": "...", "camera_motion": "slow_zoom_out"}}
+      ]
+    }}
+  ]
+}}
+"""
+    data = generate_json_with_models(prompt, max_output_tokens=65536, label="Segmenting owner-written story")
+    if forced_title:
+        data["title"] = forced_title
+    if not data.get("title"):
+        data["title"] = "A Story From Nightfall Diaries"
+    if not data.get("description"):
+        data["description"] = "A late-night story for a general adult audience. #nightfalldiaries #truestory #scarystories"
+    data["audience"] = "general audience"
+    data["video_type"] = video_type
+    scenes = data.get("scenes") if isinstance(data.get("scenes"), list) else []
+    if not scenes:
+        raise ValueError("Story segmentation returned no scenes.")
+    # NOTE: no fallback_expand_scenes here on purpose — padding with generic
+    # filler scenes would inject narration the owner never wrote.
+    data["scenes"] = [normalize_scene(scene, i, story_context, video_type) for i, scene in enumerate(scenes, start=1)]
+    data["script"] = " ".join(scene["narration_en"] for scene in data["scenes"])
+    data["emotional_score"] = emotional_score(data)
+    return data
+
+
+def split_package_into_parts(package: Dict[str, Any], n: int) -> List[Dict[str, Any]]:
+    """Split one finished story package into n sequential per-video packages
+    ("Part 1/n", "Part 2/n", ...) by dividing its scenes evenly, in order."""
+    scenes = package.get("scenes", [])
+    n = max(1, min(int(n), len(scenes) or 1))
+    if n == 1:
+        return [package]
+    base, extra = divmod(len(scenes), n)
+    total_minutes = clamp_int(package.get("target_minutes", 18), 18, 1, 60)
+    per_part_minutes = max(1, round(total_minutes / n))
+    base_title = str(package.get("title", "")).strip() or "A Story From Nightfall Diaries"
+    # Keep room for the " — Part N/N" suffix inside YouTube's 100-char limit.
+    if len(base_title) > 84:
+        base_title = base_title[:84].rstrip()
+    parts, idx = [], 0
+    for p in range(1, n + 1):
+        take = base + (1 if p <= extra else 0)
+        chunk = scenes[idx: idx + take]
+        idx += take
+        part = dict(package)
+        part["scenes"] = [dict(scene, scene_number=j) for j, scene in enumerate(chunk, start=1)]
+        part["title"] = f"{base_title} — Part {p}/{n}"
+        part["description"] = f"Part {p} of {n}. " + str(package.get("description", ""))
+        part["script"] = " ".join(scene.get("narration_en", "") for scene in part["scenes"])
+        part["target_minutes"] = per_part_minutes
+        parts.append(part)
+    return parts
+
+
+def pick_idea_from_csv(video_type: str, existing_topics) -> Dict[str, str]:
+    """
+    AUTO-REFILL: when the sheet has no IDEA row left for the requested type,
+    pull a fresh idea from content_ideas_by_type.csv (committed in the repo)
+    so a run NEVER ends silently with nothing produced. Prefers ideas whose
+    topic isn't already in the sheet; if all are used, reuses a random one
+    (generation temperature makes the resulting story different anyway).
+    """
+    import csv
+    import random
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "content_ideas_by_type.csv")
+    if not os.path.exists(path):
+        return None
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        rows = [r for r in csv.DictReader(fh) if (r.get("topic") or "").strip()]
+    if not rows:
+        return None
+    matching = [r for r in rows if normalize_type(r.get("video_type", "")) == video_type] or rows
+    unused = [r for r in matching if (r.get("topic") or "").strip() not in existing_topics]
+    return random.choice(unused or matching)
+
+
+def build_sheet_row(headers: List[str], assignments) -> List[str]:
+    """Build a full sheet row (list of strings) from (column_index, value) pairs
+    produced by find_column / find_optional_column (1-based, None = missing)."""
+    row = [""] * len(headers)
+    for col, value in assignments:
+        if col:
+            row[col - 1] = str(value)
+    return row
+
+
 def main():
     client = get_sheets_client()
     spreadsheet = open_spreadsheet(client)
@@ -839,96 +1031,195 @@ def main():
 
     requested_video_type = normalize_type(os.getenv("TBT_VIDEO_TYPE", "") or os.getenv("VIDEO_TYPE", "")) if (os.getenv("TBT_VIDEO_TYPE") or os.getenv("VIDEO_TYPE")) else ""
 
-    target_row_number = None
-    target_row = None
-    for index, row in enumerate(values[1:], start=2):
-        row_status = get_cell(row, status_col).upper()
-        row_type = normalize_type(get_cell(row, video_type_col))
-        if row_status == "IDEA" and (not requested_video_type or row_type == requested_video_type):
-            target_row_number = index
-            target_row = row
-            break
-    if target_row_number is None:
-        msg = "No IDEA row found" + (f" for video_type={requested_video_type}" if requested_video_type else "")
-        log(logs_sheet, "", "GENERATE_STORY", msg)
-        print(msg)
-        return
+    # Manual-run extras (all optional, set by the workflow's Run-workflow inputs):
+    #   TBT_CUSTOM_TITLE - use exactly this title; AI writes the story from it
+    #   TBT_CUSTOM_STORY - the owner wrote the story; use it as the narration
+    #   TBT_PARTS / TBT_PARTS_MODE - split into N separate videos, or N labeled
+    #                                chapters inside one video
+    custom_title = os.getenv("TBT_CUSTOM_TITLE", "").strip()
+    custom_story = os.getenv("TBT_CUSTOM_STORY", "").strip()
+    parts = clamp_int(os.getenv("TBT_PARTS", "1") or "1", 1, 1, 10)
+    parts_mode = (os.getenv("TBT_PARTS_MODE", "") or "separate_videos").strip().lower()
+    chapters = parts if (parts > 1 and parts_mode == "chapters") else 1
+    split_parts = parts if (parts > 1 and parts_mode != "chapters") else 1
+    custom_mode = bool(custom_title or custom_story)
 
-    video_id = get_cell(target_row, id_col)
-    video_type = requested_video_type or normalize_type(get_cell(target_row, video_type_col))
-    target_minutes = os.getenv("TBT_TARGET_MINUTES", "").strip() or get_cell(target_row, target_minutes_col) or VIDEO_TYPES[video_type].get("duration_minutes", 18)
-    narrator_pov = get_cell(target_row, narrator_pov_col)
-    setting_value = get_cell(target_row, setting_col)
-    audience = get_cell(target_row, audience_col) or "general audience"
+    if custom_mode:
+        # The run brings its own title and/or story, so no sheet IDEA row is
+        # consumed; new row(s) are appended to the sheet instead.
+        target_row_number = None
+        target_row = None
+        video_id = "CUSTOM-" + re.sub(r"\D", "", utc_now())
+        video_type = requested_video_type or "horror_story"
+        topic = custom_title or "a story written by the channel owner"
+        characters = ""
+        theme = ""
+        narrator_pov = ""
+        setting_value = ""
+        audience = "general audience"
+        target_minutes = os.getenv("TBT_TARGET_MINUTES", "").strip() or VIDEO_TYPES[video_type].get("duration_minutes", 18)
+        print(f"Custom mode: title={'yes' if custom_title else 'no'} story={'yes' if custom_story else 'no'} parts={parts} mode={parts_mode}")
+    else:
+        target_row_number = None
+        target_row = None
+        for index, row in enumerate(values[1:], start=2):
+            row_status = get_cell(row, status_col).upper()
+            row_type = normalize_type(get_cell(row, video_type_col))
+            if row_status == "IDEA" and (not requested_video_type or row_type == requested_video_type):
+                target_row_number = index
+                target_row = row
+                break
+        if target_row_number is None:
+            # AUTO-REFILL: the sheet ran out of IDEA rows for this type. This used
+            # to print "No IDEA row found" and exit 0, which made the workflow
+            # look green while uploading NOTHING. Now a fresh idea is pulled from
+            # content_ideas_by_type.csv and the run continues; results are
+            # appended to the sheet as a new row.
+            video_type = requested_video_type or "horror_story"
+            existing_topics = {get_cell(row, topic_col) for row in values[1:]}
+            idea = pick_idea_from_csv(video_type, existing_topics)
+            if idea is None:
+                msg = f"No IDEA row for video_type={video_type} and content_ideas_by_type.csv is missing/empty - nothing to produce."
+                log(logs_sheet, "", "GENERATE_STORY_ERROR", msg)
+                raise RuntimeError(msg)  # fail RED so the run is never silently empty
+            video_id = "AUTO-" + re.sub(r"\D", "", utc_now())
+            topic = (idea.get("topic") or "").strip()
+            characters = (idea.get("characters") or "").strip()
+            theme = (idea.get("theme") or "").strip()
+            narrator_pov = (idea.get("narrator_pov") or "").strip()
+            setting_value = (idea.get("setting") or "").strip()
+            audience = (idea.get("audience") or "").strip() or "general audience"
+            target_minutes = os.getenv("TBT_TARGET_MINUTES", "").strip() or (idea.get("target_minutes") or "").strip() or VIDEO_TYPES[video_type].get("duration_minutes", 18)
+            log(logs_sheet, video_id, "GENERATE_STORY", f"No IDEA row for {video_type}; auto-seeded from CSV: {topic[:120]}")
+            print(f"No IDEA row for {video_type}; auto-seeded idea from CSV: {topic[:120]}")
+        else:
+            video_id = get_cell(target_row, id_col)
+            video_type = requested_video_type or normalize_type(get_cell(target_row, video_type_col))
+            target_minutes = os.getenv("TBT_TARGET_MINUTES", "").strip() or get_cell(target_row, target_minutes_col) or VIDEO_TYPES[video_type].get("duration_minutes", 18)
+            topic = get_cell(target_row, topic_col)
+            characters = get_cell(target_row, characters_col)
+            theme = get_cell(target_row, theme_col)
+            narrator_pov = get_cell(target_row, narrator_pov_col)
+            setting_value = get_cell(target_row, setting_col)
+            audience = get_cell(target_row, audience_col) or "general audience"
     try:
-        package = generate_story_package(
-            get_cell(target_row, topic_col),
-            get_cell(target_row, characters_col),
-            get_cell(target_row, theme_col),
-            video_type=video_type,
-            target_minutes=target_minutes,
-            narrator_pov=narrator_pov,
-            setting=setting_value,
-            audience=audience,
-        )
-        scene_payload = {
-            "emotional_arc": package.get("emotional_arc", ""),
-            "emotional_score": package.get("emotional_score", ""),
-            "audience": package.get("audience", "general audience"),
-            "video_type": package.get("video_type", video_type),
-            "target_minutes": package.get("target_minutes", target_minutes),
-            "scenes": package["scenes"],
-        }
+        # For separate part videos, generate ONE continuous story long enough
+        # for all parts, then split it. target_minutes means minutes PER video.
+        gen_minutes = clamp_int(target_minutes, 18, 1, 60)
+        if split_parts > 1 and video_type != "short":
+            gen_minutes = min(60, gen_minutes * split_parts)
 
-        # Save a local backup of the full story BEFORE touching the sheet, so the
-        # generated work is never lost even if a sheet write fails. Picked up by
-        # the workflow's upload-artifact step. Non-fatal if it can't be written.
-        try:
-            STORY_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-            safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", str(video_id).strip() or "story")
-            backup_path = STORY_BACKUP_DIR / f"story_{safe_id}.json"
-            with open(backup_path, "w", encoding="utf-8") as fh:
-                json.dump(
-                    {
-                        "id": video_id,
-                        "title": package.get("title", ""),
-                        "description": package.get("description", ""),
-                        "script": package.get("script", ""),
-                        "video_type": video_type,
-                        "target_minutes": package.get("target_minutes", target_minutes),
-                        "scene_payload": scene_payload,
-                    },
-                    fh,
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            print(f"Story backup saved: {backup_path}")
-        except Exception as backup_exc:
-            print(f"Story backup skipped (non-fatal): {backup_exc}")
+        if custom_story:
+            package = package_from_user_story(
+                custom_story, custom_title, video_type, gen_minutes,
+                chapters=chapters, split_parts=split_parts,
+            )
+        else:
+            package = generate_story_package(
+                topic,
+                characters,
+                theme,
+                video_type=video_type,
+                target_minutes=gen_minutes,
+                narrator_pov=narrator_pov,
+                setting=setting_value,
+                audience=audience,
+                forced_title=custom_title,
+                chapters=chapters,
+                split_parts=split_parts,
+            )
 
-        update_cell(content_sheet, target_row_number, title_col, package["title"])
-        update_cell(content_sheet, target_row_number, script_col, clamp_cell(package["script"]))
-        update_cell(content_sheet, target_row_number, description_col, clamp_cell(package["description"]))
-        update_cell(content_sheet, target_row_number, scene_prompts_col, trim_payload_for_cell(scene_payload))
-        update_cell(content_sheet, target_row_number, status_col, "GENERATED")
-        update_cell(content_sheet, target_row_number, created_at_col, utc_now())
-        update_cell(content_sheet, target_row_number, image_status_col, "PENDING")
-        update_cell(content_sheet, target_row_number, audio_status_col, "PENDING")
-        update_cell(content_sheet, target_row_number, youtube_status_col, "")
-        update_cell(content_sheet, target_row_number, youtube_video_id_col, "")
-        update_optional(content_sheet, target_row_number, video_type_col, video_type)
-        update_optional(content_sheet, target_row_number, target_minutes_col, str(package.get("target_minutes", target_minutes)))
-        update_optional(content_sheet, target_row_number, audience_col, "general audience")
-        update_optional(content_sheet, target_row_number, made_for_kids_col, "FALSE")
-        update_optional(content_sheet, target_row_number, error_message_col, "")
-        log(logs_sheet, video_id, "GENERATE_STORY", f"Generated {video_type} story: {package['title']} | scenes={len(package['scenes'])} | words={word_count(package['script'])} | score={package['emotional_score']}")
-        print(f"Generated story: {package['title']}")
-        print(f"Scenes: {len(package['scenes'])} | Words: {word_count(package['script'])} | Type: {video_type}")
+        packages = split_package_into_parts(package, split_parts)
+
+        for part_number, pkg in enumerate(packages, start=1):
+            pkg_id = video_id if len(packages) == 1 or (part_number == 1 and target_row_number is not None) else f"{video_id}-p{part_number}"
+            scene_payload = {
+                "emotional_arc": pkg.get("emotional_arc", ""),
+                "emotional_score": pkg.get("emotional_score", ""),
+                "audience": pkg.get("audience", "general audience"),
+                "video_type": pkg.get("video_type", video_type),
+                "target_minutes": pkg.get("target_minutes", target_minutes),
+                "scenes": pkg["scenes"],
+            }
+
+            # Save a local backup of the story BEFORE touching the sheet, so the
+            # generated work is never lost even if a sheet write fails. Picked up
+            # by the workflow's upload-artifact step. Non-fatal if it can't be written.
+            try:
+                STORY_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+                safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", str(pkg_id).strip() or "story")
+                backup_path = STORY_BACKUP_DIR / f"story_{safe_id}.json"
+                with open(backup_path, "w", encoding="utf-8") as fh:
+                    json.dump(
+                        {
+                            "id": pkg_id,
+                            "title": pkg.get("title", ""),
+                            "description": pkg.get("description", ""),
+                            "script": pkg.get("script", ""),
+                            "video_type": video_type,
+                            "target_minutes": pkg.get("target_minutes", target_minutes),
+                            "scene_payload": scene_payload,
+                        },
+                        fh,
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                print(f"Story backup saved: {backup_path}")
+            except Exception as backup_exc:
+                print(f"Story backup skipped (non-fatal): {backup_exc}")
+
+            if part_number == 1 and target_row_number is not None:
+                # Normal path: fill in the sheet's IDEA row.
+                update_cell(content_sheet, target_row_number, title_col, pkg["title"])
+                update_cell(content_sheet, target_row_number, script_col, clamp_cell(pkg["script"]))
+                update_cell(content_sheet, target_row_number, description_col, clamp_cell(pkg["description"]))
+                update_cell(content_sheet, target_row_number, scene_prompts_col, trim_payload_for_cell(scene_payload))
+                update_cell(content_sheet, target_row_number, status_col, "GENERATED")
+                update_cell(content_sheet, target_row_number, created_at_col, utc_now())
+                update_cell(content_sheet, target_row_number, image_status_col, "PENDING")
+                update_cell(content_sheet, target_row_number, audio_status_col, "PENDING")
+                update_cell(content_sheet, target_row_number, youtube_status_col, "")
+                update_cell(content_sheet, target_row_number, youtube_video_id_col, "")
+                update_optional(content_sheet, target_row_number, video_type_col, video_type)
+                update_optional(content_sheet, target_row_number, target_minutes_col, str(pkg.get("target_minutes", target_minutes)))
+                update_optional(content_sheet, target_row_number, audience_col, "general audience")
+                update_optional(content_sheet, target_row_number, made_for_kids_col, "FALSE")
+                update_optional(content_sheet, target_row_number, error_message_col, "")
+            else:
+                # Custom-mode row, or extra part rows: append a ready GENERATED row.
+                new_row = build_sheet_row(headers, [
+                    (id_col, pkg_id),
+                    (topic_col, topic),
+                    (characters_col, characters),
+                    (theme_col, theme),
+                    (title_col, pkg["title"]),
+                    (script_col, clamp_cell(pkg["script"])),
+                    (description_col, clamp_cell(pkg["description"])),
+                    (scene_prompts_col, trim_payload_for_cell(scene_payload)),
+                    (status_col, "GENERATED"),
+                    (created_at_col, utc_now()),
+                    (image_status_col, "PENDING"),
+                    (audio_status_col, "PENDING"),
+                    (youtube_status_col, ""),
+                    (youtube_video_id_col, ""),
+                    (video_type_col, video_type),
+                    (target_minutes_col, str(pkg.get("target_minutes", target_minutes))),
+                    (audience_col, "general audience"),
+                    (made_for_kids_col, "FALSE"),
+                    (error_message_col, ""),
+                ])
+                append_row(content_sheet, new_row)
+
+            log(logs_sheet, pkg_id, "GENERATE_STORY", f"Generated {video_type} story: {pkg['title']} | part={part_number}/{len(packages)} | scenes={len(pkg['scenes'])} | words={word_count(pkg['script'])} | score={pkg['emotional_score']}")
+            print(f"Generated story: {pkg['title']} (part {part_number}/{len(packages)})")
+            print(f"Scenes: {len(pkg['scenes'])} | Words: {word_count(pkg['script'])} | Type: {video_type}")
     except Exception as exc:
-        update_optional(content_sheet, target_row_number, error_message_col, str(exc)[:1500])
+        if target_row_number is not None:
+            update_optional(content_sheet, target_row_number, error_message_col, str(exc)[:1500])
         log(logs_sheet, video_id, "GENERATE_STORY_ERROR", str(exc))
         raise
 
 
 if __name__ == "__main__":
     main()
+# EOF
