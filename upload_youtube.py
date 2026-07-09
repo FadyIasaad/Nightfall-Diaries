@@ -279,8 +279,12 @@ def main():
         "A late-night story for a general adult audience."
     )
     # Ensure #Shorts tag is present for short-form videos (YouTube Shorts algorithm requirement)
-    if is_short and "Shorts" not in description:
-        description = description.rstrip() + "\n#Shorts"
+    if is_short:
+        funnel = "Full late-night stories on the channel \u2014 subscribe so you don't miss the next one."
+        if funnel not in description:
+            description = description.rstrip() + "\n\n" + funnel
+        if "Shorts" not in description:
+            description = description.rstrip() + "\n#Shorts"
 
     category = get_cell(target_row, video_type_col) if video_type_col else None
     thumbnail_path = get_cell(target_row, thumbnail_path_col) if thumbnail_path_col else None

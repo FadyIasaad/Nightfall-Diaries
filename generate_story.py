@@ -385,6 +385,7 @@ Scene beats:
 Return valid JSON only, exactly in this shape:
 {{
   "title": "YouTube title {title_rule}",
+  "thumbnail_text": "a 2-5 word ALL-CAPS emotional hook for the thumbnail, punchier than the title, e.g. SHE KNEW ALL ALONG",
   "description": "A 2-3 sentence YouTube description that hooks the viewer and teases the premise without spoiling the ending, for a general adult audience. End it with a final line of 4-6 relevant lowercase hashtags, e.g. #nightfalldiaries #scarystories #truestory #horror #creepy",
   "audience": "general audience",
   "video_type": "{video_type}",
@@ -891,6 +892,7 @@ Rules:
 Return valid JSON only, exactly in this shape:
 {{
   "title": "{title_rule}",
+  "thumbnail_text": "a 2-5 word ALL-CAPS emotional hook for the thumbnail, punchier than the title, e.g. SHE KNEW ALL ALONG",
   "description": "A 2-3 sentence YouTube description that hooks the viewer without spoiling the ending. End with a final line of 4-6 relevant lowercase hashtags, e.g. #nightfalldiaries #scarystories #truestory #horror #creepy",
   "audience": "general audience",
   "video_type": "{video_type}",
@@ -959,6 +961,8 @@ def split_package_into_parts(package: Dict[str, Any], n: int) -> List[Dict[str, 
         part = dict(package)
         part["scenes"] = [dict(scene, scene_number=j) for j, scene in enumerate(chunk, start=1)]
         part["title"] = f"{base_title} — Part {p}/{n}"
+        hook = str(package.get("thumbnail_text", "") or "").strip()
+        part["thumbnail_text"] = f"{hook} — PART {p}" if hook else f"PART {p} OF {n}"
         part["description"] = f"Part {p} of {n}. " + str(package.get("description", ""))
         part["script"] = " ".join(scene.get("narration_en", "") for scene in part["scenes"])
         part["target_minutes"] = per_part_minutes
@@ -1139,6 +1143,7 @@ def main():
                 "audience": pkg.get("audience", "general audience"),
                 "video_type": pkg.get("video_type", video_type),
                 "target_minutes": pkg.get("target_minutes", target_minutes),
+                "thumbnail_text": str(pkg.get("thumbnail_text", "") or "").strip(),
                 "scenes": pkg["scenes"],
             }
 

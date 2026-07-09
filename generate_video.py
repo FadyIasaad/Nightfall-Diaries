@@ -482,7 +482,7 @@ def make_subtitle_overlay(video_id, shot_index, shot, title):
 
 
 # ─── THUMBNAIL GENERATION ──────────────────────────────────────────────────────
-def generate_thumbnail(video_id, title, image_path):
+def generate_thumbnail(video_id, title, image_path, hook_text=""):
     """
     Builds a simple high-contrast custom thumbnail from one of the episode's
     own cinematic stills: dark gradient band, bold title text. No extra API
@@ -508,19 +508,40 @@ def generate_thumbnail(video_id, title, image_path):
     img.alpha_composite(Image.new("RGBA", (thumb_w, band_h), (0, 0, 0, 175)), (0, thumb_h - band_h))
 
     draw = ImageDraw.Draw(img)
-    title_font = load_font(72, bold=True)
     brand_font = load_font(34, bold=True)
 
-    lines = wrap_ltr(draw, title, title_font, thumb_w - 100, max_lines=2)
-    total_h = len(lines) * 84
-    y = thumb_h - band_h + (band_h - total_h) // 2 - 10
+    # Prefer the short ALL-CAPS hook ("SHE KNEW ALL ALONG") over the full title:
+    # 3-5 huge words out-click a long sentence every time. Fall back to the
+    # title when no hook was generated (older sheet rows).
+    text = (hook_text or "").strip().upper() or (title or "").strip()
+    # Pick the largest font size whose wrapped lines fit in <= 2 lines and
+    # inside the safe width.
+    chosen_font, lines, line_h = None, [], 0
+    for size in (150, 128, 108, 90, 72, 60):
+        font = load_font(size, bold=True)
+        candidate = wrap_ltr(draw, text, font, thumb_w - 100, max_lines=2)
+        widest = max((draw.textbbox((0, 0), ln, font=font)[2] for ln in candidate), default=0)
+        joined = " ".join(candidate).strip()
+        if len(candidate) <= 2 and widest <= thumb_w - 100 and joined == text:
+            chosen_font, lines, line_h = font, candidate, int(size * 1.18)
+            break
+    if chosen_font is None:
+        chosen_font = load_font(60, bold=True)
+        lines = wrap_ltr(draw, text, chosen_font, thumb_w - 100, max_lines=2)
+        line_h = 72
+    total_h = len(lines) * line_h
+    band_h = max(band_h, total_h + 70)
+    img.alpha_composite(Image.new("RGBA", (thumb_w, band_h), (0, 0, 0, 150)), (0, thumb_h - band_h))
+    draw = ImageDraw.Draw(img)
+    y = thumb_h - band_h + (band_h - total_h) // 2 - 8
+    outline = max(3, line_h // 20)
     for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=title_font)
+        bbox = draw.textbbox((0, 0), line, font=chosen_font)
         x = (thumb_w - (bbox[2] - bbox[0])) // 2
-        for dx, dy in [(-4, -4), (4, -4), (-4, 4), (4, 4)]:
-            draw.text((x + dx, y + dy), line, font=title_font, fill=(0, 0, 0, 230))
-        draw.text((x, y), line, font=title_font, fill=(245, 245, 250, 255))
-        y += 84
+        for dx, dy in [(-outline, -outline), (outline, -outline), (-outline, outline), (outline, outline)]:
+            draw.text((x + dx, y + dy), line, font=chosen_font, fill=(0, 0, 0, 235))
+        draw.text((x, y), line, font=chosen_font, fill=(248, 246, 240, 255))
+        y += line_h
 
     draw.text((40, 30), CHANNEL_NAME.upper(), font=brand_font, fill=(230, 200, 120, 255))
 
@@ -1430,7 +1451,7 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
 
     if thumb_source_path is None:
         thumb_source_path = extract_thumbnail_source_frame(video_path)
-    thumb_path = generate_thumbnail(safe_id, title, thumb_source_path)
+    thumb_path = generate_thumbnail(safe_id, title, thumb_source_path, hook_text=str(scene_payload.get("thumbnail_text", "") or ""))
 
     chapters_text = build_chapters(shots, shot_durations, video_type)
 
