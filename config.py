@@ -20,7 +20,7 @@ YOUTUBE_CATEGORY_ID = "24"  # Entertainment
 # quiet horror dread and matter-of-fact confession/revenge storytelling well,
 # and a single consistent voice is what makes a channel feel like "a place"
 # rather than a random AI feed.
-DEFAULT_EDGE_TTS_VOICE = "en-US-AriaNeural"
+DEFAULT_EDGE_TTS_VOICE = "en-US-AndrewMultilingualNeural"
 
 CHANNEL_POSITIONING = (
     "Real-feeling late-night stories for adults: true-crime-style confessions, "

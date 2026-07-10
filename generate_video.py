@@ -86,16 +86,19 @@ USE_STOCK_FIRST = os.getenv("USE_STOCK_FIRST", "false").lower() in {"1", "true",
 # One narrator voice for the whole channel, with calibrated rate / pitch / volume
 # per emotion so quiet dread, sharp fear, and matter-of-fact confession all feel
 # distinct without ever sounding like a different person.
+# Andrew Multilingual is the most natural, human-sounding free edge-tts voice:
+# a deep, unhurried male narrator that fits late-night stories far better than
+# the flatter Aria. Wider rate/pitch spread per emotion = more alive delivery.
 EMOTION_STYLE = {
-    "dread":        {"voice": "en-US-AriaNeural", "rate": "-18%", "pitch": "-3Hz", "volume": "+0%"},
-    "tension":      {"voice": "en-US-AriaNeural", "rate": "-10%", "pitch": "-1Hz", "volume": "+2%"},
-    "eerie":        {"voice": "en-US-AriaNeural", "rate": "-16%", "pitch": "-4Hz", "volume": "-2%"},
-    "calm":         {"voice": "en-US-AriaNeural", "rate": "-20%", "pitch": "-2Hz", "volume": "-3%"},
-    "fear":         {"voice": "en-US-AriaNeural", "rate": "-8%",  "pitch": "-2Hz", "volume": "+3%"},
-    "relief":       {"voice": "en-US-AriaNeural", "rate": "-14%", "pitch": "+1Hz", "volume": "+0%"},
-    "mystery":      {"voice": "en-US-AriaNeural", "rate": "-14%", "pitch": "-2Hz", "volume": "+0%"},
-    "anger":        {"voice": "en-US-AriaNeural", "rate": "-6%",  "pitch": "-1Hz", "volume": "+4%"},
-    "satisfaction": {"voice": "en-US-AriaNeural", "rate": "-12%", "pitch": "+0Hz", "volume": "+1%"},
+    "dread":        {"voice": "en-US-AndrewMultilingualNeural", "rate": "-16%", "pitch": "-6Hz", "volume": "+0%"},
+    "tension":      {"voice": "en-US-AndrewMultilingualNeural", "rate": "-8%",  "pitch": "-2Hz", "volume": "+2%"},
+    "eerie":        {"voice": "en-US-AndrewMultilingualNeural", "rate": "-14%", "pitch": "-8Hz", "volume": "-2%"},
+    "calm":         {"voice": "en-US-AndrewMultilingualNeural", "rate": "-18%", "pitch": "-3Hz", "volume": "-3%"},
+    "fear":         {"voice": "en-US-AndrewMultilingualNeural", "rate": "-4%",  "pitch": "+2Hz", "volume": "+4%"},
+    "relief":       {"voice": "en-US-AndrewMultilingualNeural", "rate": "-12%", "pitch": "+2Hz", "volume": "+0%"},
+    "mystery":      {"voice": "en-US-AndrewMultilingualNeural", "rate": "-12%", "pitch": "-4Hz", "volume": "+0%"},
+    "anger":        {"voice": "en-US-AndrewMultilingualNeural", "rate": "-2%",  "pitch": "-1Hz", "volume": "+5%"},
+    "satisfaction": {"voice": "en-US-AndrewMultilingualNeural", "rate": "-10%", "pitch": "+1Hz", "volume": "+1%"},
 }
 
 # Inter-sentence pause per emotion (used in SSML <break> tags)
