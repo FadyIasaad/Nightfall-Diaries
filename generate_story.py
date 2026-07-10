@@ -301,9 +301,14 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
 
     beat_text = "\n".join(f"{i+1}. {beat}" for i, beat in enumerate(beats[:scene_count])) if video_type != "short" else "\n".join(f"{i+1}. {beat}" for i, beat in enumerate(beats))
     title_rule = (
-        "a punchy, curiosity-driven title under 70 characters that makes someone need to click it; no ALL CAPS, no clickbait spam"
+        "a punchy first-person title under 70 characters that drops the viewer mid-conflict and leaves ONE "
+        "question unanswered, e.g. \"I Read My Sister's Diary. I Shouldn't Have.\" or \"The Voicemail Was 47 "
+        "Seconds of Silence\"; built on one concrete specific detail, never vague; no ALL CAPS words, no clickbait spam"
         if video_type == "short"
-        else "a curiosity-driven title under 95 characters that opens a question in the viewer's mind; intriguing but not clickbait-spam"
+        else "a first-person curiosity-gap title under 80 characters built on ONE concrete, specific detail plus one "
+        "unanswered question, e.g. \"My Husband's 'Business Trips' Were 11 Minutes From Our House\" or \"The "
+        "Landlord Kept a Key to a Room That Wasn't on the Lease\"; specificity (a number, an object, a place) beats "
+        "adjectives every time; never vague like 'A Terrifying Story'; no ALL CAPS words, no clickbait spam"
     )
     if forced_title:
         title_rule = f'that is EXACTLY this text, character for character, unchanged: "{forced_title}"'
@@ -366,7 +371,11 @@ Hard quality rules:
   clearly belongs to the same story.
 - English narration only.
 - Every scene needs a distinct location/action/emotional beat so the video never repeats the same visual.
-  The first scene must hook within 2 seconds.
+- COLD OPEN (MANDATORY): the very FIRST narration line of scene 1 drops the listener mid-conflict — a
+  confession, a discovery, or a detail that is already wrong (e.g. "The police asked me why I waited three
+  days to report it. This is why." or "I found the second phone on a Tuesday."). Never open with weather,
+  routine, scene-setting, or backstory ("It was a normal evening..." is forbidden). Whatever context the
+  story needs gets back-filled naturally in scenes 2-3, AFTER the listener is already committed.
 - Use cinematic sensory detail: rain on glass, a porch light, a hallway, a phone screen glow, footsteps, silence.
 - Every scene must include exactly 4 visually different shots. Each shot needs its own narration_en and image_prompt.
 - Visual identity: dark cinematic stills, moody lighting, restrained and suggestive rather than graphic, faces
@@ -385,7 +394,7 @@ Scene beats:
 Return valid JSON only, exactly in this shape:
 {{
   "title": "YouTube title {title_rule}",
-  "thumbnail_text": "a 2-5 word ALL-CAPS emotional hook for the thumbnail, punchier than the title, e.g. SHE KNEW ALL ALONG",
+  "thumbnail_text": "a 2-4 word ALL-CAPS emotional hook for the thumbnail that does NOT repeat the title's words — the title asks the question, the thumbnail twists the knife, e.g. SHE KNEW ALL ALONG / IT WASN'T EMPTY / HE NEVER LEFT",
   "description": "A 2-3 sentence YouTube description that hooks the viewer and teases the premise without spoiling the ending, for a general adult audience. End it with a final line of 4-6 relevant lowercase hashtags, e.g. #nightfalldiaries #scarystories #truestory #horror #creepy",
   "audience": "general audience",
   "video_type": "{video_type}",
@@ -892,7 +901,7 @@ Rules:
 Return valid JSON only, exactly in this shape:
 {{
   "title": "{title_rule}",
-  "thumbnail_text": "a 2-5 word ALL-CAPS emotional hook for the thumbnail, punchier than the title, e.g. SHE KNEW ALL ALONG",
+  "thumbnail_text": "a 2-4 word ALL-CAPS emotional hook for the thumbnail that does NOT repeat the title's words — the title asks the question, the thumbnail twists the knife, e.g. SHE KNEW ALL ALONG / IT WASN'T EMPTY / HE NEVER LEFT",
   "description": "A 2-3 sentence YouTube description that hooks the viewer without spoiling the ending. End with a final line of 4-6 relevant lowercase hashtags, e.g. #nightfalldiaries #scarystories #truestory #horror #creepy",
   "audience": "general audience",
   "video_type": "{video_type}",
@@ -1227,4 +1236,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-# EOF
+# EOF (2026-07-10: CTR title rules + cold-open hook)

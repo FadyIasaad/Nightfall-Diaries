@@ -18,7 +18,7 @@ from moviepy.video.fx.fadein import fadein
 from moviepy.video.fx.fadeout import fadeout
 from moviepy.audio.fx.audio_fadein import audio_fadein
 from moviepy.audio.fx.audio_fadeout import audio_fadeout
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 if not hasattr(Image, "ANTIALIAS"):
     Image.ANTIALIAS = Image.LANCZOS
@@ -499,7 +499,14 @@ def generate_thumbnail(video_id, title, image_path, hook_text=""):
     img = img.resize(new_size, Image.LANCZOS)
     left = (img.width - thumb_w) // 2
     top = (img.height - thumb_h) // 2
-    img = img.crop((left, top, left + thumb_w, top + thumb_h)).convert("RGBA")
+    img = img.crop((left, top, left + thumb_w, top + thumb_h))
+
+    # Punch up the still so it survives YouTube's compression and reads at
+    # feed size: more contrast + saturation makes dark cinematic frames pop
+    # instead of turning into a grey mush next to brighter thumbnails.
+    img = ImageEnhance.Contrast(img).enhance(1.18)
+    img = ImageEnhance.Color(img).enhance(1.22)
+    img = img.convert("RGBA")
 
     # Darken slightly overall, then a stronger gradient band behind the title
     # so bold text stays readable over any background.
@@ -535,12 +542,21 @@ def generate_thumbnail(video_id, title, image_path, hook_text=""):
     draw = ImageDraw.Draw(img)
     y = thumb_h - band_h + (band_h - total_h) // 2 - 8
     outline = max(3, line_h // 20)
-    for line in lines:
+    accent = (240, 178, 60, 255)   # amber — matches the channel branding, pops on dark stills
+    space_w = draw.textbbox((0, 0), " ", font=chosen_font)[2]
+    for li, line in enumerate(lines):
         bbox = draw.textbbox((0, 0), line, font=chosen_font)
         x = (thumb_w - (bbox[2] - bbox[0])) // 2
-        for dx, dy in [(-outline, -outline), (outline, -outline), (-outline, outline), (outline, outline)]:
-            draw.text((x + dx, y + dy), line, font=chosen_font, fill=(0, 0, 0, 235))
-        draw.text((x, y), line, font=chosen_font, fill=(248, 246, 240, 255))
+        words = line.split()
+        for wi, word in enumerate(words):
+            # The very last word of the hook gets the amber accent: one warm
+            # word against cold white text is a cheap, reliable CTR bump.
+            is_accent = (li == len(lines) - 1) and (wi == len(words) - 1) and len(text.split()) > 1
+            fill = accent if is_accent else (248, 246, 240, 255)
+            for dx, dy in [(-outline, -outline), (outline, -outline), (-outline, outline), (outline, outline)]:
+                draw.text((x + dx, y + dy), word, font=chosen_font, fill=(0, 0, 0, 235))
+            draw.text((x, y), word, font=chosen_font, fill=fill)
+            x += draw.textbbox((0, 0), word, font=chosen_font)[2] + space_w
         y += line_h
 
     draw.text((40, 30), CHANNEL_NAME.upper(), font=brand_font, fill=(230, 200, 120, 255))
