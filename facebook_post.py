@@ -1,0 +1,128 @@
+"""
+Auto-posts the most recently uploaded video to a Facebook Page.
+Shorts are published as Reels (the video file itself); long-form videos are
+posted as a link post pointing at YouTube.
+
+Needs two GitHub Secrets (skips silently if absent, so the pipeline never
+breaks while Facebook isn't set up yet):
+  FB_PAGE_ID            the numeric Page id
+  FB_PAGE_ACCESS_TOKEN  a long-lived Page access token with
+                        pages_manage_posts + pages_read_engagement
+"""
+import os
+import time
+from pathlib import Path
+
+import requests
+
+from nd_common import (
+    get_sheets_client,
+    open_spreadsheet,
+    get_worksheet,
+    get_all_values,
+    find_column,
+    find_optional_column,
+    get_cell,
+)
+
+GRAPH = "https://graph.facebook.com/v19.0"
+
+
+def normalize_type(value):
+    return str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def find_latest_uploaded_row():
+    client = get_sheets_client()
+    spreadsheet = open_spreadsheet(client)
+    sheet = get_worksheet(spreadsheet, "Content")
+    values = get_all_values(sheet)
+    if not values:
+        return None
+    headers = values[0]
+    status_col = find_column(headers, "status")
+    title_col = find_column(headers, "title")
+    url_col = find_column(headers, "video_url")
+    type_col = find_optional_column(headers, "video_type")
+    path_col = find_optional_column(headers, "video_file_path")
+    for row in reversed(values[1:]):
+        if (get_cell(row, status_col) or "").strip().upper() == "UPLOADED":
+            return {
+                "title": (get_cell(row, title_col) or "").strip(),
+                "url": (get_cell(row, url_col) or "").strip(),
+                "video_type": normalize_type(get_cell(row, type_col)) if type_col else "",
+                "video_path": (get_cell(row, path_col) or "").strip() if path_col else "",
+            }
+    return None
+
+
+def post_link(page_id, token, title, url):
+    r = requests.post(
+        f"{GRAPH}/{page_id}/feed",
+        data={"message": f"{title}\n\nWatch: {url}", "link": url, "access_token": token},
+        timeout=60,
+    )
+    r.raise_for_status()
+    print(f"Facebook link post created: {r.json().get('id')}")
+
+
+def post_reel(page_id, token, title, url, video_path):
+    size = video_path.stat().st_size
+    start = requests.post(
+        f"{GRAPH}/{page_id}/video_reels",
+        data={"upload_phase": "start", "access_token": token},
+        timeout=60,
+    )
+    start.raise_for_status()
+    video_id = start.json()["video_id"]
+    upload_url = start.json()["upload_url"]
+    with open(video_path, "rb") as fh:
+        up = requests.post(
+            upload_url,
+            headers={
+                "Authorization": f"OAuth {token}",
+                "offset": "0",
+                "file_size": str(size),
+            },
+            data=fh,
+            timeout=1800,
+        )
+    up.raise_for_status()
+    fin = requests.post(
+        f"{GRAPH}/{page_id}/video_reels",
+        data={
+            "upload_phase": "finish",
+            "video_id": video_id,
+            "video_state": "PUBLISHED",
+            "description": f"{title}\n\nFull stories on YouTube: {url}",
+            "access_token": token,
+        },
+        timeout=120,
+    )
+    fin.raise_for_status()
+    print(f"Facebook Reel published: {video_id}")
+
+
+def main():
+    page_id = os.getenv("FB_PAGE_ID", "").strip()
+    token = os.getenv("FB_PAGE_ACCESS_TOKEN", "").strip()
+    if not page_id or not token:
+        print("FB_PAGE_ID / FB_PAGE_ACCESS_TOKEN not set. Skipping Facebook post.")
+        return
+    row = find_latest_uploaded_row()
+    if not row or not row["url"]:
+        print("No uploaded video found in the sheet. Nothing to post.")
+        return
+    video_path = Path(row["video_path"]) if row["video_path"] else None
+    try:
+        if row["video_type"] == "short" and video_path and video_path.exists():
+            post_reel(page_id, token, row["title"], row["url"], video_path)
+        else:
+            post_link(page_id, token, row["title"], row["url"])
+    except Exception as exc:
+        # Never break the pipeline over a social post.
+        print(f"Facebook post failed (non-fatal): {exc}")
+
+
+if __name__ == "__main__":
+    main()

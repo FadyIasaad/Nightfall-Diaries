@@ -297,7 +297,14 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
   end on an unexplained shrug or an arbitrary cutoff.
 - MEANING: the story is ABOUT something — guilt, grief, denial, trust, obsession, the cost of
   silence. Weave that theme through the narrator's choices and let the final line land on it, so a
-  listener could say in one sentence what the story meant."""
+  listener could say in one sentence what the story meant.
+- RE-HOOK: the FIRST narration line of every third scene (scenes 4, 7, 10, ...) must quietly tease
+  forward ("I didn't know it yet, but the worst part hadn't happened") without recapping anything.
+  It renews the listener's reason to stay without breaking the story's calm voice.
+- SIGN-OFF: AFTER the story's final line has fully landed, the very LAST shot's narration_en ends
+  with ONE extra quiet sentence in the narrator's own voice inviting a like and a subscribe, e.g.
+  "If this one kept you up — a like, a subscribe, and I'll bring you another tomorrow night." Keep
+  it under 20 words, calm, never salesy, always the final sentence of the video."""
 
     beat_text = "\n".join(f"{i+1}. {beat}" for i, beat in enumerate(beats[:scene_count])) if video_type != "short" else "\n".join(f"{i+1}. {beat}" for i, beat in enumerate(beats))
     title_rule = (

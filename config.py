@@ -140,6 +140,12 @@ LOUDNESS_TARGET_LUFS = -14.0
 ENABLE_BRAND_STING = True
 BRAND_STING_VOLUME = 0.45
 
+# ─── SHORTS LIKE/SUBSCRIBE OVERLAY ───────────────────────────────────────────
+# Baked-in visual "LIKE & SUBSCRIBE" card over the last seconds of every short
+# (long-form gets the spoken sign-off + end screen instead).
+ENABLE_SHORTS_CTA = True
+SHORTS_CTA_SECONDS = 3.5
+
 # ─── THUMBNAILS ───────────────────────────────────────────────────────────────
 THUMBNAIL_DIR = OUTPUT_DIR / "thumbnails"
 

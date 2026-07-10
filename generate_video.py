@@ -25,6 +25,8 @@ if not hasattr(Image, "ANTIALIAS"):
 
 from config import (
     AMBIENT_BED_VOLUME,
+    ENABLE_SHORTS_CTA,
+    SHORTS_CTA_SECONDS,
     BRAND_STING_VOLUME,
     CHANNEL_NAME,
     DEFAULT_AMBIENT_BED_VOLUME,
@@ -484,9 +486,25 @@ def make_subtitle_overlay(video_id, shot_index, shot, title):
 # ─── THUMBNAIL GENERATION ──────────────────────────────────────────────────────
 def generate_thumbnail(video_id, title, image_path, hook_text=""):
     """
-    Builds a simple high-contrast custom thumbnail from one of the episode's
-    own cinematic stills: dark gradient band, bold title text. No extra API
-    calls or paid tools, just PIL on an image already generated for the video.
+    Renders THREE thumbnail variants (A/B/C differ in accent color placement)
+    so you can A/B test with YouTube Studio's Test & Compare. Variant A is
+    uploaded automatically; B and C land in output/thumbnails and are kept in
+    the workflow's artifacts. Returns the variant-A path.
+    """
+    path_a = _render_thumbnail_variant(video_id, title, image_path, hook_text, "A")
+    for variant in ("B", "C"):
+        try:
+            _render_thumbnail_variant(video_id, title, image_path, hook_text, variant)
+        except Exception as exc:
+            print(f"Thumbnail variant {variant} skipped (non-fatal): {exc}")
+    return path_a
+
+
+def _render_thumbnail_variant(video_id, title, image_path, hook_text="", variant="A"):
+    """
+    A: white text, amber last word (default upload).
+    B: all-amber text, extra contrast.
+    C: amber FIRST word, deeper bottom band.
     """
     thumb_w, thumb_h = 1280, 720
     try:
@@ -504,14 +522,14 @@ def generate_thumbnail(video_id, title, image_path, hook_text=""):
     # Punch up the still so it survives YouTube's compression and reads at
     # feed size: more contrast + saturation makes dark cinematic frames pop
     # instead of turning into a grey mush next to brighter thumbnails.
-    img = ImageEnhance.Contrast(img).enhance(1.18)
+    img = ImageEnhance.Contrast(img).enhance(1.28 if variant == "B" else 1.18)
     img = ImageEnhance.Color(img).enhance(1.22)
     img = img.convert("RGBA")
 
     # Darken slightly overall, then a stronger gradient band behind the title
     # so bold text stays readable over any background.
     img.alpha_composite(Image.new("RGBA", (thumb_w, thumb_h), (0, 0, 0, 60)))
-    band_h = 260
+    band_h = 320 if variant == "C" else 260
     img.alpha_composite(Image.new("RGBA", (thumb_w, band_h), (0, 0, 0, 175)), (0, thumb_h - band_h))
 
     draw = ImageDraw.Draw(img)
@@ -551,7 +569,12 @@ def generate_thumbnail(video_id, title, image_path, hook_text=""):
         for wi, word in enumerate(words):
             # The very last word of the hook gets the amber accent: one warm
             # word against cold white text is a cheap, reliable CTR bump.
-            is_accent = (li == len(lines) - 1) and (wi == len(words) - 1) and len(text.split()) > 1
+            if variant == "B":
+                is_accent = True
+            elif variant == "C":
+                is_accent = (li == 0) and (wi == 0) and len(text.split()) > 1
+            else:
+                is_accent = (li == len(lines) - 1) and (wi == len(words) - 1) and len(text.split()) > 1
             fill = accent if is_accent else (248, 246, 240, 255)
             for dx, dy in [(-outline, -outline), (outline, -outline), (-outline, outline), (outline, outline)]:
                 draw.text((x + dx, y + dy), word, font=chosen_font, fill=(0, 0, 0, 235))
@@ -561,9 +584,76 @@ def generate_thumbnail(video_id, title, image_path, hook_text=""):
 
     draw.text((40, 30), CHANNEL_NAME.upper(), font=brand_font, fill=(230, 200, 120, 255))
 
-    thumb_path = THUMB_DIR / f"thumb_{video_id}.jpg"
+    suffix = "" if variant == "A" else f"_{variant}"
+    thumb_path = THUMB_DIR / f"thumb_{video_id}{suffix}.jpg"
     img.convert("RGB").save(thumb_path, quality=92)
     return thumb_path
+
+
+def make_shorts_cta_png(video_id):
+    """
+    Transparent overlay card for the last seconds of a short: a soft dark band
+    near the bottom with LIKE & SUBSCRIBE in brand colors. Composited by ffmpeg
+    only over the final SHORTS_CTA_SECONDS so it never covers the story itself.
+    """
+    img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    band_h = 190
+    band_top = HEIGHT - 560
+    img.alpha_composite(Image.new("RGBA", (WIDTH, band_h), (0, 0, 0, 160)), (0, band_top))
+    draw = ImageDraw.Draw(img)
+    top_font = load_font(44, bold=True)
+    main_font = load_font(72, bold=True)
+    line1 = "ENJOYED IT?"
+    line2 = "LIKE  ♥  &  SUBSCRIBE"
+    b1 = draw.textbbox((0, 0), line1, font=top_font)
+    draw.text(((WIDTH - (b1[2] - b1[0])) // 2, band_top + 18), line1, font=top_font, fill=(235, 235, 240, 255))
+    b2 = draw.textbbox((0, 0), line2, font=main_font)
+    x2 = (WIDTH - (b2[2] - b2[0])) // 2
+    y2 = band_top + 78
+    for dx, dy in [(-3, -3), (3, -3), (-3, 3), (3, 3)]:
+        draw.text((x2 + dx, y2 + dy), line2, font=main_font, fill=(0, 0, 0, 220))
+    draw.text((x2, y2), line2, font=main_font, fill=(240, 178, 60, 255))
+    path = FRAMES_DIR / f"cta_{video_id}.png"
+    img.save(path)
+    return path
+
+
+def apply_shorts_cta(video_path, video_id):
+    """
+    Overlays the LIKE & SUBSCRIBE card on the final SHORTS_CTA_SECONDS of a
+    short with a single ffmpeg pass (audio stream-copied). Non-fatal: any
+    failure leaves the original video untouched.
+    """
+    try:
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)],
+            capture_output=True, text=True,
+        )
+        duration = float(probe.stdout.strip())
+        start = max(0.0, duration - float(SHORTS_CTA_SECONDS))
+        cta_png = make_shorts_cta_png(video_id)
+        tmp_out = Path(str(video_path) + ".cta.mp4")
+        cmd = [
+            "ffmpeg", "-y", "-i", str(video_path), "-loop", "1", "-i", str(cta_png),
+            "-filter_complex",
+            f"[1:v]format=rgba,fade=t=in:st={start:.2f}:d=0.5:alpha=1[cta];"
+            f"[0:v][cta]overlay=0:0:enable='gte(t,{start:.2f})':shortest=1[v]",
+            "-map", "[v]", "-map", "0:a?", "-c:a", "copy",
+            "-c:v", "libx264", "-preset", "faster", "-crf", "20",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+            str(tmp_out),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr[-800:])
+        tmp_out.replace(video_path)
+        print(f"Shorts CTA overlay applied over the last {SHORTS_CTA_SECONDS}s.")
+        return True
+    except Exception as exc:
+        print(f"Shorts CTA overlay skipped (non-fatal): {exc}")
+        return False
 
 
 def make_end_screen_frame(video_id, title):
@@ -586,6 +676,8 @@ def make_end_screen_frame(video_id, title):
         "stay a little longer.",
         "",
         "Another story is waiting.",
+        "",
+        "A like & a subscribe keeps the lights on.",
     ]
     y = HEIGHT // 2 - 120
     for ln in lines:
@@ -1464,6 +1556,9 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
         ambient_applied = add_ambient_bed(video_path, ambient_volume, sting_volume, normalized_type)
 
     loudness_applied = normalize_final_loudness(video_path, LOUDNESS_TARGET_LUFS)
+
+    if ENABLE_SHORTS_CTA and normalized_type == "short":
+        apply_shorts_cta(video_path, safe_id)
 
     if thumb_source_path is None:
         thumb_source_path = extract_thumbnail_source_frame(video_path)
