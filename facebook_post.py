@@ -135,17 +135,20 @@ def main():
         me = requests.get(f"{GRAPH}/me", params={"fields": "id,name", "access_token": token}, timeout=30)
         print(f"Token identity check: {me.status_code} {me.text[:200]}")
         if me.ok and str(me.json().get("id")) != str(page_id):
-            print("Token belongs to a user, not the page. Exchanging for the Page token...")
-            ex = requests.get(
-                f"{GRAPH}/{page_id}",
-                params={"fields": "access_token", "access_token": token},
-                timeout=30,
-            )
-            if ex.ok and ex.json().get("access_token"):
-                token = ex.json()["access_token"]
-                print("Exchanged successfully — continuing with the Page token.")
+            print("Token belongs to a user, not the page. Fetching managed pages...")
+            acc = requests.get(f"{GRAPH}/me/accounts", params={"access_token": token}, timeout=30)
+            if acc.ok:
+                pages = acc.json().get("data", [])
+                print(f"Managed pages: {[(p.get('id'), p.get('name')) for p in pages]}")
+                if pages:
+                    page = next((p for p in pages if str(p.get("id")) == str(page_id)), pages[0])
+                    page_id = str(page["id"])
+                    token = page["access_token"]
+                    print(f"Using page '{page.get('name')}' (real id {page_id}) with its own Page token.")
+                else:
+                    print("No managed pages returned; continuing with original settings.")
             else:
-                print(f"Exchange failed ({ex.status_code}: {ex.text[:300]}). Continuing with the original token.")
+                print(f"me/accounts failed ({acc.status_code}: {acc.text[:300]}). Continuing with original settings.")
     except Exception as exc:
         print(f"Token identity check skipped: {exc}")
 
