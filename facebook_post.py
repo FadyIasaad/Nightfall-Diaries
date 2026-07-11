@@ -59,7 +59,15 @@ def find_latest_uploaded_row():
 def post_link(page_id, token, title, url):
     r = requests.post(
         f"{GRAPH}/{page_id}/feed",
-        data={"message": f"{title}\n\nWatch: {url}", "link": url, "access_token": token},
+        data={
+            "message": (
+                f"{title}\n\n"
+                f"🎬 Watch the FULL video on YouTube:\n"
+                f"👉 {url}"
+            ),
+            "link": url,
+            "access_token": token,
+        },
         timeout=60,
     )
     if not r.ok:
@@ -73,7 +81,12 @@ def post_video(page_id, token, title, url, video_path):
         r = requests.post(
             f"{GRAPH}/{page_id}/videos",
             data={
-                "description": f"{title}\n\nFull stories on YouTube: {url}",
+                "description": (
+                    f"{title}\n\n"
+                    f"🎬 This is just the beginning — watch the FULL story on YouTube:\n"
+                    f"👉 {url}\n\n"
+                    f"#shorts #horrorstories #nightfalldiaries"
+                ),
                 "access_token": token,
             },
             files={"source": ("video.mp4", fh, "video/mp4")},
@@ -113,7 +126,12 @@ def post_reel(page_id, token, title, url, video_path):
             "upload_phase": "finish",
             "video_id": video_id,
             "video_state": "PUBLISHED",
-            "description": f"{title}\n\nFull stories on YouTube: {url}",
+            "description": (
+                f"{title}\n\n"
+                f"🎬 This is just the beginning — watch the FULL story on YouTube:\n"
+                f"👉 {url}\n\n"
+                f"#shorts #horrorstories #nightfalldiaries"
+            ),
             "access_token": token,
         },
         timeout=120,
