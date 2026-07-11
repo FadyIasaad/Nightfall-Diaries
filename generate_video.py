@@ -25,6 +25,7 @@ if not hasattr(Image, "ANTIALIAS"):
 
 from config import (
     AMBIENT_BED_VOLUME,
+    ENABLE_FILM_GRAIN,
     ENABLE_SHORTS_CTA,
     SHORTS_CTA_SECONDS,
     BRAND_STING_VOLUME,
@@ -371,6 +372,35 @@ def draw_centered_lines(draw, lines, font, center_y, fill, spacing=9):
         draw.text((x, y), line, font=font, fill=fill)
         y += h + spacing
 
+_VIGNETTE_MASKS = {}
+
+
+def apply_cinematic_finish(img):
+    """
+    Subtle film grain + corner vignette on every photo frame so AI stills read
+    as cinema frames instead of flat renders. Cheap (numpy, once per shot) and
+    non-fatal: any failure returns the original image.
+    """
+    if not ENABLE_FILM_GRAIN:
+        return img
+    try:
+        import numpy as np
+        w, h = img.size
+        if (w, h) not in _VIGNETTE_MASKS:
+            y, x = np.ogrid[:h, :w]
+            d = np.sqrt(((x - w / 2) / (w * 0.75)) ** 2 + ((y - h / 2) / (h * 0.75)) ** 2)
+            mask = np.clip(1.0 - 0.42 * np.clip(d - 0.5, 0.0, None) ** 1.6, 0.5, 1.0)
+            _VIGNETTE_MASKS[(w, h)] = mask[..., None].astype(np.float32)
+        arr = np.asarray(img.convert("RGB"), dtype=np.float32)
+        arr *= _VIGNETTE_MASKS[(w, h)]
+        grain = np.random.normal(0.0, 5.0, (h, w, 1)).astype(np.float32)
+        arr = np.clip(arr + grain, 0, 255)
+        return Image.fromarray(arr.astype("uint8"), "RGB")
+    except Exception as exc:
+        print(f"Cinematic finish skipped (non-fatal): {exc}")
+        return img
+
+
 def prepare_photo(path):
     """
     Prepare a visual frame. Darker overlays than a bright/warm channel would
@@ -382,7 +412,8 @@ def prepare_photo(path):
     img = img.resize(new_size, Image.LANCZOS)
     left = (img.width - WIDTH) // 2
     top  = (img.height - HEIGHT) // 2
-    img = img.crop((left, top, left + WIDTH, top + HEIGHT)).convert("RGBA")
+    img = img.crop((left, top, left + WIDTH, top + HEIGHT))
+    img = apply_cinematic_finish(img).convert("RGBA")
     # Header gradient (branding area)
     img.alpha_composite(Image.new("RGBA", (WIDTH, 170), (0, 0, 0, 90)), (0, 0))
     # Subtitle gradient at bottom
@@ -920,21 +951,57 @@ def build_ambient_bed(duration_seconds, output_path, story_type=None):
 
     duration = max(3.0, float(duration_seconds))
     fade_out_start = max(0.0, duration - 6.0)
-    # Soft minor-chord synth pad (A2 + C3 + E3) with a slow tremolo = the gentle
-    # "instrument" under the narration, over a quiet rain layer. Fully generated
-    # with ffmpeg, so zero copyright risk and nothing is downloaded.
-    pad = ("(0.16*sin(2*PI*110*t)+0.12*sin(2*PI*130.81*t)+0.10*sin(2*PI*164.81*t))"
-           "*(0.82+0.18*sin(2*PI*0.07*t))")
+
+    # Generative mood beds v2 — real harmonic movement (chords change every 8s
+    # in a 32s cycle with a slow swell), tuned per video type. Fully generated
+    # with ffmpeg, zero copyright risk, and the mood actually matches the story.
+    swell = "(0.35+0.65*sin(PI*mod(t\,8)/8))"
+    stype = str(story_type or "").strip().lower().replace("-", "_").replace(" ", "_")
+
+    if stype == "confession_story":
+        # Warm, muted, melancholic: Am -> F -> C -> Em, mid register, light rain.
+        pad = (
+            "((0.15*sin(2*PI*110*t)+0.11*sin(2*PI*164.81*t)+0.08*sin(2*PI*220*t)+0.06*sin(2*PI*261.63*t))*lt(mod(t\,32)\,8)"
+            "+(0.15*sin(2*PI*87.31*t)+0.11*sin(2*PI*174.61*t)+0.08*sin(2*PI*220*t)+0.06*sin(2*PI*261.63*t))*gte(mod(t\,32)\,8)*lt(mod(t\,32)\,16)"
+            "+(0.15*sin(2*PI*130.81*t)+0.11*sin(2*PI*196*t)+0.08*sin(2*PI*164.81*t)+0.06*sin(2*PI*261.63*t))*gte(mod(t\,32)\,16)*lt(mod(t\,32)\,24)"
+            "+(0.15*sin(2*PI*82.41*t)+0.11*sin(2*PI*123.47*t)+0.08*sin(2*PI*164.81*t)+0.06*sin(2*PI*246.94*t))*gte(mod(t\,32)\,24))"
+            f"*{swell}"
+        )
+        extra = "0"
+        rain_vol, pad_cut = 0.20, 1500
+    elif stype == "short":
+        # Tense and minimal: two low chords alternating + a faint slow pulse.
+        pad = (
+            "((0.20*sin(2*PI*61.74*t)+0.12*sin(2*PI*92.5*t)+0.06*sin(2*PI*123.47*t))*lt(mod(t\,16)\,8)"
+            "+(0.20*sin(2*PI*55*t)+0.12*sin(2*PI*82.41*t)+0.06*sin(2*PI*110*t))*gte(mod(t\,16)\,8))"
+            f"*{swell}"
+        )
+        extra = "0.5*sin(2*PI*82*t)*exp(-14*mod(t\,1.153))"
+        rain_vol, pad_cut = 0.0, 900
+    else:
+        # Horror: same movement but a lower, darker register + distant sub thump.
+        pad = (
+            "((0.18*sin(2*PI*55*t)+0.12*sin(2*PI*82.41*t)+0.07*sin(2*PI*110*t))*lt(mod(t\,32)\,8)"
+            "+(0.18*sin(2*PI*43.65*t)+0.12*sin(2*PI*87.31*t)+0.07*sin(2*PI*110*t))*gte(mod(t\,32)\,8)*lt(mod(t\,32)\,16)"
+            "+(0.18*sin(2*PI*65.41*t)+0.12*sin(2*PI*98*t)+0.07*sin(2*PI*130.81*t))*gte(mod(t\,32)\,16)*lt(mod(t\,32)\,24)"
+            "+(0.18*sin(2*PI*41.2*t)+0.12*sin(2*PI*82.41*t)+0.07*sin(2*PI*123.47*t))*gte(mod(t\,32)\,24))"
+            f"*{swell}"
+        )
+        extra = "0.9*sin(2*PI*38*t)*exp(-8*mod(t\,9.3))*lt(mod(t\,9.3)\,1.2)"
+        rain_vol, pad_cut = 0.28, 1000
+
     filter_complex = (
-        "[0:a]lowpass=f=700,highpass=f=80,volume=0.35[rain];"
-        "[1:a]lowpass=f=1400,volume=0.9[pad];"
-        "[rain][pad]amix=inputs=2:duration=longest:normalize=0[bed];"
-        f"[bed]afade=t=in:st=0:d=5,afade=t=out:st={fade_out_start:.2f}:d=6[out]"
+        f"[0:a]lowpass=f=650,highpass=f=80,volume={rain_vol:.2f}[rain];"
+        f"[1:a]lowpass=f={pad_cut},volume=1.0[pad];"
+        "[2:a]lowpass=f=150,volume=0.5[extra];"
+        "[rain][pad][extra]amix=inputs=3:duration=longest:normalize=0[bed];"
+        f"[bed]afade=t=in:st=0:d=4,afade=t=out:st={fade_out_start:.2f}:d=6[out]"
     )
     command = [
         "ffmpeg", "-y",
         "-f", "lavfi", "-i", f"anoisesrc=color=brown:amplitude=1:duration={duration:.2f}",
         "-f", "lavfi", "-i", f"aevalsrc={pad}:duration={duration:.2f}",
+        "-f", "lavfi", "-i", f"aevalsrc={extra}:duration={duration:.2f}",
         "-filter_complex", filter_complex,
         "-map", "[out]", "-ac", "2", "-ar", "48000",
         str(output_path),

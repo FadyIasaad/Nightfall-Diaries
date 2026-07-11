@@ -103,7 +103,7 @@ DEFAULT_AMBIENT_BED_VOLUME = 0.14
 # copyright risk. If the folder is empty, the pipeline falls back to the
 # generated synth bed automatically. Volumes are deliberately low so real music
 # with melody sits behind the voice instead of competing with it.
-ENABLE_MUSIC_BED = True
+ENABLE_MUSIC_BED = False  # real tracks felt off-mood; generative mood beds v2 are used instead
 MUSIC_BED_DIR = BASE_DIR / "assets" / "music"
 MUSIC_BED_VOLUME = {
     "short": 0.10,
@@ -139,6 +139,15 @@ LOUDNESS_TARGET_LUFS = -14.0
 # approach as the ambient bed: synthesized with ffmpeg, nothing downloaded.
 ENABLE_BRAND_STING = True
 BRAND_STING_VOLUME = 0.45
+
+# ─── CINEMATIC FINISH ─────────────────────────────────────────────────────────
+# Subtle film grain + corner vignette on every frame (pro film look).
+ENABLE_FILM_GRAIN = True
+
+# ─── STORY QUALITY ────────────────────────────────────────────────────────────
+# Second Gemini pass where the model edits its own draft (hook, escalation,
+# set-pieces, payoff, spoken rhythm). One extra API call per story.
+ENABLE_STORY_POLISH = True
 
 # ─── SHORTS LIKE/SUBSCRIBE OVERLAY ───────────────────────────────────────────
 # Baked-in visual "LIKE & SUBSCRIBE" card over the last seconds of every short

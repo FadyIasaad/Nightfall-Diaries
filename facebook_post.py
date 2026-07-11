@@ -66,6 +66,23 @@ def post_link(page_id, token, title, url):
     print(f"Facebook link post created: {r.json().get('id')}")
 
 
+def post_video(page_id, token, title, url, video_path):
+    """Regular Page video post — works even where the Reels API is restricted."""
+    with open(video_path, "rb") as fh:
+        r = requests.post(
+            f"{GRAPH}/{page_id}/videos",
+            data={
+                "description": f"{title}\n\nFull stories on YouTube: {url}",
+                "access_token": token,
+            },
+            files={"source": ("video.mp4", fh, "video/mp4")},
+            timeout=1800,
+        )
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code}: {r.text[:400]}")
+    print(f"Facebook video post created: {r.json().get('id')}")
+
+
 def post_reel(page_id, token, title, url, video_path):
     size = video_path.stat().st_size
     start = requests.post(
@@ -73,7 +90,8 @@ def post_reel(page_id, token, title, url, video_path):
         data={"upload_phase": "start", "access_token": token},
         timeout=60,
     )
-    start.raise_for_status()
+    if not start.ok:
+        raise RuntimeError(f"reel start {start.status_code}: {start.text[:400]}")
     video_id = start.json()["video_id"]
     upload_url = start.json()["upload_url"]
     with open(video_path, "rb") as fh:
@@ -114,14 +132,24 @@ def main():
         print("No uploaded video found in the sheet. Nothing to post.")
         return
     video_path = Path(row["video_path"]) if row["video_path"] else None
+    # Fallback chain: Reel -> regular video post -> link post. Something always
+    # lands on the page even if the Reels API is restricted for this app.
     try:
         if row["video_type"] == "short" and video_path and video_path.exists():
-            post_reel(page_id, token, row["title"], row["url"], video_path)
+            try:
+                post_reel(page_id, token, row["title"], row["url"], video_path)
+            except Exception as exc:
+                print(f"Reel failed ({exc}); falling back to regular video post.")
+                post_video(page_id, token, row["title"], row["url"], video_path)
         else:
             post_link(page_id, token, row["title"], row["url"])
     except Exception as exc:
-        # Never break the pipeline over a social post.
-        print(f"Facebook post failed (non-fatal): {exc}")
+        print(f"Facebook post failed ({exc}); last resort: link post.")
+        try:
+            post_link(page_id, token, row["title"], row["url"])
+        except Exception as exc2:
+            # Never break the pipeline over a social post.
+            print(f"Facebook link post also failed (non-fatal): {exc2}")
 
 
 if __name__ == "__main__":

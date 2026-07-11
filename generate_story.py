@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 import google.generativeai as genai
 
 from config import (
+    ENABLE_STORY_POLISH,
     CHANNEL_NAME,
     CINEMATIC_VISUAL_STYLE,
     DEFAULT_NARRATOR_STYLE,
@@ -772,6 +773,52 @@ def generate_json_with_models(prompt: str, max_output_tokens: int = 32768, label
     raise RuntimeError(f"All models failed for {label}. Last error: {last_error}")
 
 
+def polish_story_package(data, video_type, target_minutes, max_tokens):
+    """
+    Second pass: the model becomes a ruthless story editor, diagnoses the draft
+    (hook, escalation, set-pieces, payoff, spoken rhythm) and returns the SAME
+    JSON with only the weak parts rewritten. Non-fatal: any failure keeps the
+    draft.
+    """
+    draft = json.dumps(data, ensure_ascii=False)
+    prompt = f"""
+You are the ruthless story editor for the YouTube channel Nightfall Diaries. Below is a draft
+story package (JSON). Your job is to make it measurably better, NOT to rewrite it from scratch.
+
+Diagnose these five things, then fix ONLY what is weak:
+1. HOOK: does the very first narration line drop the listener mid-conflict and force the next
+   sentence? If not, rewrite it into a confession/discovery/wrong-detail opener.
+2. ESCALATION: does every act raise the stakes? Flatten spots where two scenes repeat the same
+   tension level — make the later one sharper, closer, more personal.
+3. SET-PIECES: are there at least three concrete, retellable moments? If a scene is abstract
+   mood-noodling, ground it in one specific physical action or object.
+4. PAYOFF: does the ending answer the opening question and recontextualize the story? If the
+   final line is soft, rewrite it to land.
+5. VOICE: narration must sound like a real person speaking slowly — short sentences, concrete
+   words, no purple prose, no essay phrases ("little did I know", "it was at that moment").
+
+Hard rules:
+- Keep the SAME characters, names, setting, scene count, shots-per-scene, and JSON shape.
+- Keep every field present in the draft. Only change text content where it is weak.
+- Keep the like/subscribe sign-off as the final sentence if present.
+- Return the COMPLETE corrected JSON object and nothing else.
+
+DRAFT:
+{draft}
+"""
+    revised = generate_json_with_models(prompt, max_output_tokens=max_tokens, label="Polishing story (editor pass)")
+    # Sanity: same structure, nothing emptied.
+    if not isinstance(revised.get("scenes"), list) or len(revised["scenes"]) != len(data.get("scenes", [])):
+        raise ValueError("polish pass changed scene count; keeping draft")
+    for scene in revised["scenes"]:
+        if not str(scene.get("narration_en", "")).strip() and not scene.get("shots"):
+            raise ValueError("polish pass emptied a scene; keeping draft")
+    revised.setdefault("title", data.get("title"))
+    revised.setdefault("thumbnail_text", data.get("thumbnail_text"))
+    revised.setdefault("description", data.get("description"))
+    return revised
+
+
 def generate_story_package(topic: str, characters: str, theme: str, video_type="horror_story", target_minutes=18, narrator_pov="", setting="", audience="general audience", forced_title="", chapters=1, split_parts=1) -> Dict[str, Any]:
     video_type = normalize_type(video_type)
     settings = VIDEO_TYPES[video_type]
@@ -807,6 +854,13 @@ def generate_story_package(topic: str, characters: str, theme: str, video_type="
         except Exception as exc:
             # Non-fatal: keep the perfectly good single-call story if expansion fails.
             print(f"Chunked expansion skipped (non-fatal): {exc}")
+
+    if ENABLE_STORY_POLISH:
+        try:
+            data = polish_story_package(data, video_type, target_minutes, max_tokens)
+            print("Editor polish pass applied.")
+        except Exception as exc:
+            print(f"Editor polish pass skipped (non-fatal): {exc}")
 
     if forced_title:
         data["title"] = forced_title
