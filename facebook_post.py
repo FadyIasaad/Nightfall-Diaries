@@ -62,7 +62,8 @@ def post_link(page_id, token, title, url):
         data={"message": f"{title}\n\nWatch: {url}", "link": url, "access_token": token},
         timeout=60,
     )
-    r.raise_for_status()
+    if not r.ok:
+        raise RuntimeError(f"feed {r.status_code}: {r.text[:400]}")
     print(f"Facebook link post created: {r.json().get('id')}")
 
 
@@ -127,6 +128,27 @@ def main():
     if not page_id or not token:
         print("FB_PAGE_ID / FB_PAGE_ACCESS_TOKEN not set. Skipping Facebook post.")
         return
+    # Self-diagnosis: whose token is this? If it's a USER token (a very easy
+    # mistake to make in Graph Explorer), exchange it for the PAGE token —
+    # posting to the page with a user token is what causes the 400s.
+    try:
+        me = requests.get(f"{GRAPH}/me", params={"fields": "id,name", "access_token": token}, timeout=30)
+        print(f"Token identity check: {me.status_code} {me.text[:200]}")
+        if me.ok and str(me.json().get("id")) != str(page_id):
+            print("Token belongs to a user, not the page. Exchanging for the Page token...")
+            ex = requests.get(
+                f"{GRAPH}/{page_id}",
+                params={"fields": "access_token", "access_token": token},
+                timeout=30,
+            )
+            if ex.ok and ex.json().get("access_token"):
+                token = ex.json()["access_token"]
+                print("Exchanged successfully — continuing with the Page token.")
+            else:
+                print(f"Exchange failed ({ex.status_code}: {ex.text[:300]}). Continuing with the original token.")
+    except Exception as exc:
+        print(f"Token identity check skipped: {exc}")
+
     row = find_latest_uploaded_row()
     if not row or not row["url"]:
         print("No uploaded video found in the sheet. Nothing to post.")
