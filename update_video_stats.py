@@ -74,6 +74,33 @@ def fetch_stats(video_ids, api_key):
     return stats
 
 
+def parse_age_days(created_at):
+    """Days since the row was created (min 1) so old videos don't win by age."""
+    try:
+        from datetime import datetime, timezone
+        dt = datetime.strptime(str(created_at).strip(), "%Y-%m-%d %H:%M:%S UTC").replace(tzinfo=timezone.utc)
+        return max(1.0, (datetime.now(timezone.utc) - dt).total_seconds() / 86400.0)
+    except Exception:
+        return 30.0  # unknown age: assume a month so it doesn't dominate
+
+
+def title_traits(title):
+    """Simple title-formula features to learn which packaging style wins."""
+    t = (title or "").strip()
+    traits = []
+    if re.search(r"\b(I|My|Me|We|Our)\b", t):
+        traits.append("first-person")
+    if re.search(r"\d", t):
+        traits.append("contains-number")
+    if "?" in t:
+        traits.append("question")
+    if "'" in t or '"' in t:
+        traits.append("quoted-detail")
+    if 0 < len(t) <= 55:
+        traits.append("short-title")
+    return traits
+
+
 def main():
     api_key = os.getenv("YOUTUBE_API_KEY", "").strip()
     if not api_key:
@@ -125,15 +152,51 @@ def main():
 
     stats = fetch_stats([u[1] for u in uploaded], api_key)
     now = utc_now()
-    ranked = []  # (views, likes, topic, theme, title, video_type)
+    ranked = []  # dicts: vpd, views, likes, engagement, topic, theme, title, vtype
     for row_number, yt_id, topic, theme, title, vtype in uploaded:
         views, likes = stats.get(yt_id, (0, 0))
         update_cell(sheet, row_number, view_col, str(views))
         update_cell(sheet, row_number, like_col, str(likes))
         update_cell(sheet, row_number, stats_at_col, now)
-        ranked.append((views, likes, topic, theme, title, vtype))
+        age = parse_age_days(get_cell(values[row_number - 1], created_at_col) if created_at_col else "")
+        ranked.append({
+            "vpd": views / age,
+            "views": views,
+            "likes": likes,
+            "engagement": (likes / views) if views else 0.0,
+            "topic": topic, "theme": theme, "title": title, "vtype": vtype,
+        })
     print(f"Updated stats for {len(ranked)} videos.")
     log(logs_sheet, "", "UPDATE_STATS", f"Updated view/like counts for {len(ranked)} videos.")
+
+    # ── Title-formula analysis: which packaging traits earn the most views/day ──
+    trait_scores = {}
+    for r in ranked:
+        for trait in title_traits(r["title"]):
+            trait_scores.setdefault(trait, []).append(r["vpd"])
+    trait_summary = sorted(
+        ((sum(v) / len(v), trait, len(v)) for trait, v in trait_scores.items() if len(v) >= 2),
+        reverse=True,
+    )
+    traits_text = "\n".join(f"- {trait}: avg {avg:.1f} views/day across {n} videos" for avg, trait, n in trait_summary[:5]) or "- not enough data yet"
+
+    # ── Weekly report (written to a Reports tab so it's easy to read) ──
+    from nd_common import get_or_create_worksheet
+    top_overall = sorted(ranked, key=lambda r: r["vpd"], reverse=True)[:5]
+    report_lines = [f"Videos tracked: {len(ranked)}"]
+    report_lines.append("TOP 5 BY VIEWS/DAY:")
+    for r in top_overall:
+        report_lines.append(f"  {r['vpd']:.1f} vpd | {r['views']} views | {r['engagement']*100:.1f}% likes | [{r['vtype']}] {r['title'][:70]}")
+    report_lines.append("WINNING TITLE TRAITS:")
+    report_lines.append(traits_text.replace("\n", " ; "))
+    report_text = "\n".join(report_lines)
+    try:
+        reports_sheet = get_or_create_worksheet(spreadsheet, "Reports", rows=500, cols=2)
+        append_row(reports_sheet, [now, report_text])
+    except Exception as exc:
+        print(f"Reports tab write skipped: {exc}")
+    print(report_text)
+    log(logs_sheet, "", "WEEKLY_REPORT", report_text[:1500])
 
     # ── 2) Seed new ideas from the winners ─────────────────────────────
     existing_topics = {get_cell(row, topic_col).strip().lower() for row in values[1:]}
@@ -147,20 +210,24 @@ def main():
         if unused_by_type.get(vtype, 0) >= MIN_UNUSED_IDEAS:
             print(f"{vtype}: {unused_by_type[vtype]} unused ideas remain; skipping seeding.")
             continue
-        winners = sorted([r for r in ranked if r[5] == vtype], reverse=True)[:TOP_N]
+        winners = sorted([r for r in ranked if r["vtype"] == vtype], key=lambda r: r["vpd"], reverse=True)[:TOP_N]
         if not winners:
             print(f"{vtype}: no uploaded videos yet; skipping.")
             continue
         winners_text = "\n".join(
-            f"- {views} views, {likes} likes | topic: {topic} | theme: {theme} | title: {title}"
-            for views, likes, topic, theme, title, _ in winners
+            f"- {r['vpd']:.1f} views/day ({r['views']} total, {r['engagement']*100:.1f}% like rate) | topic: {r['topic']} | theme: {r['theme']} | title: {r['title']}"
+            for r in winners
         )
         prompt = f"""
 You plan content for the YouTube channel Nightfall Diaries (real-feeling late-night stories for adults:
 quiet psychological horror, confession/betrayal stories, and unsettling shorts).
 
-These are the channel's BEST performing {vtype.replace('_', ' ')} videos so far:
+These are the channel's BEST performing {vtype.replace('_', ' ')} videos so far (ranked by views per day,
+so age doesn't distort the picture):
 {winners_text}
+
+Title packaging traits that currently earn the most views/day on this channel:
+{traits_text}
 
 Create {IDEAS_PER_TYPE} NEW story ideas in the same vein as these winners: same kind of premise energy,
 same emotional territory, but each a clearly different story. Never reuse or lightly reword an existing
