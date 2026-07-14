@@ -7,6 +7,8 @@ from typing import Any, Dict, List
 import google.generativeai as genai
 
 from config import (
+    ENABLE_PERSONA_SEASON,
+    SEASON_PERSONA,
     ENABLE_STORY_POLISH,
     CHANNEL_NAME,
     CINEMATIC_VISUAL_STYLE,
@@ -323,6 +325,16 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
 
     # Multi-part / chapter rules (both default to 1 = a normal single video).
     extra_rules = ""
+    if ENABLE_PERSONA_SEASON and video_type == "horror_story":
+        p = SEASON_PERSONA
+        extra_rules += (
+            f"\n- SEASON NARRATOR (MANDATORY): the narrator IS {p['name']}, {p['identity']}. "
+            f"His voice: {p['voice']}. The events happen TO HIM, in and around his world. "
+            f"Open the story with a natural VARIATION of his signature opening (same spirit, never verbatim twice): \"{p['signature_open']}\" "
+            f"Close the story (right before the like/subscribe sign-off) with a variation of: \"{p['signature_close']}\" "
+            f"\n- SEASON THREAD: somewhere in the middle of the story, include ONE brief, quiet appearance of this "
+            f"recurring background detail (do not resolve it, do not explain it): {p['season_thread']}"
+        )
     if chapters > 1:
         extra_rules += (
             f"\n- PARTS: structure the story into exactly {chapters} clearly labeled parts inside this ONE video. "
@@ -361,7 +373,15 @@ Target narration length: {target_words} English words
 Exact scene count: {scene_count}
 
 Hard quality rules:
-- This must read as a real, plausible first-person or close-third account, not a fairy tale and not a fable.
+- STRICT FIRST PERSON: the story is told BY the person it happened to — "I", "me", "my" from the
+  first line to the last. NEVER a narrator telling a story about someone else, never "a man once",
+  never close-third. The listener must feel the narrator lived this and is telling THEM directly.
+- PLANTED DETAILS (Chekhov): weave in 2-3 small, seemingly unimportant details in the first third
+  (an object, a habit, a phrase someone says) that turn out to MATTER in the ending. A listener who
+  rewatches should think "it was there all along."
+- COLD-OPEN VISUAL: scene 1, shot 1's image_prompt must show the most striking, unsettling image of
+  the WHOLE story (drawn from the climax) — without the narration spoiling it. The eye hooks before
+  the story does.
 - No real named public figures, no real identifiable private individuals, no real specific addresses or businesses.
 - Restrained, not graphic: build dread or tension through detail, pacing, and implication. No gore, no explicit
   violence, no sexual content, no step-by-step instructions for harming anyone or anything. This must stay
@@ -796,6 +816,10 @@ Diagnose these five things, then fix ONLY what is weak:
    final line is soft, rewrite it to land.
 5. VOICE: narration must sound like a real person speaking slowly — short sentences, concrete
    words, no purple prose, no essay phrases ("little did I know", "it was at that moment").
+6. FIRST PERSON: every line must be the narrator telling what happened to THEM ("I", "me", "my").
+   Fix any drift into third-person storytelling.
+7. PLANTED DETAILS: confirm 2-3 small early details genuinely pay off in the ending; if not,
+   adjust the early scenes so they do (small edits, not rewrites).
 
 Hard rules:
 - Keep the SAME characters, names, setting, scene count, shots-per-scene, and JSON shape.

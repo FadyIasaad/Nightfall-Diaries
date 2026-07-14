@@ -144,6 +144,21 @@ BRAND_STING_VOLUME = 0.45
 # Subtle film grain + corner vignette on every frame (pro film look).
 ENABLE_FILM_GRAIN = True
 
+# ─── PERSONA SEASON (serialized narrator) ────────────────────────────────────
+# Horror episodes are told BY one semi-fixed character for a whole "season":
+# same narrator, first person, each episode complete, with one slowly-growing
+# background detail that pays off in the season finale. Swap the persona dict
+# to start a new season.
+ENABLE_PERSONA_SEASON = True
+SEASON_PERSONA = {
+    "name": "Adam",
+    "identity": "a 34-year-old night-shift security guard at St. Verick's, an aging city hospital",
+    "voice": "calm, dry, a little tired; notices small details; never dramatizes; talks like he's writing a diary entry at 6am after the shift",
+    "signature_open": "It's Adam. Night shift at St. Verick's. I need to write down what happened before I convince myself it didn't.",
+    "signature_close": "I'll be back tomorrow night. I always am.",
+    "season_thread": "the doors on the fourth floor: Adam locks them himself every night, and some nights one of them is open again — each episode he notices it a little more",
+}
+
 # ─── STORY QUALITY ────────────────────────────────────────────────────────────
 # Second Gemini pass where the model edits its own draft (hook, escalation,
 # set-pieces, payoff, spoken rhythm). One extra API call per story.

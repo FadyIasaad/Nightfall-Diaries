@@ -1033,7 +1033,58 @@ def build_brand_sting(output_path, duration=1.6):
     return output_path
 
 
-def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10, sting_volume: float = 0.0, story_type=None) -> bool:
+# How loud the music sits under each emotion (multiplier on the base volume).
+EMOTION_INTENSITY = {
+    "calm": 0.55, "relief": 0.60, "satisfaction": 0.65, "mystery": 0.75,
+    "eerie": 0.80, "tension": 0.95, "dread": 1.00, "anger": 1.05, "fear": 1.15,
+}
+
+
+def build_intensity_envelope(shots, shot_durations):
+    """
+    Turns per-shot emotions into (start, end, multiplier) segments so the music
+    swells and recedes WITH the story, plus a strategic-silence window and a
+    stinger time at the first big fear/dread spike in the last 60% of the video
+    (long videos only). Returns (segments, silence_window, stinger_time).
+    """
+    segments = []
+    t = 0.0
+    for i, dur in enumerate(shot_durations):
+        emotion = str(shots[i].get("emotion", "calm")).strip().lower() if i < len(shots) else "calm"
+        mult = EMOTION_INTENSITY.get(emotion, 0.75)
+        if segments and abs(segments[-1][2] - mult) < 0.01:
+            segments[-1] = (segments[-1][0], t + dur, segments[-1][2])
+        else:
+            segments.append((t, t + dur, mult))
+        t += dur
+    total = t
+    silence_window = None
+    stinger_time = None
+    if total >= 90.0:
+        cursor = 0.0
+        for i, dur in enumerate(shot_durations):
+            emotion = str(shots[i].get("emotion", "calm")).strip().lower() if i < len(shots) else "calm"
+            if cursor >= total * 0.4 and emotion in ("fear", "dread") and stinger_time is None:
+                stinger_time = cursor
+                silence_window = (cursor, min(cursor + 6.0, cursor + dur))
+                break
+            cursor += dur
+    return segments, silence_window, stinger_time
+
+
+def build_stinger(output_path):
+    """One dark impact hit (sub boom + short metallic ring), fully generated."""
+    expr = ("0.8*sin(2*PI*52*t)*exp(-3.5*t)"
+            "+0.30*sin(2*PI*208*t)*exp(-6*t)"
+            "+0.18*(random(0)-0.5)*exp(-9*t)")
+    subprocess.run([
+        "ffmpeg", "-y", "-f", "lavfi", "-i", f"aevalsrc={expr}:duration=3.5",
+        "-af", "lowpass=f=500", "-ac", "2", "-ar", "48000", str(output_path),
+    ], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return output_path
+
+
+def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10, sting_volume: float = 0.0, story_type=None, envelope=None, silence_window=None, stinger_time=None) -> bool:
     """
     Mixes the generated ambient bed quietly under the video's existing
     narration track, and (if sting_volume > 0) overlays the brand sting at the
@@ -1050,23 +1101,45 @@ def add_ambient_bed(video_path: Path, ambient_volume: float = 0.10, sting_volume
         build_ambient_bed(duration, bed_path, story_type)
         mixed_path = video_path.with_name(video_path.stem + "_mixed.mp4")
 
+        # Dynamic score: volume follows the story's emotions; a strategic
+        # silence right at the climax; one dark stinger at the twist.
+        if envelope:
+            parts = [f"{m:.2f}*between(t\\,{a:.2f}\\,{b:.2f})" for a, b, m in envelope]
+            vol_expr = "+".join(parts) or "1"
+            if silence_window:
+                sa, sb = silence_window
+                vol_expr = f"({vol_expr})*(1-between(t\\,{sa:.2f}\\,{sb:.2f}))"
+            amb_filter = f"[1:a]volume='{ambient_volume}*({vol_expr})':eval=frame[amb];"
+        else:
+            amb_filter = f"[1:a]volume={ambient_volume}[amb];"
+
         inputs = ["-i", str(video_path), "-i", str(bed_path)]
+        extra_labels = ""
+        idx = 2
         if sting_volume > 0:
             sting_path = video_path.with_name(video_path.stem + "_sting.wav")
             build_brand_sting(sting_path)
             inputs += ["-i", str(sting_path)]
-            filter_complex = (
-                "[0:a]aresample=async=1:first_pts=0,apad[voice];"
-                f"[1:a]volume={ambient_volume}[amb];"
-                f"[2:a]volume={sting_volume}[sting];"
-                "[voice][amb][sting]amix=inputs=3:duration=longest:normalize=0[aout]"
-            )
-        else:
-            filter_complex = (
-                "[0:a]aresample=async=1:first_pts=0,apad[voice];"
-                f"[1:a]volume={ambient_volume}[amb];"
-                "[voice][amb]amix=inputs=2:duration=longest:normalize=0[aout]"
-            )
+            amb_filter += f"[{idx}:a]volume={sting_volume}[sting];"
+            extra_labels += "[sting]"
+            idx += 1
+        if stinger_time is not None:
+            hit_path = video_path.with_name(video_path.stem + "_hit.wav")
+            try:
+                build_stinger(hit_path)
+                inputs += ["-i", str(hit_path)]
+                delay_ms = int(max(0.0, stinger_time) * 1000)
+                amb_filter += f"[{idx}:a]adelay={delay_ms}|{delay_ms},volume=0.22[hit];"
+                extra_labels += "[hit]"
+                idx += 1
+            except Exception as exc:
+                print(f"Stinger skipped (non-fatal): {exc}")
+        n_inputs = 2 + extra_labels.count("[")
+        filter_complex = (
+            "[0:a]aresample=async=1:first_pts=0,apad[voice];"
+            + amb_filter
+            + f"[voice][amb]{extra_labels}amix=inputs={n_inputs}:duration=longest:normalize=0[aout]"
+        )
 
         # aresample=async smooths out the tiny timestamp gaps between narration
         # segments (they made the music seem to hiccup at every pause) and apad +
@@ -1623,7 +1696,15 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
 
     ambient_applied = False
     if ENABLE_AMBIENT_BED or sting_volume > 0:
-        ambient_applied = add_ambient_bed(video_path, ambient_volume, sting_volume, normalized_type)
+        try:
+            envelope, silence_window, stinger_time = build_intensity_envelope(shots, shot_durations)
+            if silence_window:
+                print(f"Dynamic score: silence at {silence_window[0]:.0f}s, stinger at {stinger_time:.0f}s.")
+        except Exception as exc:
+            print(f"Intensity envelope skipped (non-fatal): {exc}")
+            envelope, silence_window, stinger_time = None, None, None
+        ambient_applied = add_ambient_bed(video_path, ambient_volume, sting_volume, normalized_type,
+                                          envelope=envelope, silence_window=silence_window, stinger_time=stinger_time)
 
     loudness_applied = normalize_final_loudness(video_path, LOUDNESS_TARGET_LUFS)
 
