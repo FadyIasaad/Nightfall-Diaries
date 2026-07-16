@@ -334,6 +334,10 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
             f"Close the story (right before the like/subscribe sign-off) with a variation of: \"{p['signature_close']}\" "
             f"\n- SEASON THREAD: somewhere in the middle of the story, include ONE brief, quiet appearance of this "
             f"recurring background detail (do not resolve it, do not explain it): {p['season_thread']}"
+            f"\n- NARRATOR NEVER SHOWN: in every image_prompt, the narrator is NEVER depicted from the front and "
+            f"his face NEVER appears. Use his point of view (what HIS eyes see), or shoot from behind him, or show "
+            f"only his hands, his flashlight beam, his long shadow on the wall, or a dim unreadable reflection. "
+            f"This keeps him visually consistent forever and is scarier."
         )
     if chapters > 1:
         extra_rules += (
@@ -399,6 +403,8 @@ Hard quality rules:
   clearly belongs to the same story.
 - English narration only.
 - Every scene needs a distinct location/action/emotional beat so the video never repeats the same visual.
+- FIRST LINE = ONE PUNCH: the very first narration line is 10 words or fewer — a hard, spoken punch
+  ("I found the second phone on a Tuesday."). No warm-up words before it, ever.
 - COLD OPEN (MANDATORY): the very FIRST narration line of scene 1 drops the listener mid-conflict — a
   confession, a discovery, or a detail that is already wrong (e.g. "The police asked me why I waited three
   days to report it. This is why." or "I found the second phone on a Tuesday."). Never open with weather,

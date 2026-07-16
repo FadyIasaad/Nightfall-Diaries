@@ -26,6 +26,8 @@ if not hasattr(Image, "ANTIALIAS"):
 from config import (
     AMBIENT_BED_VOLUME,
     ENABLE_FILM_GRAIN,
+    ENABLE_FOG_OVERLAY,
+    FOG_OPACITY,
     ENABLE_SHORTS_CTA,
     SHORTS_CTA_SECONDS,
     BRAND_STING_VOLUME,
@@ -303,9 +305,9 @@ def pollinations_cinematic_image(prompt, output_path, seed, max_attempts=3):
     full_prompt = (style_prefix + scene_text)[:900]
     encoded = quote_plus(full_prompt)
     urls = [
-        f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=flux-anime",
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=flux",
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true",
+        f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=turbo",
     ]
     last_error = None
     for attempt in range(1, max_attempts + 1):
@@ -690,6 +692,47 @@ def apply_shorts_cta(video_path, video_id):
         return False
 
 
+def apply_fog_overlay(video_path, video_id):
+    """
+    Blends a slow, evolving mist layer over the whole video (screen blend, very
+    low opacity) so still images breathe like a living scene. Fully generated —
+    zero copyright. Non-fatal on any failure.
+    """
+    try:
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)],
+            capture_output=True, text=True,
+        )
+        duration = float(probe.stdout.strip())
+        tmp_out = Path(str(video_path) + ".fog.mp4")
+        fog_src = (
+            f"color=c=0x808090:s=96x170:d={duration:.2f},"
+            "noise=alls=100:allf=t+u,tmix=frames=12,"
+            "eq=contrast=3.5:brightness=-0.25,boxblur=2:1,"
+            f"scale={WIDTH}:{HEIGHT}:flags=bilinear,fps={FPS},format=yuv420p"
+        )
+        cmd = [
+            "ffmpeg", "-y", "-i", str(video_path),
+            "-f", "lavfi", "-i", fog_src,
+            "-filter_complex",
+            f"[0:v][1:v]blend=all_mode=screen:all_opacity={FOG_OPACITY}[v]",
+            "-map", "[v]", "-map", "0:a?", "-c:a", "copy",
+            "-c:v", "libx264", "-preset", "faster", "-crf", "20",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+            str(tmp_out),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr[-500:])
+        tmp_out.replace(video_path)
+        print(f"Fog overlay applied (opacity {FOG_OPACITY}).")
+        return True
+    except Exception as exc:
+        print(f"Fog overlay skipped (non-fatal): {exc}")
+        return False
+
+
 def make_end_screen_frame(video_id, title):
     """
     A simple dark outro card for long-form videos: channel name, a 'watch
@@ -770,14 +813,18 @@ def _build_ssml(text: str, emotion: str, style: dict) -> str:
     )
 
 
-async def create_edge_audio_async(text, output_path, emotion="calm"):
+async def create_edge_audio_async(text, output_path, emotion="calm", urgent=False):
     """
     Generate audio with edge-tts using SSML for per-emotion prosody.
     Retries up to 3 times with exponential backoff on network errors.
     Does NOT fall back to espeak — if all attempts fail the exception propagates
     so the job fails loudly with a clear error instead of producing robotic audio.
     """
-    style = EMOTION_STYLE.get(str(emotion).lower(), EMOTION_STYLE["calm"])
+    style = dict(EMOTION_STYLE.get(str(emotion).lower(), EMOTION_STYLE["calm"]))
+    if urgent:
+        # The opening shots must not crawl: near-normal speed grabs the ear
+        # before the listener's thumb reaches the screen.
+        style["rate"] = "-2%"
     voice = style["voice"]
     clean = humanize_text(text)
     last_error = None
@@ -813,8 +860,8 @@ async def create_edge_audio_async(text, output_path, emotion="calm"):
     )
 
 
-def create_edge_audio(text, output_path, emotion="calm"):
-    asyncio.run(create_edge_audio_async(text, output_path, emotion))
+def create_edge_audio(text, output_path, emotion="calm", urgent=False):
+    asyncio.run(create_edge_audio_async(text, output_path, emotion, urgent=urgent))
     return output_path
 
 def create_espeak_audio(text, output_path):
@@ -852,7 +899,7 @@ def create_shot_audio(shot, video_id, shot_index):
         narration = (shot.get("subtitle_en") or "").strip() or "A quiet moment passed."
     emotion   = (shot.get("emotion", "calm") or "calm").strip().lower()
     mp3_path  = AUDIO_DIR / f"audio_{video_id}_{shot_index:03d}.mp3"
-    create_edge_audio(narration, mp3_path, emotion)
+    create_edge_audio(narration, mp3_path, emotion, urgent=(shot_index <= 2))
     voice = EMOTION_STYLE.get(emotion, EMOTION_STYLE["calm"])["voice"]
     return normalize_audio(mp3_path, video_id, shot_index), f"edge-ssml:{voice}:{emotion}"
 
@@ -1577,7 +1624,11 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
             audio_clip = audio_fadein(audio_clip, _fi)
         if _fo > 0:
             audio_clip = audio_fadeout(audio_clip, _fo)
-        duration = max(3.0, audio_clip.duration + min(0.6, max(0.15, float(shot.get("pause_after", 0.25) or 0.25))))
+        if i <= 3:
+            # Opening shots: minimal padding, faster cuts — kill the 10-second drop-off.
+            duration = max(2.0, audio_clip.duration + 0.15)
+        else:
+            duration = max(3.0, audio_clip.duration + min(0.6, max(0.15, float(shot.get("pause_after", 0.25) or 0.25))))
         shot_durations.append(duration)
 
         visual_path, visual_source, query = visual_cache[i]
@@ -1677,6 +1728,9 @@ def create_video(video_id, title, scene_payload, video_type="horror_story"):
     if result.returncode != 0:
         raise RuntimeError(f"ffmpeg concat failed:\n{result.stderr[-3000:]}")
     print(f"Concatenated {len(seg_paths)} segments → {video_path}")
+
+    if ENABLE_FOG_OVERLAY:
+        apply_fog_overlay(video_path, safe_id)
 
     # Clean up temp segment files
     for tp in temp_paths_to_clean:

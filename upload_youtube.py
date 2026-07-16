@@ -168,9 +168,27 @@ def build_final_description(description: str, video_type: Optional[str]) -> str:
     else:
         tags_line = "#nightfalldiaries #truestory #scarystories"
 
+    if normalized == "short":
+        seo_line = "true scary story | horror shorts | creepy encounters | scary stories to fall asleep to"
+    elif normalized == "confession_story":
+        seo_line = "true confession story | betrayal story | revenge story narration | real life stories"
+    else:
+        seo_line = "true scary stories | night shift horror story | psychological horror narration | scary stories to fall asleep to"
+    if seo_line.split(" | ")[0] not in base:
+        base = f"{base}\n\n{seo_line}"
     if tags_line.split()[0].lower() not in base.lower():
         base = f"{base}\n\n{tags_line}"
     return base[:5000]
+
+
+def build_tags(video_type):
+    normalized = normalize_type(video_type)
+    common = ["nightfall diaries", "story narration", "late night stories"]
+    if normalized == "short":
+        return common + ["scary story", "horror shorts", "creepy story", "true scary story", "shorts"]
+    if normalized == "confession_story":
+        return common + ["confession story", "betrayal story", "revenge story", "true story", "relationship story"]
+    return common + ["scary stories", "horror story", "night shift", "psychological horror", "true scary stories", "sleep stories"]
 
 
 def upload_video_to_youtube(
@@ -190,6 +208,7 @@ def upload_video_to_youtube(
         "snippet": {
             "title": title[:100],
             "description": build_final_description(description, category)[:5000],
+            "tags": build_tags(category)[:30],
             "categoryId": os.getenv("YOUTUBE_CATEGORY_ID", "24"),
         },
         "status": {

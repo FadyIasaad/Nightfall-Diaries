@@ -42,6 +42,8 @@ DEFAULT_NARRATOR_STYLE = (
 # atmosphere, objects, and silhouettes rather than detailed recurring character
 # faces, since this channel covers a different real-feeling story every episode.
 CINEMATIC_VISUAL_STYLE = (
+    "cinematic film still, shot on 35mm anamorphic lens, shallow depth of field, "
+    "teal and amber color grade, volumetric light, "
     "ultra-detailed dark cinematic still, moody late-night atmosphere, "
     "deep shadows with a single warm or cold practical light source, subtle film grain, "
     "muted desaturated color palette with one accent color, "
@@ -139,6 +141,11 @@ LOUDNESS_TARGET_LUFS = -14.0
 # approach as the ambient bed: synthesized with ffmpeg, nothing downloaded.
 ENABLE_BRAND_STING = True
 BRAND_STING_VOLUME = 0.45
+
+# ─── FOG OVERLAY ──────────────────────────────────────────────────────────────
+# A slow, living mist layer blended over the whole video so stills breathe.
+ENABLE_FOG_OVERLAY = True
+FOG_OPACITY = 0.22
 
 # ─── CINEMATIC FINISH ─────────────────────────────────────────────────────────
 # Subtle film grain + corner vignette on every frame (pro film look).
