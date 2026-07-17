@@ -1,0 +1,33 @@
+name: "10 - Promo Kit (ready-to-paste promotion)"
+
+# Writes ready-to-paste Reddit story text + Facebook group blurbs for every
+# uploaded long video into the "Promo" tab of the Google Sheet.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 15 * * *"   # daily sweep at 15:00 UTC
+
+jobs:
+  promo-kit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build promo kits
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: python promo_kit.py
+# end of workflow
