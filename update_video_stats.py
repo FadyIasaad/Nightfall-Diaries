@@ -197,6 +197,17 @@ def main():
         print(f"Reports tab write skipped: {exc}")
     print(report_text)
     log(logs_sheet, "", "WEEKLY_REPORT", report_text[:1500])
+    # Also save the report into the repo (committed by the workflow) so it can
+    # be read from anywhere without sheet credentials.
+    try:
+        from pathlib import Path
+        rep_dir = Path("reports"); rep_dir.mkdir(exist_ok=True)
+        stamp = utc_now().split(" ")[0]
+        (rep_dir / "latest_report.md").write_text(f"# Weekly Report — {stamp}\n\n{report_text}\n", encoding="utf-8")
+        (rep_dir / f"report_{stamp}.md").write_text(f"# Weekly Report — {stamp}\n\n{report_text}\n", encoding="utf-8")
+        print("Report files written to reports/.")
+    except Exception as exc:
+        print(f"Report file write skipped: {exc}")
 
     # ── 2) Seed new ideas from the winners ─────────────────────────────
     existing_topics = {get_cell(row, topic_col).strip().lower() for row in values[1:]}

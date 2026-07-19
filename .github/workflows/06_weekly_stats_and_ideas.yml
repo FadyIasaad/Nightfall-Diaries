@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: "0 12 * * 0"
 
+permissions:
+  contents: write
+
 concurrency:
   group: weekly-stats
   cancel-in-progress: false
@@ -35,3 +38,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python update_video_stats.py
+
+      - name: Commit weekly report to the repo
+        run: |
+          if [ -d reports ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add reports/
+            git commit -m "Weekly report $(date -u +%F)" || echo "nothing to commit"
+            git push || echo "push skipped"
+          fi
+# end of workflow
