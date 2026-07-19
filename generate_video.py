@@ -288,21 +288,18 @@ def pollinations_cinematic_image(prompt, output_path, seed, max_attempts=3):
     server errors so a momentary rate limit no longer fails the whole render.
     """
     style_prefix = (
-        "semi-realistic dark animation, atmospheric illustrated artwork, "
-        "moody late-night scene, deep cinematic shadows, rich saturated dark tones, "
-        "digital painting style, detailed background environment, "
-        "anime-inspired semi-realistic illustration, dramatic lighting, "
-        "faces stylized or partially hidden, no graphic gore, "
-        "no text, no watermark, no logo, vertical 9:16 aspect ratio. "
-        "Scene: "
+        "cinematic film still, 35mm anamorphic, teal and amber color grade, "
+        "dark moody late-night scene, deep shadows, volumetric light, photoreal, "
+        "faces hidden or turned away, no graphic gore, "
+        "no text, no watermark, vertical 9:16. Scene: "
     )
     # Keep the prompt compact. Over-long, redundant prompts (repeated scene
     # context + shot style + narration) make Pollinations far more likely to
     # return 500s and bloat the request URL, so trim the scene text hard.
     scene_text = re.sub(r"\s+", " ", str(prompt or "")).strip()
-    if len(scene_text) > 480:
-        scene_text = scene_text[:480].rsplit(" ", 1)[0]
-    full_prompt = (style_prefix + scene_text)[:900]
+    if len(scene_text) > 360:
+        scene_text = scene_text[:360].rsplit(" ", 1)[0]
+    full_prompt = (style_prefix + scene_text)[:640]
     encoded = quote_plus(full_prompt)
     urls = [
         f"https://image.pollinations.ai/prompt/{encoded}?width={WIDTH}&height={HEIGHT}&seed={seed}&nologo=true&enhance=true&model=flux",
@@ -1464,9 +1461,20 @@ def fetch_visual(shot, safe_id, index, numeric_seed):
         pollinations_cinematic_image(prompt, cinematic_path, seed=numeric_seed * 1000 + index)
         return cinematic_path, "ai_cinematic", "dark cinematic still"
     except Exception as exc:
-        print(f"[visual] AI image failed for shot {index} ({exc}); using atmospheric placeholder.")
-        make_placeholder_visual(shot, cinematic_path, seed=numeric_seed * 1000 + index)
-        return cinematic_path, "placeholder", "atmospheric placeholder"
+        print(f"[visual] AI image failed for shot {index} ({exc}); trying stock photo.")
+    # Tier 2: real dark stock photo matching the shot's emotion (Pexels).
+    try:
+        query = safe_query(str(shot.get("image_prompt", ""))[:80], shot.get("emotion", "calm"))
+        stock_path = VISUALS_DIR / f"visual_{safe_id}_{index:03d}_stock.jpg"
+        pexels_photo(query, stock_path)
+        with Image.open(stock_path) as img:
+            img.verify()
+        print(f"[visual] stock photo used for shot {index} (query: {query}).")
+        return stock_path, "stock_photo", query
+    except Exception as exc2:
+        print(f"[visual] stock photo also failed for shot {index} ({exc2}); using atmospheric placeholder.")
+    make_placeholder_visual(shot, cinematic_path, seed=numeric_seed * 1000 + index)
+    return cinematic_path, "placeholder", "atmospheric placeholder"
 
 
 def expand_short_shots(shots, min_needed=4):
