@@ -318,7 +318,9 @@ def build_prompt(topic: str, characters: str, theme: str, video_type: str, targe
         else "a first-person curiosity-gap title under 80 characters built on ONE concrete, specific detail plus one "
         "unanswered question, e.g. \"My Husband's 'Business Trips' Were 11 Minutes From Our House\" or \"The "
         "Landlord Kept a Key to a Room That Wasn't on the Lease\"; specificity (a number, an object, a place) beats "
-        "adjectives every time; never vague like 'A Terrifying Story'; no ALL CAPS words, no clickbait spam"
+        "adjectives every time; never vague like 'A Terrifying Story'; no ALL CAPS words, no clickbait spam; "
+        "NEVER phrase the title as a question (question titles measurably underperform on this channel); "
+        "include one specific number when it fits naturally (times, dates, counts — numbers outperform here)"
     )
     if forced_title:
         title_rule = f'that is EXACTLY this text, character for character, unchanged: "{forced_title}"'
