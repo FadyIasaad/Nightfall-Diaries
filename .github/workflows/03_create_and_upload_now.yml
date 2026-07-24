@@ -21,7 +21,7 @@ on:
         required: false
         default: ""
       custom_story:
-        description: "Write the story yourself: paste the full story text here and it is used as the narration. Leave empty to let AI write it."
+        description: "Short story only (form box truncates long paste). For a FULL long story, leave this empty and put it in custom_story.txt in the repo instead."
         required: false
         default: ""
       parts:
@@ -106,6 +106,27 @@ jobs:
           echo "runs=$RUNS" >> "$GITHUB_OUTPUT"
           echo "Producing video_type=$TYPE parts=$PARTS mode=$MODE render_passes=$RUNS (event: ${{ github.event_name }})"
 
+          # Full custom story: the "Run workflow" form box is single-line and
+          # truncates a pasted story. So the box is for short stories only;
+          # for a full story, leave the box empty and put the text in
+          # custom_story.txt at the repo root instead (any length, any number
+          # of lines/paragraphs) - this step reads it here.
+          STORY_INPUT="${{ inputs.custom_story }}"
+          if [ -n "$STORY_INPUT" ]; then
+            STORY="$STORY_INPUT"
+            echo "Custom story source: workflow form input"
+          elif [ -f custom_story.txt ]; then
+            STORY="$(cat custom_story.txt)"
+            echo "Custom story source: custom_story.txt ($(wc -w < custom_story.txt) words)"
+          else
+            STORY=""
+          fi
+          {
+            echo "custom_story<<TBT_STORY_EOF"
+            echo "$STORY"
+            echo "TBT_STORY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -129,7 +150,7 @@ jobs:
           TBT_VIDEO_TYPE: ${{ steps.vt.outputs.type }}
           TBT_TARGET_MINUTES: ${{ steps.vt.outputs.minutes }}
           TBT_CUSTOM_TITLE: ${{ github.event_name == 'workflow_dispatch' && inputs.custom_title || '' }}
-          TBT_CUSTOM_STORY: ${{ github.event_name == 'workflow_dispatch' && inputs.custom_story || '' }}
+          TBT_CUSTOM_STORY: ${{ steps.vt.outputs.custom_story }}
           TBT_PARTS: ${{ steps.vt.outputs.parts }}
           TBT_PARTS_MODE: ${{ steps.vt.outputs.parts_mode }}
         run: python generate_story.py
