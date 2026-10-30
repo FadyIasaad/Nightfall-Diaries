@@ -1,0 +1,29 @@
+{
+  "series_id": "REPLACE_WITH_NEW_OR_LOCKED_SERIES_ID",
+  "episode_id": "REPLACE_WITH_EPISODE_ID",
+  "episode_number": 1,
+  "target_seconds": 50,
+  "scenes": [
+    {
+      "scene_id": "E01_SC01",
+      "duration_seconds": 7,
+      "location_id": "FOREST_GLADE",
+      "character_ids": [
+        "s01_ember"
+      ],
+      "camera": "slow_push_in",
+      "visual_prompt_addition": "Ember faces the smoke; only use locked character references and outfit; dramatic but original.",
+      "dialogue": [
+        {
+          "character_id": "s01_ember",
+          "text": "I didn’t start the fire.",
+          "emotion": "frightened"
+        }
+      ],
+      "sfx": "licensed_forest_wind",
+      "caption": "I didn’t start the fire."
+    }
+  ],
+  "continuity_notes": "All identities, voice IDs and reference images are resolved from the character registry, never scene prompts.",
+  "approval_status": "DRAFT_NOT_PRODUCED"
+}

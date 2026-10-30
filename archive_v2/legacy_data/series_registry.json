@@ -1,0 +1,31 @@
+{
+  "schema_version": "2.0",
+  "launch_sequence": [
+    "S01_the_last_little_fox",
+    "S02_the_boy_who_forgot_tomorrow"
+  ],
+  "next_after_launch": "TREND_SELECTED_NEW_ORIGINAL_SERIES",
+  "all_seasons_min_episodes": 10,
+  "do_not_run_trend_selection_before": "S02_the_boy_who_forgot_tomorrow:final_episode_published",
+  "repeat_rule": "After each later season final episode is confirmed published, run fresh 7-day trend review and generate a new self-contained 10+-episode original series with wholly new story/world/character IDs/approved designs/voice profiles.",
+  "series": [
+    {
+      "id": "S01_the_last_little_fox",
+      "title": "The Last Little Fox",
+      "episode_count": 12,
+      "stage": "PLANNED",
+      "complete": false,
+      "is_launch_season": true,
+      "release_order": 1
+    },
+    {
+      "id": "S02_the_boy_who_forgot_tomorrow",
+      "title": "The Boy Who Forgot Tomorrow",
+      "episode_count": 10,
+      "stage": "PLANNED",
+      "complete": false,
+      "is_launch_season": true,
+      "release_order": 2
+    }
+  ]
+}

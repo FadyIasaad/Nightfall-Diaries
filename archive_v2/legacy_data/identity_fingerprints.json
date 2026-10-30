@@ -1,0 +1,21 @@
+{
+  "schema_version": "2.0",
+  "hash_algorithm": "sha256",
+  "locks": {
+    "S01_the_last_little_fox": {
+      "s01_ember": "67d8c5ca75bb8876d790a3c59870fc0ff1a7ff4b44aea59c3e170925306ce7db",
+      "s01_moss": "990a43816227b244759536c6937a08b3f9979b3d8a834fc5e029ba64a9d9061f",
+      "s01_luma": "df21fb3ba1f6770da1cd5b7d20790ab2919d8cbc91202ef1b7cbb0109d19e002",
+      "s01_ash": "bf976306d3322025b87c412f7a3ff90f8f848a43649203e97a3455700b3fe400",
+      "s01_narrator": "a9767614db2b4e4db0ae0369d225422afc13d386f7175b95e2253e42d148b960"
+    },
+    "S02_the_boy_who_forgot_tomorrow": {
+      "s02_noah": "1ef9312f6b61ce9e114658f355dc03c09b2e70d82c2325f3394cab0586a49a5d",
+      "s02_mira": "5b6e7f79ae1c4756b9ff91a8e257f1d9f2d427c1af5ecd95724bf9243bc8a112",
+      "s02_dr_vale": "ffc6059e424d5321c5212ee5bd3706a13d2f46ac2cb8ba29ff2bd63abd553128",
+      "s02_clockkeeper": "08b4d64f6f106147e6db791e159196128e0892eea21816e0dcd9bb1a89b7ae6f",
+      "s02_narrator": "b68747a91ff1e9598dee33dec1e2ab77a6ff04d15de442507f676da5570d40d0"
+    }
+  },
+  "usage": "Validator flags modification to cast/voice/visual specs; deliberate, approved redesign requires versioned lock update before any episode is published."
+}
