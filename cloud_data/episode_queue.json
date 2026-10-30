@@ -1,1 +1,13 @@
-{"version":3,"rendered":{},"uploads":{},"pending_series_generation":false}
+{
+  "version": 3,
+  "rendered": {
+    "S01_the_last_little_fox_E01": {
+      "utc": "2026-10-30T11:32:41.718270+00:00",
+      "sha256": "043b3140f52812b9181731c7d371d327efc943916c79358956f5ccb375a08fdd",
+      "duration": 35.6,
+      "script_source": "original_pre_authored_2026-10-29"
+    }
+  },
+  "uploads": {},
+  "pending_series_generation": false
+}
