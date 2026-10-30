@@ -8,6 +8,13 @@
       "script_source": "original_pre_authored_2026-10-29"
     }
   },
-  "uploads": {},
+  "uploads": {
+    "S01_the_last_little_fox_E01": {
+      "youtube": {
+        "status": "inflight",
+        "intent_utc": "2026-10-30T11:32:42.858239+00:00"
+      }
+    }
+  },
   "pending_series_generation": false
 }
