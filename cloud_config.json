@@ -1,13 +1,56 @@
 {
-  "project_name": "AI Drama Universe Cloud V3",
+  "project_name": "Nightfall Diaries - V4.1 Cloud Auto Upload (Public When Authorized / Draft Fallback)",
   "timezone": "Africa/Cairo",
-  "schedule_local": "10:00",
-  "video": {"width": 720, "height": 1280, "fps": 24, "min_seconds": 35, "max_seconds": 60},
-  "series": {"minimum_episodes": 10, "maximum_episodes": 12, "starter_order": ["S01_the_last_little_fox", "S02_the_boy_who_forgot_tomorrow"], "auto_new_after_starters": true},
-  "story": {"github_model": "openai/gpt-4.1-mini", "starter_offline_baseline_fallback": true, "new_series_requires_model": true},
-  "trends": {"geo": ["US", "GB", "CA", "AU", "IN"], "history_days": 7, "minimum_verified_entries": 1, "fetch_timeout_seconds": 12},
-  "platform_modes": {"youtube": "private", "facebook": "DRAFT", "tiktok": "inbox"},
-  "publish_unreviewed": false,
-  "media_mode": "illustrated_motion_comic",
-  "notes": "Private/draft first. No public upload unless config AND secret explicitly allow. Full 3D animation is not supplied."
+  "video": {
+    "width": 720,
+    "height": 1280,
+    "fps": 24,
+    "min_seconds": 35,
+    "max_seconds": 60
+  },
+  "series": {
+    "minimum_episodes": 10,
+    "maximum_episodes": 12,
+    "starter_order": [
+      "S01_the_last_little_fox",
+      "S02_the_boy_who_forgot_tomorrow"
+    ],
+    "auto_new_after_starters": true
+  },
+  "story": {
+    "github_model": "openai/gpt-4.1-mini",
+    "starter_offline_baseline_fallback": true,
+    "new_series_requires_model": false
+  },
+  "trends": {
+    "geo": [
+      "US",
+      "GB",
+      "CA",
+      "AU",
+      "IN"
+    ],
+    "history_days": 7,
+    "minimum_verified_entries": 1,
+    "fetch_timeout_seconds": 12
+  },
+  "platform_modes": {
+    "youtube": "public",
+    "facebook": "PUBLISHED",
+    "tiktok": "inbox"
+  },
+  "publish_unreviewed": true,
+  "media_mode": "original_illustrated_cinematic_fantasy_cpu",
+  "notes": "V4.1: manual button and 10 AM Cairo schedule generate + upload by default. Public YouTube/Meta only with DRAMA_ALLOW_UNREVIEWED_PUBLIC=true, otherwise private/draft. TikTok inbox until separately approved Direct Post and creator consent. Never promise public visibility without API verification.",
+  "upload_policy": {
+    "default_action": "generate_and_upload",
+    "when_public_not_authorized": {
+      "youtube": "private",
+      "facebook": "DRAFT",
+      "tiktok": "inbox"
+    },
+    "allow_public_only_with_secret": "DRAMA_ALLOW_UNREVIEWED_PUBLIC",
+    "ambiguous_uploads": "pause_and_reconcile_never_blind_retry",
+    "advance_when_at_least_one_staged": true
+  }
 }

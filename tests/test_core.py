@@ -51,8 +51,9 @@ class ProjectTests(unittest.TestCase):
         self.assertFalse(_valid_model({'episodes':[{'title':'one'}]*9,'characters':[]}))
     def test_cloud_defaults(self):
         config=read('cloud_config.json')
-        self.assertFalse(config['publish_unreviewed'])
-        self.assertEqual(config['platform_modes'],{'youtube':'private','facebook':'DRAFT','tiktok':'inbox'})
+        self.assertTrue(config['publish_unreviewed'])
+        self.assertEqual(config['platform_modes'],{'youtube':'public','facebook':'PUBLISHED','tiktok':'inbox'})
+        self.assertEqual(config['upload_policy']['default_action'],'generate_and_upload')
         self.assertTrue(config['series']['auto_new_after_starters'])
         self.assertEqual(config['timezone'],'Africa/Cairo')
 if __name__=='__main__':unittest.main()

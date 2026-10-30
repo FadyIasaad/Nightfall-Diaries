@@ -44,7 +44,12 @@ def youtube(path,title,description,config):
         end=requests.put(location,data=f,headers={'Content-Type':'video/mp4','Content-Length':str(size)},timeout=300)
     data=_good(end)
     if not data.get('id'):raise UploadError('No YouTube video id returned')
-    return {'status':'staged','kind':'youtube_private_video' if mode=='private' else 'youtube_public_submission','id':data['id'],'mode':mode}
+    actual=data.get('status',{}).get('privacyStatus',mode)
+    # YouTube may enforce a different visibility from the requested value.
+    return {'status':'staged','kind':'youtube_video_submission','id':data['id'],
+            'mode_requested':mode,'mode_reported':actual,
+            'public_confirmed': actual=='public',
+            'watch_url':f'https://www.youtube.com/watch?v={data["id"]}'}
 
 def facebook(path,title,description,config):
     _need('FB_PAGE_ID','FB_PAGE_ACCESS_TOKEN')
@@ -105,18 +110,38 @@ def tiktok(path,title,description,config):
 
 ADAPTERS={'youtube':youtube,'facebook':facebook,'tiktok':tiktok}
 
-def upload_all(ep_id,path,title,description,config,only_missing=False):
+def resolved_upload_config(config, platform):
+    """Downgrade BEFORE upload when the owner has not unlocked unattended public posting.
+
+    This is a safe preventive fallback, not a blind retry after a possibly successful remote request.
+    """
+    if platform not in ('youtube','facebook'):
+        return config,False
+    requested=config['platform_modes'][platform]
+    if requested not in ('public','PUBLISHED'):
+        return config,False
+    authorized=bool(config.get('publish_unreviewed') and os.environ.get('DRAMA_ALLOW_UNREVIEWED_PUBLIC')=='true')
+    if authorized:
+        return config,False
+    fallback={'youtube':'private','facebook':'DRAFT'}[platform]
+    return {**config,'platform_modes':{**config['platform_modes'],platform:fallback},'publish_unreviewed':False},True
+
+
+def upload_all(ep_id,path,title,description,config,only_missing=False,platforms=None,allow_safe_fallback=False):
     queue=read('cloud_data/episode_queue.json')
     queue.setdefault('uploads',{}).setdefault(ep_id,{})
     output={}
-    for platform in PLATFORMS:
+    if platforms is not None and any(p not in PLATFORMS for p in platforms):
+        raise ValueError('Unknown platform selected')
+    for platform in (platforms if platforms is not None else PLATFORMS):
         previous=queue['uploads'][ep_id].get(platform,{})
         if previous.get('status') in ('staged','inflight','needs_reconcile'):
             output[platform]={'status':'not_retried','reason':'Already staged or requires manual reconciliation'};continue
         if only_missing and previous.get('status')!='missing_credentials':continue
-        # Don't issue an API intent for a known locally blocked public configuration.
-        mode=config['platform_modes'][platform]
-        if mode in ('public','PUBLISHED') and not (config.get('publish_unreviewed') and os.environ.get('DRAMA_ALLOW_UNREVIEWED_PUBLIC')=='true'):
+        # Downgrade locally before remote calls; prevents an unwanted public post.
+        effective_config,downgraded=resolved_upload_config(config,platform) if allow_safe_fallback else (config,False)
+        mode=effective_config['platform_modes'][platform]
+        if mode in ('public','PUBLISHED') and not (effective_config.get('publish_unreviewed') and os.environ.get('DRAMA_ALLOW_UNREVIEWED_PUBLIC')=='true'):
             receipt={'status':'blocked_public_approval','message':'Use private/draft; public mode requires approved assets and explicit public opt-in','updated_utc':utcnow()}
             queue['uploads'][ep_id][platform]=receipt
             save('cloud_data/episode_queue.json',queue)
@@ -128,11 +153,13 @@ def upload_all(ep_id,path,title,description,config,only_missing=False):
             queue['uploads'][ep_id][platform]={'status':'inflight','intent_utc':utcnow()}
             save('cloud_data/episode_queue.json',queue)
             checkpoint(f'cloud: upload intent {ep_id} {platform}')
-            receipt=ADAPTERS[platform](path,title,description,config)
+            receipt=ADAPTERS[platform](path,title,description,effective_config)
         except MissingCredentials as e:
             receipt={'status':'missing_credentials','message':str(e)}
         except Exception as e:
             receipt={'status':'needs_reconcile','error':f'{type(e).__name__}: {str(e)[:240]}'}
+        if downgraded:
+            receipt['fallback_reason']='No public autopublish approval secret: selected private/draft before uploading'
         receipt['updated_utc']=utcnow()
         queue['uploads'][ep_id][platform]=receipt
         save('cloud_data/episode_queue.json',queue)
