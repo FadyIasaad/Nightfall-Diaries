@@ -8,6 +8,10 @@
         "message": "Missing: YOUTUBE_EXPECTED_CHANNEL_ID",
         "fallback_reason": "No public autopublish approval secret: selected private/draft before uploading",
         "updated_utc": "2026-10-30T16:31:51.291218+00:00"
+      },
+      "facebook": {
+        "status": "inflight",
+        "intent_utc": "2026-10-30T16:31:52.602834+00:00"
       }
     }
   },
