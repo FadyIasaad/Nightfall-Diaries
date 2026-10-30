@@ -14,6 +14,10 @@
         "error": "HTTPError: 400 Client Error: Bad Request for url: https://graph.facebook.com/v25.0/61591998503423/video_reels",
         "fallback_reason": "No public autopublish approval secret: selected private/draft before uploading",
         "updated_utc": "2026-10-30T16:31:54.374068+00:00"
+      },
+      "tiktok": {
+        "status": "inflight",
+        "intent_utc": "2026-10-30T16:31:55.487529+00:00"
       }
     }
   },
