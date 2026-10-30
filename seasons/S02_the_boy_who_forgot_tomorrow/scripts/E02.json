@@ -1,0 +1,22 @@
+{
+  "episode_id": "S02_the_boy_who_forgot_tomorrow_E02",
+  "source": "original_pre_authored_2026-10-29",
+  "scenes": [
+    {
+      "character_id": "s02_narrator",
+      "text": "Mira said they had been friends for years. Yet every photo she showed Noah was blank."
+    },
+    {
+      "character_id": "s02_noah",
+      "text": "I want to believe you. But why can I see you when the whole city cannot remember your face?"
+    },
+    {
+      "character_id": "s02_mira",
+      "text": "Because somebody took our memories. And now they have started taking my name, too."
+    },
+    {
+      "character_id": "s02_narrator",
+      "text": "On Noah’s notebook page, the letters of Mira’s name vanished, one by one."
+    }
+  ]
+}

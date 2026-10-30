@@ -1,0 +1,22 @@
+{
+  "episode_id": "S01_the_last_little_fox_E10",
+  "source": "original_pre_authored_2026-10-29",
+  "scenes": [
+    {
+      "character_id": "s01_narrator",
+      "text": "They forced open the channel as floodwater thundered past. Only one final latch remained out of reach."
+    },
+    {
+      "character_id": "s01_ember",
+      "text": "If I cross that beam, I can pull it free! Keep the others away from the water!"
+    },
+    {
+      "character_id": "s01_ash",
+      "text": "Ember, no! The current is too strong. Please come back!"
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "The latch broke. The gate opened. But the next instant, Ember disappeared beneath the rushing river."
+    }
+  ]
+}

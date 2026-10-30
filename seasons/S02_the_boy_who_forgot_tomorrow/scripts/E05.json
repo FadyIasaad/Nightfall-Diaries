@@ -1,0 +1,22 @@
+{
+  "episode_id": "S02_the_boy_who_forgot_tomorrow_E05",
+  "source": "original_pre_authored_2026-10-29",
+  "scenes": [
+    {
+      "character_id": "s02_narrator",
+      "text": "At the end of the impossible street stood a man in a yellow coat. He called himself the Clockkeeper."
+    },
+    {
+      "character_id": "s02_clockkeeper",
+      "text": "Some forgotten tomorrows keep this city alive. Give me your notebook, and I will let you walk away."
+    },
+    {
+      "character_id": "s02_noah",
+      "text": "If forgetting is protection, why are you so frightened of what I might remember?"
+    },
+    {
+      "character_id": "s02_narrator",
+      "text": "The Clockkeeper opened his coat. Inside was a drawing of Noah’s future, dated years ago."
+    }
+  ]
+}

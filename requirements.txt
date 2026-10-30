@@ -1,10 +1,6 @@
-gspread==6.1.4
-google-auth==2.35.0
-google-generativeai==0.8.3
-moviepy==1.0.3
-Pillow==9.5.0
-requests==2.32.3
-edge-tts==7.2.8
-google-auth-oauthlib==1.2.1
-google-api-python-client==2.151.0
-google-auth-httplib2==0.2.0
+Pillow>=10,<13
+numpy>=1.26,<3
+soundfile>=0.12,<1
+requests>=2.31,<3
+kokoro>=0.9.4,<1
+cryptography>=42,<50

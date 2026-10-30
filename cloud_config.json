@@ -1,0 +1,13 @@
+{
+  "project_name": "AI Drama Universe Cloud V3",
+  "timezone": "Africa/Cairo",
+  "schedule_local": "10:00",
+  "video": {"width": 720, "height": 1280, "fps": 24, "min_seconds": 35, "max_seconds": 60},
+  "series": {"minimum_episodes": 10, "maximum_episodes": 12, "starter_order": ["S01_the_last_little_fox", "S02_the_boy_who_forgot_tomorrow"], "auto_new_after_starters": true},
+  "story": {"github_model": "openai/gpt-4.1-mini", "starter_offline_baseline_fallback": true, "new_series_requires_model": true},
+  "trends": {"geo": ["US", "GB", "CA", "AU", "IN"], "history_days": 7, "minimum_verified_entries": 1, "fetch_timeout_seconds": 12},
+  "platform_modes": {"youtube": "private", "facebook": "DRAFT", "tiktok": "inbox"},
+  "publish_unreviewed": false,
+  "media_mode": "illustrated_motion_comic",
+  "notes": "Private/draft first. No public upload unless config AND secret explicitly allow. Full 3D animation is not supplied."
+}

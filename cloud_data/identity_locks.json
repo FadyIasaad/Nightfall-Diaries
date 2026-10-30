@@ -1,0 +1,16 @@
+{
+  "S01_the_last_little_fox": {
+    "s01_ember": "a8fc3655eb6dcb084caf8483b4c1f0b8ade9070b6625a23d80db8be27c9ab1e6",
+    "s01_moss": "076736ff746d08e5d92fe1eba06a3056a61cf4b51163833cee005fb6f07d0c1f",
+    "s01_luma": "3bc69b4fb6d5604836ebeada8bb86f0aeff547f2dc79dd47603632511f07bb74",
+    "s01_ash": "75f27ffe2769db56fd4a55841d1b4149d0c2476d5542a57c71ad9a7bf8b91d80",
+    "s01_narrator": "47f014de14f61419988aa124afd189cf0927b6e8d237ca9ebc8ae885afdc9749"
+  },
+  "S02_the_boy_who_forgot_tomorrow": {
+    "s02_noah": "b0c3730abbdefa2d862cd812b4ea610576b5b279a26a97928cb2dfaaf52d47f3",
+    "s02_mira": "ab22f8073460232efb70f74743c34fa8857621525a589fe338f2a97b55c5cc3e",
+    "s02_dr_vale": "aea444a1818c36f1e28898a0306f9286074323e60058610ad177bd75f7c35a64",
+    "s02_clockkeeper": "198fde200c37b95e9a8e7f7bfad4cfac6604493cfb291e14e9c5091689310671",
+    "s02_narrator": "12ea0e541145c275f0847405f760fd98a887015ef71c8a9e6b4f9732cc1da3b0"
+  }
+}
