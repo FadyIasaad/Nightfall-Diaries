@@ -1,0 +1,93 @@
+name: 03 - Nightfall One Click Auto Upload V4.1
+on:
+  schedule:
+    - cron: '0 10 * * *'
+      timezone: 'Africa/Cairo'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Choose what the button does'
+        type: choice
+        required: true
+        default: generate_and_upload
+        options:
+          - generate_and_upload
+          - upload_private_drafts
+          - preview_only
+      episode:
+        description: 'auto = next unfinished episode. Or enter full episode ID.'
+        type: string
+        required: true
+        default: auto
+      destinations:
+        description: 'Destinations to upload (preview_only ignores this)'
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - youtube
+          - facebook
+          - tiktok
+permissions:
+  contents: write
+  models: read
+concurrency:
+  group: nightfall-drama-v4
+  cancel-in-progress: false
+jobs:
+  build_one_episode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    env:
+      GIT_CHECKPOINT: '1'
+      GH_MODELS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_EXPECTED_CHANNEL_ID: ${{ vars.YOUTUBE_EXPECTED_CHANNEL_ID }}
+      FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+      FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+      TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+      TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+      TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+      DRAMA_TOKEN_KEY: ${{ secrets.DRAMA_TOKEN_KEY }}
+      DRAMA_ALLOW_UNREVIEWED_PUBLIC: ${{ secrets.DRAMA_ALLOW_UNREVIEWED_PUBLIC }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install audio and video tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng libsndfile1
+      - name: Install CPU-only PyTorch
+        run: pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Install Python project
+        run: pip install --no-cache-dir -r requirements.txt
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: kokoro-v4-${{ runner.os }}
+      - name: Validate V4 project
+        run: python -m unittest discover -s tests -v
+      - name: Create selected fantasy video and upload (or preview)
+        env:
+          MODE: ${{ inputs.mode || 'generate_and_upload' }}
+          EPISODE: ${{ inputs.episode || 'auto' }}
+          DESTINATIONS: ${{ inputs.destinations || 'all' }}
+        run: python -m studio.one_click --mode "$MODE" --episode "$EPISODE" --destinations "$DESTINATIONS"
+      - name: Downloadable Episode MP4 + poster
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-video-${{ github.run_number }}
+          path: |
+            output/*.mp4
+            output/*_poster.png
+          if-no-files-found: warn
+          retention-days: 7

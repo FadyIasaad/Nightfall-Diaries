@@ -1,0 +1,26 @@
+name: 04 - Daily Trend Research Only
+on:
+  schedule:
+    - cron: '0 9 * * *'
+      timezone: 'Africa/Cairo'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: nightfall-drama-v4
+  cancel-in-progress: false
+jobs:
+  collect_trends_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install requests
+      - run: python -m studio.collect_trends
+        env:
+          GIT_CHECKPOINT: '1'
