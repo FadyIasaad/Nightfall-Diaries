@@ -16,8 +16,9 @@
         "updated_utc": "2026-10-30T11:32:44.005957+00:00"
       },
       "facebook": {
-        "status": "inflight",
-        "intent_utc": "2026-10-30T11:32:45.152883+00:00"
+        "status": "needs_reconcile",
+        "error": "HTTPError: 400 Client Error: Bad Request for url: https://graph.facebook.com/v25.0/61591998503423/video_reels",
+        "updated_utc": "2026-10-30T11:32:46.725986+00:00"
       }
     }
   },
