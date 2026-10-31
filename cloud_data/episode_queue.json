@@ -11,10 +11,9 @@
   "uploads": {
     "S01_the_last_little_fox_E01": {
       "youtube": {
-        "status": "missing_credentials",
-        "message": "Missing: YOUTUBE_EXPECTED_CHANNEL_ID",
-        "fallback_reason": "No public autopublish approval secret: selected private/draft before uploading",
-        "updated_utc": "2026-10-30T16:31:51.291218+00:00"
+        "status": "blocked_public_approval",
+        "message": "Use private/draft; public mode requires approved assets and explicit public opt-in",
+        "updated_utc": "2026-10-31T14:00:06.633126+00:00"
       },
       "facebook": {
         "status": "needs_reconcile",
