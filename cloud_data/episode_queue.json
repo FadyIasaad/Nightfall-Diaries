@@ -29,8 +29,10 @@
     },
     "S01_the_last_little_fox_E02": {
       "youtube": {
-        "status": "inflight",
-        "intent_utc": "2026-10-31T14:08:33.352347+00:00"
+        "status": "missing_credentials",
+        "message": "Missing: YOUTUBE_EXPECTED_CHANNEL_ID",
+        "fallback_reason": "No public autopublish approval secret: selected private/draft before uploading",
+        "updated_utc": "2026-10-31T14:08:34.455199+00:00"
       }
     }
   },
