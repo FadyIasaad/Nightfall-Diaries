@@ -35,8 +35,10 @@
         "updated_utc": "2026-10-31T14:08:34.455199+00:00"
       },
       "facebook": {
-        "status": "inflight",
-        "intent_utc": "2026-10-31T14:08:35.502261+00:00"
+        "status": "needs_reconcile",
+        "error": "HTTPError: 400 Client Error: Bad Request for url: https://graph.facebook.com/v25.0/61591998503423/video_reels",
+        "fallback_reason": "No public autopublish approval secret: selected private/draft before uploading",
+        "updated_utc": "2026-10-31T14:08:37.038980+00:00"
       }
     }
   },
