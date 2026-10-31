@@ -26,6 +26,12 @@
         "message": "Missing: TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, DRAMA_TOKEN_KEY",
         "updated_utc": "2026-10-31T14:00:09.311095+00:00"
       }
+    },
+    "S01_the_last_little_fox_E02": {
+      "youtube": {
+        "status": "inflight",
+        "intent_utc": "2026-10-31T14:08:33.352347+00:00"
+      }
     }
   },
   "pending_series_generation": false,
