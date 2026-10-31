@@ -30,10 +30,10 @@
   },
   "pending_series_generation": false,
   "last_preview": {
-    "episode_id": "S01_the_last_little_fox_E01",
-    "time_utc": "2026-10-30T16:31:49.034980+00:00",
+    "episode_id": "S01_the_last_little_fox_E02",
+    "time_utc": "2026-10-31T14:08:32.314376+00:00",
     "duration_sec": 35.6,
-    "sha256": "57a5067a55eee6a9ea387295e0201ef6369dd2f7168e58badc9be10f73db9ba4",
+    "sha256": "f9d30f085900279718c41c3e783110bfbe2e6a7b0fb8da1e174b382afab8c5e3",
     "mode": "generate_and_upload"
   }
 }
