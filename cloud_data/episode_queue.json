@@ -46,8 +46,9 @@
         "updated_utc": "2026-10-31T14:08:37.038980+00:00"
       },
       "tiktok": {
-        "status": "inflight",
-        "intent_utc": "2026-11-01T14:37:25.044784+00:00"
+        "status": "missing_credentials",
+        "message": "Missing: TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, DRAMA_TOKEN_KEY",
+        "updated_utc": "2026-11-01T14:37:26.285772+00:00"
       }
     }
   },
