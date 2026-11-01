@@ -16,7 +16,7 @@ from .free_video import generate_video
 from .neural_audio import render_kokoro
 
 OUT = ROOT / "output"
-ROOT_IMAGE = ROOT / "studio/assets/ember_approved.jpg"
+ROOT_IMAGE = ROOT / "studio/assets/ember_approved.png"
 
 def command(*args):
     subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -65,7 +65,7 @@ def generate(episode_id="auto", mode="proof"):
     castdata = json.loads((season / "characters" / "character_registry.json").read_text())
     cast = {x["id"]: x for x in castdata["characters"]}
     if not ROOT_IMAGE.is_file():
-        raise RuntimeError("Approved Ember reference missing from studio/assets/ember_approved.jpg; refusing old low-quality reference.")
+        raise RuntimeError("Approved Ember reference missing from studio/assets/ember_approved.png; refusing old low-quality reference.")
     OUT.mkdir(parents=True, exist_ok=True)
     sources = script["scenes"][:1] if mode == "proof" else script["scenes"]
     finished = []
