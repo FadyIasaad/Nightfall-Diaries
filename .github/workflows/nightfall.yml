@@ -4,8 +4,12 @@ on:
     inputs:
       action:
         type: choice
-        options: [validate_stories, prepare_ember_proof, check_instagram, review_publish_config]
-        default: validate_stories
+        options: [prepare_auto_episode, validate_stories, prepare_ember_proof, check_instagram, review_publish_config]
+        default: prepare_auto_episode
+        required: true
+      episode:
+        type: string
+        default: S01_the_last_little_fox_E01
         required: true
 permissions:
   contents: read
@@ -25,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Validate tracked original series
-        if: inputs.action == 'validate_stories' || inputs.action == 'prepare_ember_proof'
+        if: inputs.action == 'validate_stories' || inputs.action == 'prepare_ember_proof' || inputs.action == 'prepare_auto_episode'
         run: |
           python -m studio.restore
           python -m unittest discover -s tests -v
@@ -43,6 +47,19 @@ jobs:
           path: output/ember_E01_proof_plan.json
           if-no-files-found: error
           retention-days: 7
+      - name: Automatically prepare cast, voices and shot jobs
+        if: inputs.action == 'prepare_auto_episode'
+        env:
+          EPISODE_ID: ${{ inputs.episode }}
+        run: python -m studio.auto_prepare --episode "$EPISODE_ID" --output output/automated_episode_pack.json
+      - name: Export automatic episode preparation
+        if: inputs.action == 'prepare_auto_episode'
+        uses: actions/upload-artifact@v4
+        with:
+          name: automatic-episode-preproduction-pack
+          path: output/automated_episode_pack.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Read-only Instagram check
         if: inputs.action == 'check_instagram'
         run: python -m studio.check
