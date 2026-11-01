@@ -57,9 +57,11 @@ jobs:
         continue-on-error: true
         run: |
           python - <<'PY'
-          import requests
+          import json
+          from urllib.request import urlopen
           url='https://cbensimon-wan2-2-fp8da-aoti-preview2.hf.space/config'
-          d=requests.get(url,timeout=25).json()
+          with urlopen(url, timeout=25) as response:
+              d=json.load(response)
           endpoints=[(z.get('api_name'),len(z.get('inputs',[]))) for z in d.get('dependencies',[]) if z.get('api_name')]
           print('HF_SPACE_API_ENDPOINTS:',endpoints)
           assert any(name=='generate_video' and count==16 for name,count in endpoints), 'Free provider signature changed; revisit client args'
