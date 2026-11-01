@@ -1,0 +1,22 @@
+{
+  "episode_id": "S02_the_boy_who_forgot_tomorrow_E09",
+  "source": "original_pre_authored_2026-10-29",
+  "scenes": [
+    {
+      "character_id": "s02_narrator",
+      "text": "Only one switch could release the memories. Pulling it would take away Noah’s visions of tomorrow forever."
+    },
+    {
+      "character_id": "s02_dr_vale",
+      "text": "You can free Mira and the city, but you will lose your gift. I cannot reverse that cost."
+    },
+    {
+      "character_id": "s02_noah",
+      "text": "Then I choose them. A future I cannot see is better than a world where nobody remembers love."
+    },
+    {
+      "character_id": "s02_narrator",
+      "text": "His hand reached the lever. The gears closed around it, leaving only seconds to act."
+    }
+  ]
+}
