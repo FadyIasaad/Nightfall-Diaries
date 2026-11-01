@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "schedule_time": "10:00",
+  "schedule_timezone": "Africa/Cairo",
+  "production_enabled": false,
+  "renderer_verified": false,
+  "cinematic_video_approved": false,
+  "voice_lipsync_verified": false,
+  "youtube_verified": false,
+  "facebook_verified": false,
+  "instagram_verified": false,
+  "tiktok_verified": false,
+  "publishing_implemented": false,
+  "automatic_new_series": false,
+  "notes": "Photo style was approved in chat; no real cinematic MP4, neural lip-sync or four-platform publishing is verified. Enable flags only after actual tests, not simply because a plan rendered."
+}

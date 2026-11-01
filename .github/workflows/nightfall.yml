@@ -1,74 +1,86 @@
-name: Nightfall Cloud V5 - Safe Studio
+name: Nightfall Diaries — 10 AM Cairo Auto Studio
 on:
+  schedule:
+    - cron: '0 10 * * *'
+      timezone: 'Africa/Cairo'
   workflow_dispatch:
     inputs:
       action:
+        description: 'Generate + Upload is blocked until video and publishing adapters are proven'
         type: choice
-        options: [prepare_auto_episode, validate_stories, prepare_ember_proof, check_instagram, review_publish_config]
-        default: prepare_auto_episode
+        options: [check_setup, generate_and_upload, generate_only, prepare_auto_episode, validate_stories, check_instagram]
+        default: check_setup
         required: true
       episode:
+        description: 'auto chooses next unfinished episode'
         type: string
-        default: S01_the_last_little_fox_E01
+        default: auto
         required: true
+concurrency:
+  group: nightfall-studio-production
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
   studio:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
       INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
-      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-      FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
-      TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+      NIGHTFALL_VIDEO_PROVIDER_URL: ${{ secrets.NIGHTFALL_VIDEO_PROVIDER_URL }}
+      NIGHTFALL_VIDEO_PROVIDER_TOKEN: ${{ secrets.NIGHTFALL_VIDEO_PROVIDER_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Validate tracked original series
-        if: inputs.action == 'validate_stories' || inputs.action == 'prepare_ember_proof' || inputs.action == 'prepare_auto_episode'
+      - name: Check all tracked episode scripts and continuity tests
+        if: github.event_name == 'schedule' || inputs.action != 'check_instagram'
         run: |
           python -m studio.restore
           python -m unittest discover -s tests -v
-      - name: Export Ember scene plan only - no video
-        if: inputs.action == 'prepare_ember_proof'
-        run: |
-          mkdir -p output
-          cp studio/proofs/ember_E01_proof_plan.json output/ember_E01_proof_plan.json
-          echo 'SCENE_PLAN_ONLY: no video was generated or published'
-      - name: Download scene plan
-        if: inputs.action == 'prepare_ember_proof'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ember-cinematic-plan-only
-          path: output/ember_E01_proof_plan.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Automatically prepare cast, voices and shot jobs
-        if: inputs.action == 'prepare_auto_episode'
+      - name: Scheduled pipeline readiness check
+        if: github.event_name == 'schedule'
+        run: python -m studio.production --action scheduled
+      - name: Check automatic cinematic workflow setup
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'check_setup'
+        run: python -m studio.production --action check_setup
+      - name: Generate + Upload button (fails closed until ready)
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'generate_and_upload'
         env:
-          EPISODE_ID: ${{ inputs.episode }}
-        run: python -m studio.auto_prepare --episode "$EPISODE_ID" --output output/automated_episode_pack.json
-      - name: Export automatic episode preparation
-        if: inputs.action == 'prepare_auto_episode'
+          REQUESTED_EPISODE: ${{ inputs.episode }}
+        run: python -m studio.production --action generate_and_upload --episode "$REQUESTED_EPISODE"
+      - name: Generate-only button (fails closed until ready)
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'generate_only'
+        env:
+          REQUESTED_EPISODE: ${{ inputs.episode }}
+        run: python -m studio.production --action generate_only --episode "$REQUESTED_EPISODE"
+      - name: Prepare entire cast, voices and shots in one click
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'prepare_auto_episode'
+        env:
+          REQUESTED_EPISODE: ${{ inputs.episode }}
+        run: |
+          if [ "$REQUESTED_EPISODE" = auto ]; then
+            REQUESTED_EPISODE=$(python -c 'from studio.production import next_episode; print(next_episode())')
+          fi
+          python -m studio.auto_prepare --episode "$REQUESTED_EPISODE" --output output/automatic_episode_pack.json
+      - name: Download automatic preproduction pack
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'prepare_auto_episode'
         uses: actions/upload-artifact@v4
         with:
-          name: automatic-episode-preproduction-pack
-          path: output/automated_episode_pack.json
+          name: nightfall-episode-pack
+          path: output/automatic_episode_pack.json
           if-no-files-found: error
           retention-days: 14
-      - name: Read-only Instagram check
-        if: inputs.action == 'check_instagram'
+      - name: Instagram read-only check
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'check_instagram'
         run: python -m studio.check
-      - name: Check publishing secrets presence without printing values
-        if: inputs.action == 'review_publish_config'
-        run: |
-          python - <<'PY'
-          import os
-          for name in ('INSTAGRAM_ACCESS_TOKEN','INSTAGRAM_ACCOUNT_ID','YOUTUBE_REFRESH_TOKEN','FB_PAGE_ACCESS_TOKEN','TIKTOK_REFRESH_TOKEN'):
-              print(name, 'configured' if os.getenv(name) else 'missing')
-          print('Public publishing remains disabled.')
-          PY
+      - name: Always export status report when available
+        if: always() && (github.event_name == 'schedule' || inputs.action == 'check_setup' || inputs.action == 'generate_and_upload' || inputs.action == 'generate_only')
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightfall-production-status
+          path: output/production_readiness.json
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,17 +1,13 @@
-# Nightfall Diaries — Safe Story Validation & Cinematic Proof Planning
+# Nightfall Diaries — Cloud Automated Studio Foundation
 
-The original **22 episode scripts**, two series bibles, episode trackers, character registries and legacy reference images are now versioned in `seasons/`.
+Original 22 episode scripts and reference assets are preserved. `studio.auto_prepare` prepares the whole cast, voice specifications and shot jobs automatically without asking for each character's approval.
 
-## Safe manual actions
-- `validate_stories`: read-only validation of 22 scripts, character IDs and episode order without relying on old Git commits.
-- `prepare_ember_proof`: validates stories, then exports a **13.5-second shot plan JSON — NOT a video**.
-- `check_instagram`: read-only credential/access check.
-- `review_publish_config`: verifies secret presence, never logs secret values.
+## GitHub Actions controls
 
-Quality standard: original emotional storytelling with real character acting, coherent motion, consistent identity, cinematic camera, natural voices, lip-sync and sound. We **do not know yet** which cloud video provider will satisfy that standard within the budget. Archived low-resolution PNGs are not approved final references. The earlier primitive Blender and eSpeak modules remain as historical code only; they are not available as GitHub Actions rendering modes.
+- **Daily schedule:** every day at **10:00 AM Africa/Cairo**, with daylight-saving support.
+- **`check_setup`:** reports exact missing integration gates.
+- **`prepare_auto_episode`:** selects the next unpublished original episode when `episode=auto`, prepares the visual, voice and shot pack and attaches JSON (NOT an MP4).
+- **`generate_and_upload` / `generate_only`:** reserved production controls; currently **fail closed with an explanation** because the cinematic rendering/publishing adapters do not exist yet. **Do not confuse button visibility with working video generation.**
+- **`validate_stories` / `check_instagram`:** safe verification tools.
 
-**There is no approved or generated cinematic MP4 yet. No automated posting is implemented. Public publishing and automatic new series are disabled.**
-
-## Automatic production preparation
-
-Select `prepare_auto_episode` to create a single downloadable pack for all character sheets, voice profiles and cinematic shots of the selected episode. No per-character approval is requested. The full intent and remaining cloud generation blockers are in `AUTOMATION_POLICY.md`. This is preproduction JSON, **not an animated MP4**.
+The schedule currently **only checks readiness**, and does not create or upload videos. All production switches remain disabled in `studio/production_settings.json`. Full scope and remaining work are in `AUTOMATION_POLICY.md`. No secrets are embedded in repository code.
