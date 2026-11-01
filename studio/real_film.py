@@ -72,6 +72,8 @@ def generate(episode_id="auto", mode="proof"):
     for idx, scene in enumerate(sources, 1):
         char = cast[scene["character_id"]]
         text = scene["text"]
+        if mode == "proof":
+            text = text.split(". ")[0].rstrip(".") + "."
         sound = render_kokoro(text, char, OUT / f"line_{idx:02d}.wav")
         scene_length = duration(sound)
         if not (0.4 < scene_length < 150):
@@ -104,7 +106,7 @@ def generate(episode_id="auto", mode="proof"):
             # First five-second animation is the visual quality test, even if the
             # chosen original narration line is longer. No silent-movie claim.
             command("ffmpeg", "-y", "-i", str(silent), "-i", str(sound),
-                    "-map", "0:v:0", "-map", "1:a:0", "-shortest",
+                    "-map", "0:v:0", "-map", "1:a:0", "-af", "apad", "-shortest",
                     "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", str(combined))
         else:
             command("ffmpeg", "-y", "-i", str(silent), "-i", str(sound),
