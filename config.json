@@ -1,0 +1,13 @@
+{
+  "version": "5.0-safe-rebuild",
+  "time_zone": "Africa/Cairo",
+  "public_publish_enabled": false,
+  "automatic_new_series": false,
+  "resolution": [
+    360,
+    640
+  ],
+  "fps": 18,
+  "preview_length_seconds": 39,
+  "original_source_commit": "02f426cb9af1276d78465ff1ec1dbf190153f160"
+}
