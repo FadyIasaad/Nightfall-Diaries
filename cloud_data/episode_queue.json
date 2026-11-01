@@ -6,6 +6,12 @@
       "sha256": "c8d5bffebd1d03bdc3c5b039180e4cfb047d43925fed69554e07f428b15bd7f0",
       "duration": 35.6,
       "script_source": "original_pre_authored_2026-10-29"
+    },
+    "S01_the_last_little_fox_E02": {
+      "utc": "2026-11-01T14:37:22.625959+00:00",
+      "sha256": "ba282e2a7c25ff3a5972aa7c0f6ae339d2482fa2fd99c51ff3185457a01f6beb",
+      "duration": 35.6,
+      "script_source": "original_pre_authored_2026-10-29"
     }
   },
   "uploads": {
