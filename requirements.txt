@@ -1,1 +1,9 @@
 requests>=2.31,<3
+gradio_client>=1.10,<3
+kokoro>=0.9,<1
+soundfile>=0.12,<1
+numpy>=1.26,<3
+google-api-python-client>=2,<3
+google-auth>=2,<3
+google-auth-httplib2>=0.2,<1
+google-auth-oauthlib>=1,<2
