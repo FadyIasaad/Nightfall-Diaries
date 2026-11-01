@@ -23,8 +23,8 @@ def next_to_deliver():
 
 def problems(upload=False):
     missing = []
-    if not (ROOT / 'studio/assets/ember_approved.jpg').is_file():
-        missing.append("The approved Ember image is not in studio/assets/ember_approved.jpg")
+    if not (ROOT / 'studio/assets/ember_approved.png').is_file():
+        missing.append("The approved Ember image is not in studio/assets/ember_approved.png")
     if upload:
         for key in REQUIRED_SECRETS:
             if not os.getenv(key):
