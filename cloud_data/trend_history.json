@@ -892,7 +892,7 @@
       "title": "falkirk vs celtic",
       "geo": "CA",
       "traffic": 200,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=CA",
       "source": "Google Trends RSS"
     },
@@ -900,7 +900,7 @@
       "title": "en direct de l'univers",
       "geo": "CA",
       "traffic": 5000,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=CA",
       "source": "Google Trends RSS"
     },
@@ -908,15 +908,15 @@
       "title": "alcaraz",
       "geo": "CA",
       "traffic": 200,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=CA",
       "source": "Google Trends RSS"
     },
     {
       "title": "guy ritchie",
       "geo": "CA",
-      "traffic": 100,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=CA",
       "source": "Google Trends RSS"
     },
@@ -924,15 +924,15 @@
       "title": "maple leafs kucherov trade rumors",
       "geo": "CA",
       "traffic": 500,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=CA",
       "source": "Google Trends RSS"
     },
     {
       "title": "trabzonspor vs gaziantep",
       "geo": "CA",
-      "traffic": 200,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=CA",
       "source": "Google Trends RSS"
     },
@@ -972,15 +972,15 @@
       "title": "alex de minaur",
       "geo": "AU",
       "traffic": 5000,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=AU",
       "source": "Google Trends RSS"
     },
     {
       "title": "getafe vs sevilla",
       "geo": "AU",
-      "traffic": 100,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "traffic": 2000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=AU",
       "source": "Google Trends RSS"
     },
@@ -988,7 +988,7 @@
       "title": "falkirk vs celtic",
       "geo": "AU",
       "traffic": 200,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=AU",
       "source": "Google Trends RSS"
     },
@@ -996,7 +996,7 @@
       "title": "alcaraz",
       "geo": "AU",
       "traffic": 200,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=AU",
       "source": "Google Trends RSS"
     },
@@ -1004,7 +1004,7 @@
       "title": "james blunt",
       "geo": "AU",
       "traffic": 200,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=AU",
       "source": "Google Trends RSS"
     },
@@ -1012,7 +1012,7 @@
       "title": "arsenal vs aston villa",
       "geo": "AU",
       "traffic": 200,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=AU",
       "source": "Google Trends RSS"
     },
@@ -1020,7 +1020,7 @@
       "title": "liverpool vs arsenal",
       "geo": "AU",
       "traffic": 200,
-      "observed_utc": "2026-11-01T13:58:50.392664+00:00",
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=AU",
       "source": "Google Trends RSS"
     },
@@ -1127,8 +1127,304 @@
       "observed_utc": "2026-11-01T13:58:50.392664+00:00",
       "source_url": "https://trends.google.com/trending/rss?geo=IN",
       "source": "Google Trends RSS"
+    },
+    {
+      "title": "racing santander vs real madrid",
+      "geo": "US",
+      "traffic": 5000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "tracy morgan",
+      "geo": "US",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "michael mann",
+      "geo": "US",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "strasbourg vs auxerre",
+      "geo": "US",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "afg vs zim",
+      "geo": "US",
+      "traffic": 1000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "military commissary refrigeration cyberattack probe",
+      "geo": "US",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "spencer lee",
+      "geo": "US",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "jadarian price",
+      "geo": "US",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "nfl today games",
+      "geo": "US",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "lazio - cagliari",
+      "geo": "US",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=US",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "racing santander vs real madrid",
+      "geo": "GB",
+      "traffic": 2000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "lazio",
+      "geo": "GB",
+      "traffic": 5000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "baku",
+      "geo": "GB",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "celtic score",
+      "geo": "GB",
+      "traffic": 2000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "afg vs zim",
+      "geo": "GB",
+      "traffic": 1000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "charlton vs chelsea",
+      "geo": "GB",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "lazio vs cagliari",
+      "geo": "GB",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "alcaraz",
+      "geo": "GB",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "jj gabriel",
+      "geo": "GB",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "boeing 787 dreamliner",
+      "geo": "GB",
+      "traffic": 100,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=GB",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "mexico grand prix",
+      "geo": "CA",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=CA",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "afg vs zim",
+      "geo": "CA",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=CA",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "alex de minaur",
+      "geo": "CA",
+      "traffic": 100,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=CA",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "movember",
+      "geo": "CA",
+      "traffic": 100,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=CA",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "racing santander vs real madrid",
+      "geo": "AU",
+      "traffic": 500,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=AU",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "trabzonspor vs gaziantep",
+      "geo": "AU",
+      "traffic": 100,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=AU",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "afg vs zim",
+      "geo": "AU",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=AU",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "zimbabwe national cricket team vs afghanistan national cricket team match scorecard",
+      "geo": "IN",
+      "traffic": 10000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "t20 challenge",
+      "geo": "IN",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "மிட்செல் சான்ட்னர்",
+      "geo": "IN",
+      "traffic": 1000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "dark",
+      "geo": "IN",
+      "traffic": 1000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "लाइव लॉ",
+      "geo": "IN",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "ram gopal varma legal notice",
+      "geo": "IN",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "zee5",
+      "geo": "IN",
+      "traffic": 2000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "ज़िम्बाब्वे बनाम अफ़ग़ानिस्तान",
+      "geo": "IN",
+      "traffic": 1000,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "కౌశల్ మండా",
+      "geo": "IN",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
+    },
+    {
+      "title": "zee 5",
+      "geo": "IN",
+      "traffic": 200,
+      "observed_utc": "2026-11-01T14:36:42.881048+00:00",
+      "source_url": "https://trends.google.com/trending/rss?geo=IN",
+      "source": "Google Trends RSS"
     }
   ],
   "errors": [],
-  "last_checked_utc": "2026-11-01T13:58:50.392664+00:00"
+  "last_checked_utc": "2026-11-01T14:36:42.881048+00:00"
 }
