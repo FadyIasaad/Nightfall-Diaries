@@ -52,6 +52,18 @@ jobs:
         run: |
           python -m compileall -q studio tests
           python -m unittest discover -s tests -v
+      - name: Probe free Wan image-to-video API without generating or spending GPU quota
+        if: github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import requests
+          url='https://cbensimon-wan2-2-fp8da-aoti-preview2.hf.space/config'
+          d=requests.get(url,timeout=25).json()
+          endpoints=[(z.get('api_name'),len(z.get('inputs',[]))) for z in d.get('dependencies',[]) if z.get('api_name')]
+          print('HF_SPACE_API_ENDPOINTS:',endpoints)
+          assert any(name=='generate_video' and count==16 for name,count in endpoints), 'Free provider signature changed; revisit client args'
+          PY
       - name: Read-only Instagram check
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'check_instagram'
         run: python -m studio.check
