@@ -1,1 +1,64 @@
+name: Nightfall Cloud V5 - Safe Studio
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [check_instagram, preview, review_publish_config]
+        default: check_instagram
+        required: true
+      episode:
+        type: string
+        default: S01_the_last_little_fox_E01
+        required: true
+permissions:
+  contents: read
+jobs:
+  studio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+      INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+      TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Instagram connection (read-only)
+        if: inputs.action == 'check_instagram'
+        run: python -m studio.check
+      - name: Inspect secrets presence without printing values
+        if: inputs.action == 'review_publish_config'
+        run: |
+          python - <<'PY'
+          import os
+          for x in ('INSTAGRAM_ACCESS_TOKEN','INSTAGRAM_ACCOUNT_ID','YOUTUBE_REFRESH_TOKEN','FB_PAGE_ACCESS_TOKEN','TIKTOK_REFRESH_TOKEN'):
+              print(x, 'configured' if os.environ.get(x) else 'missing')
+          print('Public posting remains disabled.')
+          PY
+      - name: Install free 3D and speech tools
+        if: inputs.action == 'preview'
+        run: sudo apt-get update && sudo apt-get install -y blender ffmpeg espeak-ng
+      - name: Restore original pre-authored scripts from repo history
+        if: inputs.action == 'preview'
+        run: python -m studio.restore
+      - name: Render moving 3D preview (no upload)
+        if: inputs.action == 'preview'
+        env:
+          EPISODE: ${{ inputs.episode }}
+        run: python -m studio.preview --episode "$EPISODE"
+      - name: Download video for review
+        if: inputs.action == 'preview'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightfall-3d-preview
+          path: output/*.mp4
+          if-no-files-found: error
+          retention-days: 7
 
