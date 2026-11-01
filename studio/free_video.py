@@ -32,7 +32,7 @@ def generate_video(image_file, prompt, destination):
     endpoint = (os.getenv("HF_VIDEO_ENDPOINT") or "/generate_video").strip()
     token = os.getenv("HF_TOKEN") or None
     if not image_file or not Path(image_file).is_file():
-        raise VideoUnavailable("Missing the approved cinematic start-frame image in studio/assets/ember_approved.jpg.")
+        raise VideoUnavailable("Missing the approved cinematic start-frame image in studio/assets/ember_approved.png.")
     if not space or "/" not in space:
         raise VideoUnavailable("HF_VIDEO_SPACE must be a public Gradio image-to-video Space ID.")
     template = os.getenv("HF_VIDEO_ARGS_JSON") or json.dumps(["$image", None, "$prompt", 6, "", 3.5, 1, 1, 42, False, 6, "UniPCMultistep", 3.0, 24, False, True])
