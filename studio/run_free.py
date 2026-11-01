@@ -4,7 +4,6 @@ import json
 import os
 from .restore import ROOT, validate_stories
 from .production import SERIES
-from .real_film import generate, ROOT_IMAGE
 from .crosspost import receipts_read, deliver
 
 REQUIRED_SECRETS = (
@@ -24,7 +23,7 @@ def next_to_deliver():
 
 def problems(upload=False):
     missing = []
-    if not ROOT_IMAGE.is_file():
+    if not (ROOT / 'studio/assets/ember_approved.jpg').is_file():
         missing.append("The approved Ember image is not in studio/assets/ember_approved.jpg")
     if upload:
         for key in REQUIRED_SECRETS:
@@ -49,12 +48,16 @@ def main():
         print("LIVE:", os.getenv("NIGHTFALL_LIVE", "false"))
         return
     live = os.getenv("NIGHTFALL_LIVE", "").lower() == "true"
-    if args.action == "scheduled" and not live:
+    if args.action == 'generate_and_upload' or (args.action == 'scheduled' and live):
+        raise SystemExit('PRODUCTION_NOT_VERIFIED: full episode must have per-shot character references, good voices, verified real video and platform posting tests. No upload attempted.')
+    if args.action == 'scheduled' and not live:
         print("SAFE_STANDBY: 10AM Cairo automation configured; awaiting validated video and credentials.")
         return
     if uploading and not live:
         raise SystemExit("UPLOAD_NOT_ARMED: Set NIGHTFALL_LIVE=true only after testing a real MP4 and publisher permissions.")
     missing = problems(upload=uploading)
+    if args.action == 'generate_only':
+        raise SystemExit('FULL_EPISODE_NOT_READY: no character-locked footage and lip-sync pipeline has been tested. Use free_test to test genuine motion first.')
     if missing:
         raise SystemExit("SETUP_REQUIRED: " + "; ".join(missing))
     episode = "S01_the_last_little_fox_E01" if args.action == "free_test" else args.episode
@@ -64,6 +67,7 @@ def main():
         print("INITIAL_SERIES_DELIVERED; next series requires owner selection.")
         return
     mode = "proof" if args.action == "free_test" else "full"
+    from .real_film import generate
     video = generate(episode, mode=mode)
     print("REAL_MP4_PRODUCED:", video)
     if not uploading:
