@@ -1,6 +1,0 @@
-Pillow>=10,<13
-numpy>=1.26,<3
-soundfile>=0.12,<1
-requests>=2.31,<3
-kokoro>=0.9.4,<1
-cryptography>=42,<50
