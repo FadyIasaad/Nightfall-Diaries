@@ -1,1 +1,0 @@
-reset stale stories to ideas (delete this file to disable the auto-trigger)
