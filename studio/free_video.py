@@ -7,7 +7,6 @@ import json
 import os
 import shutil
 from pathlib import Path
-from gradio_client import Client, handle_file
 
 class VideoUnavailable(RuntimeError):
     pass
@@ -29,19 +28,20 @@ def find_video(value):
     return None
 
 def generate_video(image_file, prompt, destination):
-    space = os.getenv("HF_VIDEO_SPACE", "JCisHERE/wan2-2-i2v-v3").strip()
-    endpoint = os.getenv("HF_VIDEO_ENDPOINT", "/generate").strip()
+    space = (os.getenv("HF_VIDEO_SPACE") or "cbensimon/wan2-2-fp8da-aoti-preview2").strip()
+    endpoint = (os.getenv("HF_VIDEO_ENDPOINT") or "/generate_video").strip()
     token = os.getenv("HF_TOKEN") or None
     if not image_file or not Path(image_file).is_file():
         raise VideoUnavailable("Missing the approved cinematic start-frame image in studio/assets/ember_approved.jpg.")
     if not space or "/" not in space:
         raise VideoUnavailable("HF_VIDEO_SPACE must be a public Gradio image-to-video Space ID.")
-    template = os.getenv("HF_VIDEO_ARGS_JSON", '["$image", "$prompt"]')
+    template = os.getenv("HF_VIDEO_ARGS_JSON") or json.dumps(["$image", None, "$prompt", 6, "", 3.5, 1, 1, 42, False, 6, "UniPCMultistep", 3.0, 24, False, True])
     try:
         positional = json.loads(template)
         if not isinstance(positional, list): raise ValueError("not a JSON list")
     except ValueError as exc:
         raise VideoUnavailable("HF_VIDEO_ARGS_JSON must be a JSON list of Gradio endpoint arguments.") from exc
+    from gradio_client import Client, handle_file
     args = []
     for value in positional:
         if value == "$image":
