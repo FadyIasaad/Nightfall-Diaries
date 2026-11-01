@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "proof_id": "S01_E01_ember_quality_test_v1",
+  "status": "PLAN_ONLY_NOT_RENDERED",
+  "approval_required": true,
+  "public_publish_enabled": false,
+  "cloud_video_provider": null,
+  "episode_id": "S01_the_last_little_fox_E01",
+  "source_script": "seasons/S01_the_last_little_fox/scripts/E01.json",
+  "cast": "seasons/S01_the_last_little_fox/characters/character_registry.json",
+  "target": {
+    "seconds": 13.5,
+    "aspect_ratio": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "fps": 24,
+    "format": "mp4"
+  },
+  "requirements": [
+    "Match reference video in cinematic staging, acting, motion, image quality and audio, not genre or plot",
+    "Ember is russet fox cub with cream chest, white LEFT ear tip, teal scarf with exactly one gold star",
+    "Meaningful locomotion, hand/paw motion, expressions, dramatic reaction and stable anatomy",
+    "Natural differentiated voices, lip-sync, music ducked under dialogue, scene-specific SFX",
+    "Same environment and character appearance across shots; no static slideshow or simple Blender shapes",
+    "No rendering/production/publishing until provider and references are approved"
+  ],
+  "prerequisites": [
+    "Approved multiview Ember and Moss references",
+    "Audition and lock Ember, Moss, Narrator voices",
+    "Verify actual available cloud I2V/API service and quotas"
+  ],
+  "shots": [
+    {
+      "id": "SH01",
+      "seconds": 4.5,
+      "script_scene_index": 0,
+      "character_id": "s01_narrator",
+      "dialogue_excerpt": "The forest blazed before thunder reached the valley.",
+      "visible": [
+        "s01_ember"
+      ],
+      "direction": "Low tracking camera follows Ember running through forest fire; he ducks falling branch, scans smoke fearfully; flames, sparks, ash, detailed lighting; natural narrator, footsteps and fire"
+    },
+    {
+      "id": "SH02",
+      "seconds": 4.5,
+      "script_scene_index": 1,
+      "character_id": "s01_ember",
+      "dialogue_excerpt": "But why is this blue feather still glowing?",
+      "visible": [
+        "s01_ember"
+      ],
+      "direction": "Ember halts, discovers mysterious glowing blue feather, reaches with paw and delivers anxious line with natural lip-sync; close-up and focus change; continuous light"
+    },
+    {
+      "id": "SH03",
+      "seconds": 4.5,
+      "script_scene_index": 2,
+      "character_id": "s01_moss",
+      "dialogue_excerpt": "Do not touch it, little fox.",
+      "visible": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "direction": "Over-the-shoulder reveal elderly tortoise Moss emerging from smoke, taking grounded step and warning Ember with face/foreleg performance; Ember recoils; natural dialogue, distant thunder"
+    }
+  ]
+}

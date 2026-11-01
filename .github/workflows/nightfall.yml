@@ -4,19 +4,15 @@ on:
     inputs:
       action:
         type: choice
-        options: [check_instagram, preview, review_publish_config]
-        default: check_instagram
-        required: true
-      episode:
-        type: string
-        default: S01_the_last_little_fox_E01
+        options: [validate_stories, prepare_ember_proof, check_instagram, review_publish_config]
+        default: validate_stories
         required: true
 permissions:
   contents: read
 jobs:
   studio:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 10
     env:
       INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
       INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
@@ -25,40 +21,37 @@ jobs:
       TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Check Instagram connection (read-only)
+      - name: Validate tracked original series
+        if: inputs.action == 'validate_stories' || inputs.action == 'prepare_ember_proof'
+        run: |
+          python -m studio.restore
+          python -m unittest discover -s tests -v
+      - name: Export Ember scene plan only - no video
+        if: inputs.action == 'prepare_ember_proof'
+        run: |
+          mkdir -p output
+          cp studio/proofs/ember_E01_proof_plan.json output/ember_E01_proof_plan.json
+          echo 'SCENE_PLAN_ONLY: no video was generated or published'
+      - name: Download scene plan
+        if: inputs.action == 'prepare_ember_proof'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ember-cinematic-plan-only
+          path: output/ember_E01_proof_plan.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Read-only Instagram check
         if: inputs.action == 'check_instagram'
         run: python -m studio.check
-      - name: Inspect secrets presence without printing values
+      - name: Check publishing secrets presence without printing values
         if: inputs.action == 'review_publish_config'
         run: |
           python - <<'PY'
           import os
-          for x in ('INSTAGRAM_ACCESS_TOKEN','INSTAGRAM_ACCOUNT_ID','YOUTUBE_REFRESH_TOKEN','FB_PAGE_ACCESS_TOKEN','TIKTOK_REFRESH_TOKEN'):
-              print(x, 'configured' if os.environ.get(x) else 'missing')
-          print('Public posting remains disabled.')
+          for name in ('INSTAGRAM_ACCESS_TOKEN','INSTAGRAM_ACCOUNT_ID','YOUTUBE_REFRESH_TOKEN','FB_PAGE_ACCESS_TOKEN','TIKTOK_REFRESH_TOKEN'):
+              print(name, 'configured' if os.getenv(name) else 'missing')
+          print('Public publishing remains disabled.')
           PY
-      - name: Install free 3D and speech tools
-        if: inputs.action == 'preview'
-        run: sudo apt-get update && sudo apt-get install -y blender ffmpeg espeak-ng
-      - name: Restore original pre-authored scripts from repo history
-        if: inputs.action == 'preview'
-        run: python -m studio.restore
-      - name: Render moving 3D preview (no upload)
-        if: inputs.action == 'preview'
-        env:
-          EPISODE: ${{ inputs.episode }}
-        run: python -m studio.preview --episode "$EPISODE"
-      - name: Download video for review
-        if: inputs.action == 'preview'
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightfall-3d-preview
-          path: output/*.mp4
-          if-no-files-found: error
-          retention-days: 7
-
