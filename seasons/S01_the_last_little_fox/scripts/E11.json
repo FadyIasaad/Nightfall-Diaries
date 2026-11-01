@@ -1,0 +1,22 @@
+{
+  "episode_id": "S01_the_last_little_fox_E11",
+  "source": "original_pre_authored_2026-10-29",
+  "scenes": [
+    {
+      "character_id": "s01_narrator",
+      "text": "Luma spotted a flicker of teal beneath the foam. With Moss, she pulled Ember to the riverbank."
+    },
+    {
+      "character_id": "s01_luma",
+      "text": "He is breathing! And we found the cause. The warning lantern sparked before the thunder even began."
+    },
+    {
+      "character_id": "s01_ember",
+      "text": "Then the storm did not start the fire. The broken warning system let it spread. We can prove it now."
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "The evidence was clear. The final question was whether the forest would choose truth over fear."
+    }
+  ]
+}

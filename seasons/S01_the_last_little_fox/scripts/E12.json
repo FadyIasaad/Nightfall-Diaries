@@ -1,0 +1,22 @@
+{
+  "episode_id": "S01_the_last_little_fox_E12",
+  "source": "original_pre_authored_2026-10-29",
+  "scenes": [
+    {
+      "character_id": "s01_narrator",
+      "text": "Before the whole forest, Ash and his family confessed. Ember showed everyone how the lantern failed and the warning was ignored."
+    },
+    {
+      "character_id": "s01_ash",
+      "text": "I cannot undo our mistake. But I can help rebuild every bridge and every home we lost."
+    },
+    {
+      "character_id": "s01_ember",
+      "text": "We were never going to heal by blaming the wrong animal. We heal when we finally listen."
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "They rebuilt together. At sunrise the forest was bright again, and the little fox had a home. The end."
+    }
+  ]
+}

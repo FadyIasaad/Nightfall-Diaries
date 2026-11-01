@@ -1,0 +1,22 @@
+{
+  "episode_id": "S02_the_boy_who_forgot_tomorrow_E10",
+  "source": "original_pre_authored_2026-10-29",
+  "scenes": [
+    {
+      "character_id": "s02_narrator",
+      "text": "Noah pulled the lever. The shield went dark, and every erased memory returned to its rightful place."
+    },
+    {
+      "character_id": "s02_mira",
+      "text": "Noah! Everyone remembers me. And you are finally here, not one day ahead of the rest of us."
+    },
+    {
+      "character_id": "s02_clockkeeper",
+      "text": "I thought the future had to be controlled. I was wrong. From now on, we choose it together."
+    },
+    {
+      "character_id": "s02_narrator",
+      "text": "Noah could no longer see tomorrow. For the first time, that felt like freedom. The end."
+    }
+  ]
+}

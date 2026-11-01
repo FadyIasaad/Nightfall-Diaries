@@ -1,0 +1,22 @@
+{
+  "episode_id": "S01_the_last_little_fox_E08",
+  "source": "original_pre_authored_2026-10-29",
+  "scenes": [
+    {
+      "character_id": "s01_narrator",
+      "text": "Beyond the buried gate, frightened animals waited in rising water. The lever to release them had been deliberately damaged."
+    },
+    {
+      "character_id": "s01_luma",
+      "text": "Ember! The river is rising. You must move the wheel before the spillway floods."
+    },
+    {
+      "character_id": "s01_ash",
+      "text": "That mark on the lever... it is my family seal. I know who was here."
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "For the first time, Ash looked truly afraid. His family insignia was carved into the broken metal."
+    }
+  ]
+}

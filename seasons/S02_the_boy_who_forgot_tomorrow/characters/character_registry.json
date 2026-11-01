@@ -1,0 +1,205 @@
+{
+  "series_id": "S02_the_boy_who_forgot_tomorrow",
+  "schema_version": "2.0",
+  "render_policy": "Reference all named characters by ID; never overwrite identity fields from an episode script. Require approved visual refs and approved voice sample before rendering production.",
+  "characters": [
+    {
+      "id": "s02_noah",
+      "name": "Noah",
+      "role": "main hero",
+      "type": "human",
+      "species": "human",
+      "age_story": "12",
+      "pronouns": "he/him",
+      "visual": "12-year-old boy, warm medium-brown skin, short curly black hair, dark brown eyes; cobalt-blue hooded jacket with one white lightning-shaped seam on left sleeve; charcoal trousers; worn white trainers; slender short build.",
+      "palette": [
+        "cobalt blue",
+        "charcoal",
+        "white"
+      ],
+      "never_change": [
+        "short tight black curls",
+        "cobalt jacket, white zigzag sleeve seam on LEFT arm",
+        "dark brown eyes",
+        "same child stature"
+      ],
+      "personality": "curious, stubborn, protective",
+      "arc": "stops chasing perfect tomorrows and chooses living truthfully",
+      "voice": {
+        "engine": "kokoro",
+        "voice_id": "am_liam",
+        "lang": "en-US",
+        "speed": 1.1,
+        "voice_direction": "energetic and uncertain; youthful presentation without trying to mimic a real child",
+        "delivery": "short breaths, quick words when afraid; audition for believable youthful timbre",
+        "audition": "I remember tomorrow. So why does nobody remember yesterday?"
+      },
+      "assets": {
+        "front_ref": "characters/s02_noah/approved_front.png",
+        "three_quarter_ref": "characters/s02_noah/approved_three_quarter.png",
+        "side_ref": "characters/s02_noah/approved_side.png",
+        "voice_audition": "voices/s02_noah/approved_sample.wav",
+        "reference_status": "NOT_GENERATED_OR_APPROVED",
+        "voice_status": "SELECTED_NOT_YET_AUDITIONED"
+      },
+      "identity_spec_lock": true
+    },
+    {
+      "id": "s02_mira",
+      "name": "Mira",
+      "role": "friend and anomaly",
+      "type": "human",
+      "species": "human",
+      "age_story": "13",
+      "pronouns": "she/her",
+      "visual": "13-year-old girl, medium-olive skin, shoulder-length dark auburn wavy hair tied with one copper clip on right side, hazel eyes, mustard-yellow raincoat over lavender hoodie, small navy canvas satchel.",
+      "palette": [
+        "mustard yellow",
+        "lavender",
+        "navy",
+        "copper"
+      ],
+      "never_change": [
+        "copper clip on right side",
+        "yellow raincoat",
+        "navy satchel",
+        "hazel eyes"
+      ],
+      "personality": "witty, bold, often forgotten by the city",
+      "arc": "recovers evidence of her erased existence",
+      "voice": {
+        "engine": "kokoro",
+        "voice_id": "af_bella",
+        "lang": "en-US",
+        "speed": 1.07,
+        "voice_direction": "bright, witty and alert with sudden vulnerability",
+        "delivery": "fast sarcastic remarks; slow down for fear and care",
+        "audition": "You don’t remember me. But I’ve saved your life three times."
+      },
+      "assets": {
+        "front_ref": "characters/s02_mira/approved_front.png",
+        "three_quarter_ref": "characters/s02_mira/approved_three_quarter.png",
+        "side_ref": "characters/s02_mira/approved_side.png",
+        "voice_audition": "voices/s02_mira/approved_sample.wav",
+        "reference_status": "NOT_GENERATED_OR_APPROVED",
+        "voice_status": "SELECTED_NOT_YET_AUDITIONED"
+      },
+      "identity_spec_lock": true
+    },
+    {
+      "id": "s02_dr_vale",
+      "name": "Dr. Vale",
+      "role": "scientist and keeper of the clock records",
+      "type": "human",
+      "species": "human",
+      "age_story": "middle-aged",
+      "pronouns": "she/her",
+      "visual": "Middle-aged woman with deep-brown skin, salt-and-pepper hair in tight low bun, oval silver glasses, emerald waistcoat over ivory shirt, ink-stained fingers, calm serious expression.",
+      "palette": [
+        "emerald",
+        "ivory",
+        "silver"
+      ],
+      "never_change": [
+        "oval silver glasses",
+        "low salt-and-pepper bun",
+        "emerald waistcoat"
+      ],
+      "personality": "brilliant, guilty, committed to fixing harm she helped cause",
+      "arc": "admits she designed memory safeguard and helps disable it",
+      "voice": {
+        "engine": "kokoro",
+        "voice_id": "af_nicole",
+        "lang": "en-US",
+        "speed": 0.96,
+        "voice_direction": "calm, analytical, composed, with tension under restraint",
+        "delivery": "precise emphasis on clock rules and difficult admissions",
+        "audition": "The clock does not control time. It controls what the city remembers."
+      },
+      "assets": {
+        "front_ref": "characters/s02_dr_vale/approved_front.png",
+        "three_quarter_ref": "characters/s02_dr_vale/approved_three_quarter.png",
+        "side_ref": "characters/s02_dr_vale/approved_side.png",
+        "voice_audition": "voices/s02_dr_vale/approved_sample.wav",
+        "reference_status": "NOT_GENERATED_OR_APPROVED",
+        "voice_status": "SELECTED_NOT_YET_AUDITIONED"
+      },
+      "identity_spec_lock": true
+    },
+    {
+      "id": "s02_clockkeeper",
+      "name": "The Clockkeeper",
+      "role": "mysterious man in yellow coat",
+      "type": "human",
+      "species": "human",
+      "age_story": "adult",
+      "pronouns": "he/him",
+      "visual": "Tall slim man of ambiguous age, pale tan skin, dark straight hair with silver streak on left temple, brass-rimmed round spectacles, long faded golden-yellow coat, black gloves, pocket watch engraved with twelve small stars.",
+      "palette": [
+        "golden yellow",
+        "brass",
+        "black"
+      ],
+      "never_change": [
+        "silver streak left temple",
+        "long yellow coat",
+        "twelve-star pocket watch",
+        "black gloves"
+      ],
+      "personality": "evasive and protective; believes forgetting prevents catastrophe",
+      "arc": "abandons his controlling methods and allows the truth out",
+      "voice": {
+        "engine": "kokoro",
+        "voice_id": "am_michael",
+        "lang": "en-US",
+        "speed": 0.91,
+        "voice_direction": "controlled, low and mysterious; ultimately humane",
+        "delivery": "precise, unhurried, emotionally remote until finale",
+        "audition": "Some tomorrows are too dangerous to remember."
+      },
+      "assets": {
+        "front_ref": "characters/s02_clockkeeper/approved_front.png",
+        "three_quarter_ref": "characters/s02_clockkeeper/approved_three_quarter.png",
+        "side_ref": "characters/s02_clockkeeper/approved_side.png",
+        "voice_audition": "voices/s02_clockkeeper/approved_sample.wav",
+        "reference_status": "NOT_GENERATED_OR_APPROVED",
+        "voice_status": "SELECTED_NOT_YET_AUDITIONED"
+      },
+      "identity_spec_lock": true
+    },
+    {
+      "id": "s02_narrator",
+      "name": "Narrator",
+      "role": "narration only",
+      "type": "narrator",
+      "species": null,
+      "age_story": "adult",
+      "pronouns": "he/him",
+      "visual": null,
+      "palette": [],
+      "never_change": [
+        "voice never changes within season"
+      ],
+      "personality": "mysterious cinematic storyteller",
+      "arc": "none",
+      "voice": {
+        "engine": "kokoro",
+        "voice_id": "bm_fable",
+        "lang": "en-GB",
+        "speed": 0.96,
+        "voice_direction": "slightly mysterious, warm, measured British male narrator",
+        "delivery": "subtle build-up, clear scene exposition",
+        "audition": "At exactly midnight, the city forgot a name."
+      },
+      "assets": {
+        "front_ref": null,
+        "three_quarter_ref": null,
+        "side_ref": null,
+        "voice_audition": "voices/s02_narrator/approved_sample.wav",
+        "reference_status": "NOT_GENERATED_OR_APPROVED",
+        "voice_status": "SELECTED_NOT_YET_AUDITIONED"
+      },
+      "identity_spec_lock": true
+    }
+  ]
+}
