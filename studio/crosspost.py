@@ -27,7 +27,7 @@ def post_json(url, **kwargs):
     resp = requests.post(url, timeout=90, **kwargs)
     resp.raise_for_status()
     data = resp.json()
-    if data.get("error"):
+    if data.get('error') and data['error'].get('code') not in (None, 'ok'):
         raise RuntimeError(f"Platform returned error: {data['error']}")
     return data
 
@@ -64,10 +64,6 @@ def public_video_release(video, episode_id):
     """Public GitHub release hosts original MP4 for Meta's remote fetch."""
     tag = "nightfall-" + episode_id.lower().replace("_", "-")
     env = dict(os.environ, GH_TOKEN=required("GH_TOKEN"))
-    subprocess.run(
-        ["gh", "release", "view", tag, "--repo", REPO],
-        env=env, capture_output=True, check=False
-    )
     check = subprocess.run(["gh", "release", "view", tag, "--repo", REPO],
                            env=env, capture_output=True)
     if check.returncode != 0:
