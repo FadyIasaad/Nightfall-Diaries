@@ -55,6 +55,8 @@ for f in range(1,frames+1,6):
  if tail:tail.rotation_euler.y=.16*math.sin(t*3);tail.keyframe_insert(data_path='rotation_euler',frame=f)
  cam.location.x=4+0.2*math.sin(t*.21+n);cam.location.z=2.9+.08*math.sin(t*.4);cam.keyframe_insert(data_path='location',frame=f)
 s=bpy.context.scene;s.frame_start=1;s.frame_end=frames;s.render.engine='CYCLES';s.cycles.samples=8
+# Ubuntu's packaged Blender can lack OpenImageDenoiser; disable denoising on CPU runners.
+bpy.context.view_layer.cycles.use_denoising = False
 s.render.resolution_x=360;s.render.resolution_y=640;s.render.resolution_percentage=100;s.render.fps=fps
 s.render.image_settings.file_format='FFMPEG';s.render.ffmpeg.format='MPEG4';s.render.ffmpeg.codec='H264';s.render.ffmpeg.constant_rate_factor='MEDIUM';s.render.filepath=target
 bpy.ops.render.render(animation=True)
