@@ -54,11 +54,61 @@ def normalize(path, dest):
 
 def character_image(season, character_id):
     if character_id.endswith("_narrator"):
-        character_id = "s01_ember" if season == SERIES[0] else "s02_noah"
+        raise RuntimeError("Narration must use a storyboard-visible character, never a narrator portrait")
     path = ROOT / "seasons" / season / "characters" / character_id / "cloud_reference.png"
     if not path.is_file():
         raise RuntimeError(f"Missing locked visual reference for {character_id}; no generic-substitute imagery allowed")
     return path
+
+def visual_lead(scene, cast):
+    """Choose on-screen identity independently of the speaking neural voice.
+
+    Never use a narrator portrait or a generic substitute. Explicit original
+    scene visibility must designate an existing drawable locked character.
+    """
+    speaker = scene.get("character_id")
+    if speaker not in cast:
+        raise ValueError("Unapproved scene speaker: " + str(speaker))
+    visible = scene.get("visible")
+    if not isinstance(visible, list) or not visible:
+        raise ValueError("Scene has no explicit visible character; create a reviewed storyboard first")
+    for identity in visible:
+        if identity not in cast:
+            raise ValueError("Unapproved visible character: " + str(identity))
+        if not isinstance(cast[identity].get("visual"), str) or not cast[identity]["visual"].strip():
+            raise ValueError("Scene visible cast has no drawable identity: " + str(identity))
+    # For dialogue, use the speaking character's reference when they are
+    # visible. Narrator is never on-screen; choose the first directed actor.
+    return speaker if speaker in visible else visible[0]
+
+
+def motion_prompt(scene, cast, image_char):
+    """Build only from the source-locked visible cast, not the narrator's null visual."""
+    speaker = scene["character_id"]
+    if image_char not in scene["visible"] or not cast[image_char].get("visual"):
+        raise ValueError("Image character is not an approved on-screen actor")
+    lead = cast[image_char]
+    markers = "; ".join(lead.get("never_change") or [])
+    secondary = [
+        f"{cast[identity]['name']}: {cast[identity]['visual']}"
+        for identity in scene["visible"] if identity != image_char
+    ]
+    speech = ("Narration is voice-over only; do not show or animate a narrator. "
+              if speaker.endswith("_narrator") else
+              ("On-screen dialogue spoken by " if speaker == image_char else
+               "Off-screen dialogue by ") + speaker + ". ")
+    return (
+        "Polished stylized 3D animated feature-film acting, real body locomotion and facial expression. "
+        + lead["visual"]
+        + " Preserve exact identity and costume every frame. Locked details: " + markers + ". "
+        + ("Other on-screen characters (same locked canonical identities): " + " | ".join(secondary) + ". "
+           if secondary else "")
+        + (scene.get("direction") or "Meaningful acting, paw gestures, eye movement, environmental motion and camera changes.")
+        + " Real animation only: no static image pan, slideshow, generic substitute, or primitive shapes. "
+        + speech
+        + "Dialogue/narration text for audio timing: " + scene["text"]
+    )
+
 
 def proof_scenes(script, episode_id):
     proof = json.loads((ROOT / "studio/proofs/ember_E01_proof_plan.json").read_text())
@@ -105,15 +155,15 @@ def generate(episode_id, mode="proof"):
     from .checkpoints import fingerprint,restore_clip,save_clip
     from .continuity import sha256
     from .motion_provider import settings as provider_settings
+    # Validate ALL storyboards before loading heavyweight TTS or using GPU quota.
+    # Narration remains the locked narrator voice; its pictures come from scene.visible.
+    visible_leads = [visual_lead(scene, cast) for scene in sources]
+    prompts = [motion_prompt(scene, cast, lead)
+               for scene, lead in zip(sources, visible_leads)]
     finished = []
-    for idx, scene in enumerate(sources, 1):
+    for idx, (scene, image_char, prompt) in enumerate(zip(sources, visible_leads, prompts), 1):
         char = cast[scene["character_id"]]
         speaker = scene["character_id"]
-        image_char = speaker
-        if mode == "proof" and scene["visible"]:
-            # When the speaker is off-screen, use the on-screen lead. For dialogue
-            # use that speaker's own locked portrait, never a generic Ember clone.
-            image_char = speaker if not speaker.endswith("_narrator") else scene["visible"][0]
         image_file = character_image(season_id, image_char)
         audio = render_kokoro(scene["text"], char, OUT / f"{episode_id}_line_{idx:02d}.wav")
         voice_seconds = duration(audio)
@@ -122,16 +172,6 @@ def generate(episode_id, mode="proof"):
         clip_count = 1 if mode == "proof" else math.ceil(voice_seconds / 5)
         clips = []
         for ci in range(clip_count):
-            prompt = (
-                "Polished stylized 3D animated feature-film character acting. "
-                + cast[image_char].get("visual", "")
-                + " Preserve every marking, costume, age, body shape and facial identity. "
-                + "Locked details: " + "; ".join(cast[image_char].get("never_change", [])) + ". "
-                + (scene.get("direction") or "Meaningful acting, walking, gestures, eye movement, reaction and camera changes.")
-                + " Clear physical body motion, stable anatomy, natural emotional facial performance. "
-                + " Do NOT produce a static portrait, slideshow, zoom on stills, or cheap low-poly shapes. "
-                + f"Speaker: {speaker}; line: {scene['text']}"
-            )
             source = OUT / f"{episode_id}_ai_{idx:02d}_{ci:02d}.mp4"
             norm = OUT / f"{episode_id}_norm_{idx:02d}_{ci:02d}.mp4"
             clip_seconds = float(scene.get("seconds", 5.0))
