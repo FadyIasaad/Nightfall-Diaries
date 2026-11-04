@@ -23,7 +23,7 @@ class FreeStudioTests(unittest.TestCase):
     def test_read_only_preflight_needs_no_gradio(self):
         report = setup_report()
         self.assertEqual(report["original_scripts"], 22)
-        self.assertFalse(report["episode_one_full_screenplay_ready"])
+        self.assertTrue(report["episode_one_full_screenplay_ready"])
         self.assertFalse(report["reference_is_approved_motion"])
 
     def test_publish_defaults_blocked_even_if_live_variable_set(self):
@@ -32,8 +32,12 @@ class FreeStudioTests(unittest.TestCase):
         self.assertTrue(any("cinematic_video_approved" in x for x in blockers))
         self.assertTrue(any("public_publish_enabled" in x for x in blockers))
 
-    def test_first_script_rejected_as_three_to_six_minute_screenplay(self):
-        self.assertLess(screenplay_word_count("S01_the_last_little_fox_E01"), 400)
+    def test_first_screenplay_expanded_without_replacing_archived_script(self):
+        words = screenplay_word_count("S01_the_last_little_fox_E01")
+        self.assertGreaterEqual(words, 400)
+        self.assertLessEqual(words, 750)
+        original = json.loads((ROOT / "seasons/S01_the_last_little_fox/scripts/E01.json").read_text())
+        self.assertEqual(len(original["scenes"]), 4)
 
 if __name__ == "__main__":
     unittest.main()
