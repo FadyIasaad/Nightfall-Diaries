@@ -102,6 +102,9 @@ def generate(episode_id, mode="proof"):
     from .free_video import generate_video
     from .neural_audio import render_kokoro
 
+    from .checkpoints import fingerprint,restore_clip,save_clip
+    from .continuity import sha256
+    from .motion_provider import settings as provider_settings
     finished = []
     for idx, scene in enumerate(sources, 1):
         char = cast[scene["character_id"]]
@@ -129,10 +132,24 @@ def generate(episode_id, mode="proof"):
                 + f"Speaker: {speaker}; line: {scene['text']}"
             )
             source = OUT / f"{episode_id}_ai_{idx:02d}_{ci:02d}.mp4"
-            generate_video(image_file, prompt, source, seconds=float(scene.get("seconds", 5.0)))
-            validate_motion(source)
             norm = OUT / f"{episode_id}_norm_{idx:02d}_{ci:02d}.mp4"
-            clips.append(normalize(source, norm))
+            clip_seconds = float(scene.get("seconds", 5.0))
+            cache_key = fingerprint({
+                "version": 2, "episode": episode_id, "mode": mode, "scene": idx, "part": ci,
+                "speaker": speaker, "line": scene["text"], "voice": char["voice"],
+                "image_character": image_char, "image_sha256": sha256(image_file),
+                "prompt": prompt, "provider": provider_settings(), "seconds": clip_seconds
+            })
+            if restore_clip(episode_id, mode, idx, ci, cache_key, norm):
+                validate_motion(norm)
+                print(f"REUSED_VERIFIED_CLIP: scene={idx} part={ci}", flush=True)
+            else:
+                generate_video(image_file, prompt, source, seconds=clip_seconds)
+                validate_motion(source)
+                normalize(source, norm)
+                save_clip(episode_id, mode, idx, ci, cache_key, norm)
+                print(f"CHECKPOINT_SAVED: scene={idx} part={ci}", flush=True)
+            clips.append(norm)
 
         listing = OUT / f"{episode_id}_clips_{idx:02d}.txt"
         listing.write_text("".join("file '" + str(p.resolve()) + "'\n" for p in clips))

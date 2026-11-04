@@ -34,8 +34,8 @@ class FreeStudioTests(unittest.TestCase):
 
     def test_first_screenplay_expanded_without_replacing_archived_script(self):
         words = screenplay_word_count("S01_the_last_little_fox_E01")
-        self.assertGreaterEqual(words, 400)
-        self.assertLessEqual(words, 750)
+        self.assertGreaterEqual(words, 240)
+        self.assertLessEqual(words, 430)
         original = json.loads((ROOT / "seasons/S01_the_last_little_fox/scripts/E01.json").read_text())
         self.assertEqual(len(original["scenes"]), 4)
 

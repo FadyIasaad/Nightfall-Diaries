@@ -88,6 +88,15 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'Check Instagram'
         run: python -m studio.check
 
+      - name: Restore previous free-cloud animation checkpoints
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
+        uses: actions/cache/restore@v4
+        with:
+          path: output/checkpoints
+          key: nightfall-shots-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            nightfall-shots-v2-
+
       - name: Install free rendering and neural voice dependencies
         if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish'))
         run: |
@@ -128,6 +137,13 @@ jobs:
         run: |
           if [ "$EPISODE" = auto ]; then EPISODE=S01_the_last_little_fox_E01; fi
           python -m studio.auto_prepare --episode "$EPISODE" --output output/automated_episode_pack.json
+
+      - name: Save completed scenes even when free quota interrupts the run
+        if: always() && hashFiles('output/checkpoints/**/*.mp4') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: output/checkpoints
+          key: nightfall-shots-v2-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Readiness report
         if: always()

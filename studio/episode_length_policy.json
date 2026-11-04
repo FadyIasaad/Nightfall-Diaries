@@ -1,0 +1,7 @@
+{
+  "max_seconds": 180,
+  "manual_extra_episode_supported": true,
+  "zero_budget": true,
+  "identity_change_allowed": false,
+  "voice_change_allowed": false
+}

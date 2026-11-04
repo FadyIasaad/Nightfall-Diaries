@@ -10,10 +10,10 @@ def voice_definitions(series_id):
     allowed = {s for s, _ in SERIES}
     if series_id not in allowed:
         raise ValueError("Only original series can be auditioned")
-    data = json.loads((ROOT / "seasons" / series_id /
-                       "characters/character_registry.json").read_text(encoding="utf-8"))
+    from .continuity import locked_cast
+    cast = locked_cast(series_id)
     entries = []
-    for actor in data["characters"]:
+    for actor in cast.values():
         v = actor.get("voice", {})
         if not v.get("voice_id") or not v.get("audition"):
             raise ValueError(f"Missing voice preset/audition phrase for {actor['id']}")
