@@ -50,6 +50,16 @@ class Phase0Acceptance(unittest.TestCase):
         self.assertIn("not",support.lower())
         self.assertNotIn("example@nightfalldiaries.com",privacy)
 
+    def test_both_owner_provided_public_contact_options_are_consistent(self):
+        emails=("fadyasaad.kaz@gmail.com","fadyasaad13@gmail.com")
+        for name in ("index.md","privacy.md","terms.md","support.md"):
+            content=(DOCS/name).read_text(encoding="utf-8")
+            for address in emails:
+                with self.subTest(document=name,address=address):
+                    self.assertIn(address,content)
+        support=(DOCS/"support.md").read_text(encoding="utf-8")
+        self.assertIn("inboxes have not been independently tested",support)
+
     def test_platform_policy_reflects_2026_youtube_change(self):
         content=(DOCS/"PLATFORM_AUDITS.md").read_text(encoding="utf-8")
         self.assertIn("November 2, 2026",content)
