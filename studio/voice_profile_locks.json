@@ -1,0 +1,66 @@
+{
+  "S01_the_last_little_fox": {
+    "s01_ember": {
+      "engine": "kokoro",
+      "voice_id": "am_puck",
+      "lang": "en-US",
+      "speed": 1.07
+    },
+    "s01_moss": {
+      "engine": "kokoro",
+      "voice_id": "bm_george",
+      "lang": "en-GB",
+      "speed": 0.87
+    },
+    "s01_luma": {
+      "engine": "kokoro",
+      "voice_id": "af_heart",
+      "lang": "en-US",
+      "speed": 0.94
+    },
+    "s01_ash": {
+      "engine": "kokoro",
+      "voice_id": "am_fenrir",
+      "lang": "en-US",
+      "speed": 0.94
+    },
+    "s01_narrator": {
+      "engine": "kokoro",
+      "voice_id": "bf_emma",
+      "lang": "en-GB",
+      "speed": 0.97
+    }
+  },
+  "S02_the_boy_who_forgot_tomorrow": {
+    "s02_noah": {
+      "engine": "kokoro",
+      "voice_id": "am_liam",
+      "lang": "en-US",
+      "speed": 1.1
+    },
+    "s02_mira": {
+      "engine": "kokoro",
+      "voice_id": "af_bella",
+      "lang": "en-US",
+      "speed": 1.07
+    },
+    "s02_dr_vale": {
+      "engine": "kokoro",
+      "voice_id": "af_nicole",
+      "lang": "en-US",
+      "speed": 0.96
+    },
+    "s02_clockkeeper": {
+      "engine": "kokoro",
+      "voice_id": "am_michael",
+      "lang": "en-US",
+      "speed": 0.91
+    },
+    "s02_narrator": {
+      "engine": "kokoro",
+      "voice_id": "bm_fable",
+      "lang": "en-GB",
+      "speed": 0.96
+    }
+  }
+}

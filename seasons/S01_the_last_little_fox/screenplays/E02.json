@@ -1,0 +1,116 @@
+{
+  "episode_id": "S01_the_last_little_fox_E02",
+  "source": "compact_draft_from_original_E02_2026-11-04",
+  "original_script": "seasons/S01_the_last_little_fox/scripts/E02.json",
+  "target_duration_seconds": 150,
+  "production_status": "SCREENPLAY_DRAFT_NOT_RENDERED",
+  "notes": "The four original scenes are preserved verbatim, in chronological order. Target 90–180 seconds; measured audio and media QA are authoritative.",
+  "scenes": [
+    {
+      "character_id": "s01_narrator",
+      "text": "At sunrise, the council pointed at Ember. Nobody believed his story, and they sent the little fox away. Smoke still covered the village. The council refused to look at the blue feather.",
+      "direction": "Sunrise reveals destroyed village; Ember stands before the council.",
+      "visible": [
+        "s01_ember"
+      ]
+    },
+    {
+      "character_id": "s01_ember",
+      "text": "Please, just listen. Moss saw it too. The feather moved before thunder, when the sky was clear.",
+      "direction": "Ember pleads with villagers, paws open, eyes wide.",
+      "visible": [
+        "s01_ember"
+      ]
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "The guards shut the wooden gate. Ember's teal scarf caught on a latch, and he pulled it loose before turning away.",
+      "direction": "Gate slams; fox rescues scarf and backs away.",
+      "visible": [
+        "s01_ember"
+      ]
+    },
+    {
+      "character_id": "s01_ember",
+      "text": "I did not start that fire! If nobody will listen, I will find the truth myself. I will bring back something they cannot deny.",
+      "direction": "Fox gathers courage, then walks toward wooded slope.",
+      "visible": [
+        "s01_ember"
+      ]
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "Moss waited beneath an ancient oak. His weathered shell was covered in pale gray ash, but his eyes were gentle.",
+      "direction": "Tortoise takes measured steps into forest clearing.",
+      "visible": [
+        "s01_moss"
+      ]
+    },
+    {
+      "character_id": "s01_moss",
+      "text": "I argued for you. They are frightened, Ember. Frightened creatures sometimes forget how to listen.",
+      "direction": "Moss nods sadly and faces the fox.",
+      "visible": [
+        "s01_moss",
+        "s01_ember"
+      ]
+    },
+    {
+      "character_id": "s01_ember",
+      "text": "The feather led us to a bell. But there is no bell near the burned river. How can that be?",
+      "direction": "Ember picks his way across branches, searching the treetops.",
+      "visible": [
+        "s01_ember"
+      ]
+    },
+    {
+      "character_id": "s01_moss",
+      "text": "The oldest trees keep their own witnesses. Follow the sound that does not belong to the wind. Listen closely. The answer will not shout.",
+      "direction": "Elder tortoise tests the earth, pauses to hear distant ringing.",
+      "visible": [
+        "s01_moss"
+      ]
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "A single chime passed through the trees. Ember followed it beyond the twisted roots, where a winged shadow crossed the morning sky.",
+      "direction": "Camera rises above branches as fox looks upward.",
+      "visible": [
+        "s01_ember"
+      ]
+    },
+    {
+      "character_id": "s01_ember",
+      "text": "Who is there? I am not your enemy! I only want to know who sent the feather.",
+      "direction": "Fox stands still and calls to the unseen owl.",
+      "visible": [
+        "s01_ember"
+      ]
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "Deep in the woods, a voice called Ember by name. It came from a white-eyed owl. She opened blue-gray wings flecked with silver and watched him without blinking.",
+      "direction": "Owl Luma glides down and lands, controlled wing motion.",
+      "visible": [
+        "s01_luma"
+      ]
+    },
+    {
+      "character_id": "s01_ember",
+      "text": "You know my name? Then you must know about the fire. Tell me what happened. Please.",
+      "direction": "Fox approaches with surprise and fear; pauses under the branch.",
+      "visible": [
+        "s01_ember",
+        "s01_luma"
+      ]
+    },
+    {
+      "character_id": "s01_narrator",
+      "text": "The owl looked toward the village. The distant bell sounded again. She knew something terrible, and Ember was afraid to ask.",
+      "direction": "Camera pushes toward Luma's eyes, ending on an unresolved warning.",
+      "visible": [
+        "s01_luma"
+      ]
+    }
+  ]
+}

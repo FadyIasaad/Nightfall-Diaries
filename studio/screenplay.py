@@ -41,6 +41,6 @@ def load_screenplay(episode_id, root=ROOT):
         if any(c not in allowed for c in scene.get("visible", [])):
             raise ValueError("Expanded scene references unapproved visible character")
     words = sum(len(scene["text"].split()) for scene in scenes)
-    if not 400 <= words <= 750:
-        raise ValueError(f"Expanded screenplay has {words} words; target 400–750")
+    if not 240 <= words <= 430:
+        raise ValueError(f"Expanded screenplay has {words} words; target 240–430 for no more than three minutes")
     return expanded

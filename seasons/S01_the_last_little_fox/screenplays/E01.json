@@ -1,64 +1,63 @@
 {
   "episode_id": "S01_the_last_little_fox_E01",
-  "source": "expanded_from_original_E01_2026-11-04",
+  "source": "compact_draft_from_original_E01_2026-11-04",
   "original_script": "seasons/S01_the_last_little_fox/scripts/E01.json",
-  "target_duration_seconds": 270,
+  "target_duration_seconds": 150,
   "production_status": "SCREENPLAY_DRAFT_NOT_RENDERED",
-  "notes": "Original scene dialogue preserved verbatim and in sequence; only cast from series bible. The final shot is a mystery rather than an early reveal of the fire's cause.",
+  "notes": "The four original scenes are preserved verbatim, in chronological order. Target 90–180 seconds; measured audio and media QA are authoritative.",
   "scenes": [
     {
       "character_id": "s01_narrator",
-      "text": "The forest blazed before thunder reached the valley. Ember ran through falling ash, searching for anyone left behind. Roots cracked beneath his paws. The fire had swept across the sleeping pines without a single drop of rain, and the little fox knew one terrible thing: something about tonight was wrong.",
-      "direction": "Low tracking camera follows Ember sprinting between burning trunks, ducking sparks, whipping scarf and moving paws; thunder is still distant.",
+      "text": "The forest blazed before thunder reached the valley. Ember ran through falling ash, searching for anyone left behind. The paths were empty, yet a strange blue light flickered behind the trees.",
+      "direction": "Tracking shot of Ember running through smoke, ducking a collapsing branch.",
       "visible": [
         "s01_ember"
       ]
     },
     {
       "character_id": "s01_ember",
-      "text": "Hello? Can anyone hear me? Please, answer! I checked the hollow tree and the old footbridge. There was no one there. I cannot leave until I know every path is empty. Not tonight.",
-      "direction": "Ember skids to a halt, coughs, cups paws around muzzle and peers into smoke; fur and scarf respond to wind.",
+      "text": "Moss? Can anyone hear me? The river is behind us, and the fire is moving faster than the wind!",
+      "direction": "Ember calls through smoke and springs around flames.",
       "visible": [
         "s01_ember"
       ]
     },
     {
       "character_id": "s01_narrator",
-      "text": "A branch gave way overhead. Ember sprang aside as it shattered into sparks, then scrambled onto a mossy stone. From there he could see the dark valley, the first lightning far beyond the ridge, and the flames that had already reached the river.",
-      "direction": "Overhead flaming branch falls, Ember leaps to safety and climbs a stone; camera shifts to valley reveal.",
+      "text": "Ember leapt over a burning root and stumbled upon a blue feather. It shone without burning and seemed to pulse like a heartbeat.",
+      "direction": "Fox lands, steadies himself, notices the luminous feather.",
       "visible": [
         "s01_ember"
       ]
     },
     {
       "character_id": "s01_ember",
-      "text": "The sky was clear when the flames began. I know what I saw. But why is this blue feather still glowing?",
-      "direction": "Ember kneels beside one luminous blue feather caught under a blackened leaf, eyes widening in wonder.",
+      "text": "The sky was clear when the flames began. I know what I saw. But why is this blue feather still glowing? I cannot leave it here.",
+      "direction": "Ember reaches toward the feather, then freezes in doubt.",
       "visible": [
         "s01_ember"
       ]
     },
     {
       "character_id": "s01_narrator",
-      "text": "The feather had not burned. Its pale blue light pulsed like a tiny heartbeat, bright enough to paint Ember's cream paws silver. Every gust pushed the ashes one way, but the feather trembled in the opposite direction, as though listening for someone.",
-      "direction": "Close-up of feather and hands, tiny blue glow against orange fire, wind shifts ashes but feather moves independently.",
+      "text": "The feather floated upward, defying the wind. Its light cast a tiny moving star across Ember's scarf.",
+      "direction": "Close-up of feather drifting and light reflecting off character fur.",
       "visible": [
         "s01_ember"
       ]
     },
     {
       "character_id": "s01_moss",
-      "text": "Do not touch it, little fox. Things that survive a fire sometimes carry a warning.",
-      "direction": "Moss takes two grounded, slow steps from smoke; his shell catches the blue light and he raises a foreleg to stop Ember.",
+      "text": "Do not touch it, little fox. Things that survive a fire sometimes carry a warning. Step away, slowly.",
+      "direction": "Moss appears from smoke, taking grounded steps and raising a foreleg.",
       "visible": [
-        "s01_moss",
-        "s01_ember"
+        "s01_moss"
       ]
     },
     {
       "character_id": "s01_ember",
-      "text": "Moss! I thought you were across the stream. The bridge is gone. Did you hear a bell, or a cry, before the fire? Everything happened so fast, but I remember the sky. There was no storm.",
-      "direction": "Ember pulls back from feather and turns urgently toward Moss; medium two-character shot with facial reactions.",
+      "text": "Moss! The bridge is gone. Do you know where the others went? I never heard an alarm.",
+      "direction": "Ember turns sharply, ears and eyes shifting between Moss and the fire.",
       "visible": [
         "s01_ember",
         "s01_moss"
@@ -66,33 +65,8 @@
     },
     {
       "character_id": "s01_moss",
-      "text": "I heard the trees groan, and then the forest was shouting. I also heard something I could not place. An old sound, where no old sound should have been. I wanted to be certain before I frightened you.",
-      "direction": "Moss lowers head, pauses before answering, steadies himself with front paw; intimate slow close-up.",
-      "visible": [
-        "s01_moss"
-      ]
-    },
-    {
-      "character_id": "s01_narrator",
-      "text": "Ember studied the tortoise's face. Moss was never careless with words. Yet tonight his kind eyes avoided the glowing feather. Behind them, a wall of fire ate through the clearing and made the narrow path back to the village vanish beneath smoke.",
-      "direction": "Reverse close-up to Ember's doubt, then wide shot showing flames closing their retreat.",
-      "visible": [
-        "s01_ember",
-        "s01_moss"
-      ]
-    },
-    {
-      "character_id": "s01_ember",
-      "text": "Then we go forward. I will not let the fire decide what we remember. If that feather is a warning, we need to learn who sent it. And if someone is still out there, we cannot turn away.",
-      "direction": "Ember stands tall despite trembling legs and turns from the lost path toward the strange blue light.",
-      "visible": [
-        "s01_ember"
-      ]
-    },
-    {
-      "character_id": "s01_moss",
-      "text": "Courage is not the same as running toward every danger. Listen before you move. The ground is hollow near the burned roots, and a brave fox can fall just as easily as a frightened one. Take one step at a time.",
-      "direction": "Moss tests ground with foot and guides Ember away from collapsing roots, both characters move together.",
+      "text": "The village went north. You are the last I could find. Stay beside me; the earth is burning underneath us.",
+      "direction": "Moss tests the soil with a heavy foot and gestures to a safe ledge.",
       "visible": [
         "s01_moss",
         "s01_ember"
@@ -100,24 +74,24 @@
     },
     {
       "character_id": "s01_narrator",
-      "text": "Ember tried to follow slowly. His tail brushed a charred branch and scattered sparks. Under his next paw the earth shifted; he slid toward a black gap, caught a root with both front paws and felt the bark crumble in his grip.",
-      "direction": "Tracking shot of cautious steps; earth collapses, Ember slides and grabs fragile root.",
+      "text": "The earth cracked beneath Ember. He slid toward a hole and caught a root just before the ground fell away.",
+      "direction": "Forest floor crumbles; fox jumps and grips a root; sparks rise.",
       "visible": [
         "s01_ember"
       ]
     },
     {
       "character_id": "s01_ember",
-      "text": "Moss! The root is breaking. I cannot get my back paws beneath me. Please, do not come too close. If this ground falls under you, we will both be trapped!",
-      "direction": "Ember hangs from root, kicks paws and looks fearfully at Moss; mouth, eyes and ears emote urgently.",
+      "text": "Moss! It is breaking! I cannot climb alone!",
+      "direction": "Ember struggles, gripping the root with both front paws.",
       "visible": [
         "s01_ember"
       ]
     },
     {
       "character_id": "s01_moss",
-      "text": "Look at me, Ember. Not at the fire. Find the stone below your left paw. Good. Press down. Now reach toward my shell. We have survived worse nights by helping each other, not by pretending we are never afraid.",
-      "direction": "Moss braces and extends a foreleg; Ember finds foothold and climbs up over Moss's shell edge.",
+      "text": "Look at me. Put your foot on that stone. Now reach. Good, little fox. You have got this.",
+      "direction": "Moss braces and reaches toward the fox without slipping.",
       "visible": [
         "s01_moss",
         "s01_ember"
@@ -125,8 +99,8 @@
     },
     {
       "character_id": "s01_narrator",
-      "text": "With a final scramble, Ember reached safe ground. He stayed beside Moss long enough to catch his breath. Neither noticed the feather rise into the air behind them until its blue glow slipped between two dead trees and painted an impossible trail.",
-      "direction": "Ember recovers against Moss; focus shifts to feather rising and drifting through thick smoke.",
+      "text": "Then the feather lit a path through the smoke. Someone had been here before the storm. It slipped between the black trees like an invitation nobody had asked for.",
+      "direction": "Blue feather illuminates a narrow smoke corridor; moving camera follows.",
       "visible": [
         "s01_ember",
         "s01_moss"
@@ -134,41 +108,16 @@
     },
     {
       "character_id": "s01_ember",
-      "text": "It is moving on its own. Moss, look! It knows where the fire is thinner. But feathers do not choose roads. Someone must have left it here, and someone may be waiting at the other end.",
-      "direction": "Ember turns, points to glowing trail and takes a wary first step; blue reflections track across eyes.",
-      "visible": [
-        "s01_ember"
-      ]
-    },
-    {
-      "character_id": "s01_moss",
-      "text": "Then keep your eyes open, and keep close. Whoever made that light may need our help. Or they may not want to be found. Either way, we will face the truth together.",
-      "direction": "Moss looks up along trail, then takes deliberate step after Ember, shell and legs move naturally.",
-      "visible": [
-        "s01_moss"
-      ]
-    },
-    {
-      "character_id": "s01_narrator",
-      "text": "Then the feather lit a path through the smoke. Someone had been here before the storm. At the far end of the trail, a faint note rang out, too delicate to be thunder. Ember stopped. He had heard that note somewhere before, but never in a burning forest.",
-      "direction": "Cinematic crane across blue-lit smoke path as fox and tortoise advance; distant unseen bell chime.",
-      "visible": [
-        "s01_ember",
-        "s01_moss"
-      ]
-    },
-    {
-      "character_id": "s01_ember",
-      "text": "Whose feather is it? And why would someone leave a light for us when everything else was turning to ash? I do not know who to trust, Moss. But tomorrow I will find out what started this fire.",
-      "direction": "Ember holds glowing feather at eye level without touching it; low-angle close-up, determined but tearful.",
+      "text": "Who left it? Why would someone help us before the fire was even here?",
+      "direction": "Ember glances back once, then cautiously follows the feather.",
       "visible": [
         "s01_ember"
       ]
     },
     {
       "character_id": "s01_narrator",
-      "text": "Behind them, the valley shuddered with its first true thunder. Ahead, the blue light disappeared beyond the trees. No answer waited in the smoke, only a question that would change Ember's life: who had walked this path before the flames?",
-      "direction": "Wide shot of Ember and Moss silhouettes following light, sudden thunder, feather vanishes into darkness; fade with mystery.",
+      "text": "Behind them thunder finally rolled. Ahead, a distant bell answered, and another shape moved in the light. Ember froze.",
+      "direction": "Camera widens to unseen shape beyond smoke, cliffhanger; no fire origin reveal.",
       "visible": [
         "s01_ember",
         "s01_moss"

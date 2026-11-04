@@ -69,7 +69,9 @@ def setup_report():
         "existing_ember_reference": EMBER_REFERENCE.is_file(),
         "reference_is_approved_motion": False,
         "episode_one_original_script_words": wc,
-        "episode_one_full_screenplay_ready": wc >= 400,
+        "episode_one_full_screenplay_ready": 240 <= wc <= 430,
+        "max_episode_seconds": 180,
+        "manual_same_day_episodes": True,
         "video_provider_configured": True,
         "candidate_free_video_space": "zerogpu-aoti/wan2-2-fp8da-aoti-faster",
         "video_provider_verified": bool(settings.get("renderer_verified")),
@@ -77,7 +79,7 @@ def setup_report():
         "publication_blockers": publish_blockers(),
         "notes": [
             "An approved still image is not a verified moving animation.",
-            "No 3-6 minute episode or lip-synced character action has passed visual review.",
+            "No under-three-minute episode or lip-synced character action has passed visual review.",
             "Missing account authorizations and publishing proof must not be bypassed.",
             "Tests and this report never upload or render media.",
         ],
@@ -110,7 +112,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--action", choices=(
         "check_setup", "free_test", "render_quality_proof", "generate_only",
-        "generate_full_episode", "generate_and_upload", "retry_missing_platforms",
+        "generate_full_episode", "generate_another_episode", "generate_and_upload", "retry_missing_platforms",
         "scheduled"
     ), required=True)
     parser.add_argument("--episode", default="auto")
@@ -135,6 +137,8 @@ def main():
         if issues:
             raise SystemExit("PUBLISH_BLOCKED: " + "; ".join(issues))
 
+    if args.action == "generate_another_episode" and args.episode == "auto":
+        raise SystemExit("EPISODE_REQUIRED: select an explicit original episode, e.g. S01_the_last_little_fox_E02")
     proof = args.action in ("free_test", "render_quality_proof")
     episode = "S01_the_last_little_fox_E01" if proof else selected_episode(args.episode)
     if episode is None:
@@ -142,6 +146,9 @@ def main():
         return
     if not EMBER_REFERENCE.is_file():
         raise SystemExit("RENDER_BLOCKED: tracked Ember reference missing")
+    from .continuity import locked_cast
+    season_id, _ = episode.rsplit("_E",1)
+    locked_cast(season_id)
     from .motion_provider import probe
     provider = probe()
     provider_path = ROOT / "output" / "motion_provider_report.json"
@@ -151,8 +158,8 @@ def main():
     if provider["state"] != "READY_FOR_ONE_QUOTA_LIMITED_TEST":
         raise SystemExit("RENDER_BLOCKED: free provider API not available; " + provider["notes"])
 
-    if not proof and screenplay_word_count(episode) < 400:
-        raise SystemExit(f"SCREENPLAY_TOO_SHORT: {episode} has fewer than 400 dialogue/narration words. Expand to a real 3-6 minute film BEFORE spending free video quota.")
+    if not proof and screenplay_word_count(episode) < 240:
+        raise SystemExit(f"SCREENPLAY_TOO_SHORT: {episode} has fewer than 240 dialogue/narration words. Prepare an under-three-minute screenplay BEFORE using any free GPU quota.")
 
     # Heavy dependencies are intentionally loaded only in a real render job.
     from .real_film import generate
