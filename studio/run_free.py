@@ -113,7 +113,7 @@ def main():
     parser.add_argument("--action", choices=(
         "check_setup", "free_test", "render_quality_proof", "generate_only",
         "generate_full_episode", "generate_another_episode", "generate_and_upload", "retry_missing_platforms",
-        "scheduled"
+        "scheduled", "resume_pending"
     ), required=True)
     parser.add_argument("--episode", default="auto")
     args = parser.parse_args()
@@ -139,8 +139,15 @@ def main():
 
     if args.action == "generate_another_episode" and args.episode == "auto":
         raise SystemExit("EPISODE_REQUIRED: select an explicit original episode, e.g. S01_the_last_little_fox_E02")
-    proof = args.action in ("free_test", "render_quality_proof")
-    episode = "S01_the_last_little_fox_E01" if proof else selected_episode(args.episode)
+    from .pending import enqueue, next_due, set_status, write_report
+    pending_item = next_due() if args.action == "resume_pending" else None
+    if args.action == "resume_pending" and pending_item is None:
+        print("NO_PENDING_RENDER_DUE: no queued episode eligible for retry; no GPU or upload")
+        return
+    proof = (pending_item["mode"] == "proof" if pending_item else
+             args.action in ("free_test", "render_quality_proof"))
+    episode = (pending_item["episode_id"] if pending_item else
+               "S01_the_last_little_fox_E01" if proof else selected_episode(args.episode))
     if episode is None:
         print("ORIGINAL_SERIES_COMPLETE: no new series starts before a quality-locked canon exists.")
         return
@@ -149,6 +156,9 @@ def main():
     from .continuity import locked_cast
     season_id, _ = episode.rsplit("_E",1)
     locked_cast(season_id)
+    mode = "proof" if proof else "full"
+    if args.action != "resume_pending" and not uploading:
+        enqueue(episode, mode)
     from .motion_provider import probe
     provider = probe()
     provider_path = ROOT / "output" / "motion_provider_report.json"
@@ -156,20 +166,47 @@ def main():
     provider_path.write_text(json.dumps(provider, indent=2) + "\n", encoding="utf-8")
     print("MOTION_PROVIDER_CHECK:", json.dumps(provider, sort_keys=True))
     if provider["state"] != "READY_FOR_ONE_QUOTA_LIMITED_TEST":
-        raise SystemExit("RENDER_BLOCKED: free provider API not available; " + provider["notes"])
+        note = "Free provider not ready: " + provider["notes"]
+        if not uploading:
+            state = set_status(episode, mode, "PAUSED_PROVIDER",
+                               retry_seconds=21600, details=note)
+            write_report(episode, mode, state["status"], note,
+                         state["retry_after_utc"])
+            print("NOT_RENDERED_PROVIDER_PAUSED:", note)
+            return
+        raise SystemExit("RENDER_BLOCKED: " + note)
 
     if not proof and screenplay_word_count(episode) < 240:
         raise SystemExit(f"SCREENPLAY_TOO_SHORT: {episode} has fewer than 240 dialogue/narration words. Prepare an under-three-minute screenplay BEFORE using any free GPU quota.")
 
     # Heavy dependencies are intentionally loaded only in a real render job.
     from .real_film import generate
-    mode = "proof" if proof else "full"
-    video = generate(episode, mode=mode)
+    from .free_video import QuotaExhausted, VideoUnavailable
+    try:
+        video = generate(episode, mode=mode)
+    except QuotaExhausted as exc:
+        state = set_status(episode, mode, "PAUSED_FREE_QUOTA",
+                           retry_seconds=exc.retry_seconds, details=str(exc))
+        write_report(episode, mode, state["status"], str(exc),
+                     state["retry_after_utc"])
+        print("NOT_COMPLETE_QUOTA_PAUSE:", episode, state["retry_after_utc"])
+        return
+    except VideoUnavailable as exc:
+        state = set_status(episode, mode, "PAUSED_PROVIDER",
+                           retry_seconds=21600, details=str(exc))
+        write_report(episode, mode, state["status"], str(exc),
+                     state["retry_after_utc"])
+        print("NOT_COMPLETE_PROVIDER_PAUSE:", episode)
+        return
     from .quality_gate import check_media
     metrics = check_media(video, mode=mode)
     print("REAL_MOTION_CANDIDATE:", str(video))
     print("TECHNICAL_QA:", json.dumps(metrics, sort_keys=True))
     if not uploading:
+        state=set_status(episode, mode, "RENDERED_NOT_VISUALLY_APPROVED",
+                         details="Technical MP4 check passed; acting, identity, lip sync and public publishing remain unverified")
+        write_report(episode, mode, state["status"], state["last_note"])
+
         print("REVIEW_ONLY: no public publishing attempted; cinematic acting and lip sync remain unverified.")
         return
 

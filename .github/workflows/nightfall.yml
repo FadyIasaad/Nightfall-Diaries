@@ -141,7 +141,7 @@ jobs:
           python -m studio.auto_prepare --episode "$EPISODE" --output output/automated_episode_pack.json
 
       - name: Save completed scenes even when free quota interrupts the run
-        if: always() && hashFiles('output/checkpoints/**/*.mp4') != ''
+        if: always() && hashFiles('output/checkpoints/episode_queue.json') != ''
         uses: actions/cache/save@v4
         with:
           path: output/checkpoints
