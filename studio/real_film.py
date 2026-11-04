@@ -87,12 +87,12 @@ def generate(episode_id, mode="proof"):
     season = ROOT / "seasons" / season_id
     original = json.loads((season / "scripts" / ("E" + n + ".json")).read_text())
     script = load_screenplay(episode_id)
-    cast_json = json.loads((season / "characters/character_registry.json").read_text())
-    cast = {c["id"]: c for c in cast_json["characters"]}
+    from .continuity import locked_cast
+    cast = locked_cast(season_id)
     if mode == "full":
         words = sum(len(scene["text"].split()) for scene in script["scenes"])
-        if words < 400:
-            raise RuntimeError(f"SCREENPLAY_TOO_SHORT: {words} words; 180-360 seconds of actual story required")
+        if not 240 <= words <= 430:
+            raise RuntimeError(f"SCREENPLAY_WORD_COUNT: {words} words; 240–430 required for a ≤180-second target")
         sources = script["scenes"]
     else:
         sources = proof_scenes(original, episode_id)
@@ -126,6 +126,7 @@ def generate(episode_id, mode="proof"):
                 "Polished stylized 3D animated feature-film character acting. "
                 + cast[image_char].get("visual", "")
                 + " Preserve every marking, costume, age, body shape and facial identity. "
+                + "Locked details: " + "; ".join(cast[image_char].get("never_change", [])) + ". "
                 + (scene.get("direction") or "Meaningful acting, walking, gestures, eye movement, reaction and camera changes.")
                 + " Clear physical body motion, stable anatomy, natural emotional facial performance. "
                 + " Do NOT produce a static portrait, slideshow, zoom on stills, or cheap low-poly shapes. "
