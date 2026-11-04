@@ -7,6 +7,9 @@ on:
   schedule:
     - cron: '0 10 * * *'
       timezone: 'Africa/Cairo'
+    # Safe resume check, NOT a second publishing schedule.
+    - cron: '0 23 * * *'
+      timezone: 'Africa/Cairo'
   workflow_dispatch:
     inputs:
       action:
@@ -81,16 +84,12 @@ jobs:
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'Check free motion provider')
         run: python -m studio.motion_provider
 
-      - name: Daily standby (no publication)
-        if: github.event_name == 'schedule' && env.NIGHTFALL_LIVE != 'true'
-        run: python -m studio.run_free --action scheduled
-
       - name: Read-only Instagram account check
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'Check Instagram'
         run: python -m studio.check
 
       - name: Restore previous free-cloud animation checkpoints
-        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
+        if: github.event_name == 'schedule' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
         uses: actions/cache/restore@v4
         with:
           path: output/checkpoints
@@ -98,8 +97,17 @@ jobs:
           restore-keys: |
             nightfall-shots-v2-
 
+      - name: Detect pending episode and free-quota reset time
+        id: pending_scan
+        if: github.event_name == 'schedule'
+        run: python -m studio.pending --detect
+
+      - name: Daily standby when nothing is pending (no publication)
+        if: github.event_name == 'schedule' && env.NIGHTFALL_LIVE != 'true' && steps.pending_scan.outputs.has_pending != 'true' && github.event.schedule == '0 10 * * *'
+        run: python -m studio.run_free --action scheduled
+
       - name: Install free rendering and neural voice dependencies
-        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && ((env.NIGHTFALL_LIVE == 'true' && github.event.schedule == '0 10 * * *') || steps.pending_scan.outputs.has_pending == 'true')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg espeak-ng
@@ -111,13 +119,17 @@ jobs:
 
       - name: Run one-button production (publishing blocked until proven)
         timeout-minutes: 100
-        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && ((env.NIGHTFALL_LIVE == 'true' && github.event.schedule == '0 10 * * *') || steps.pending_scan.outputs.has_pending == 'true')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
         env:
           REQUESTED_ACTION: ${{ inputs.action }}
           REQUESTED_EPISODE: ${{ inputs.episode }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
-            python -m studio.run_free --action scheduled
+            if [ "$NIGHTFALL_LIVE" = "true" ] && [ "${{ github.event.schedule }}" = "0 10 * * *" ]; then
+              python -m studio.run_free --action scheduled
+            else
+              python -m studio.run_free --action resume_pending
+            fi
           elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
             python -m studio.run_free --action render_quality_proof
           else
@@ -141,11 +153,20 @@ jobs:
           python -m studio.auto_prepare --episode "$EPISODE" --output output/automated_episode_pack.json
 
       - name: Save completed scenes even when free quota interrupts the run
-        if: always() && hashFiles('output/checkpoints/**/*.mp4') != ''
+        if: always() && hashFiles('output/checkpoints/episode_queue.json') != ''
         uses: actions/cache/save@v4
         with:
           path: output/checkpoints
           key: nightfall-shots-v2-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Machine-readable episode pause/result (not an upload receipt)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-render-status
+          path: output/render_status.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Readiness report
         if: always()

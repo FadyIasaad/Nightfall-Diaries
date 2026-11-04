@@ -5,12 +5,28 @@ quality and character continuity are NOT guaranteed.
 """
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 from .motion_provider import settings
 
 class VideoUnavailable(RuntimeError):
     pass
+
+class QuotaExhausted(VideoUnavailable):
+    """Expected free-tier cap: keep checkpoints, retry after quota reset."""
+    def __init__(self, reason, retry_seconds=86400):
+        super().__init__(reason)
+        self.retry_seconds=retry_seconds
+
+def quota_retry_seconds(message):
+    """Read provider HH:MM:SS. Add two-minute grace, default to 24h."""
+    match=re.search(r"Try again in (\d+):(\d{2}):(\d{2})", message)
+    if not match:
+        return 86400
+    hours, minutes, seconds=(int(x) for x in match.groups())
+    return min(max(300,hours*3600+minutes*60+seconds+120),172800)
+
 
 def find_video(value):
     if isinstance(value, str):
@@ -57,9 +73,15 @@ def generate_video(image_file, prompt, destination, seconds=5.0):
         generated = client.predict(*safe_args, api_name=endpoint)
         result = find_video(generated)
     except Exception as exc:
+        reason=str(exc)
+        if "exceeded your ZeroGPU quota" in reason:
+            raise QuotaExhausted(
+                "ZeroGPU free allowance exhausted; saved clips are retained for a later cloud retry. "
+                + reason[:310], retry_seconds=quota_retry_seconds(reason)
+            ) from exc
         raise VideoUnavailable(
-            "Free ZeroGPU queue, quota or endpoint unavailable. No payment or fake fallback attempted. "
-            f"Provider said: {type(exc).__name__}: {str(exc)[:230]}"
+            "ZeroGPU provider unavailable; no payment or static-image fallback attempted. "
+            f"Provider said: {type(exc).__name__}: {reason[:230]}"
         ) from exc
     if result is None:
         raise VideoUnavailable("ZeroGPU did not return an actual local video file.")
