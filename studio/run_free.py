@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .restore import ROOT, validate_stories
 from .production import SERIES
+from .screenplay import load_screenplay
 
 SETTINGS = ROOT / "studio" / "production_settings.json"
 CONFIG = ROOT / "config.json"
@@ -41,9 +42,7 @@ def selected_episode(requested):
     return None
 
 def screenplay_word_count(episode_id):
-    series, num = episode_id.rsplit("_E", 1)
-    path = ROOT / "seasons" / series / "scripts" / ("E" + num + ".json")
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = load_screenplay(episode_id)
     return sum(len(scene["text"].split()) for scene in data["scenes"])
 
 def publish_blockers():

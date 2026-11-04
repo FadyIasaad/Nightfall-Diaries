@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 
 from .restore import ROOT, validate_stories
+from .screenplay import load_screenplay
 
 OUT = ROOT / "output"
 ROOT_IMAGE = ROOT / "seasons/S01_the_last_little_fox/characters/s01_ember/cloud_reference.png"
@@ -83,7 +84,8 @@ def generate(episode_id, mode="proof"):
     if mode == "proof" and episode_id != "S01_the_last_little_fox_E01":
         raise ValueError("First quality proof belongs to the original Fox E01")
     season = ROOT / "seasons" / season_id
-    script = json.loads((season / "scripts" / ("E" + n + ".json")).read_text())
+    original = json.loads((season / "scripts" / ("E" + n + ".json")).read_text())
+    script = load_screenplay(episode_id)
     cast_json = json.loads((season / "characters/character_registry.json").read_text())
     cast = {c["id"]: c for c in cast_json["characters"]}
     if mode == "full":
@@ -92,7 +94,7 @@ def generate(episode_id, mode="proof"):
             raise RuntimeError(f"SCREENPLAY_TOO_SHORT: {words} words; 180-360 seconds of actual story required")
         sources = script["scenes"]
     else:
-        sources = proof_scenes(script, episode_id)
+        sources = proof_scenes(original, episode_id)
     OUT.mkdir(exist_ok=True, parents=True)
 
     # Optional heavy dependencies must not be imported by check_setup/schedule standby.
