@@ -7,7 +7,6 @@ import json
 import os
 import shutil
 from pathlib import Path
-from gradio_client import Client, handle_file
 
 class VideoUnavailable(RuntimeError):
     pass
@@ -42,6 +41,10 @@ def generate_video(image_file, prompt, destination):
         if not isinstance(positional, list): raise ValueError("not a JSON list")
     except ValueError as exc:
         raise VideoUnavailable("HF_VIDEO_ARGS_JSON must be a JSON list of Gradio endpoint arguments.") from exc
+    try:
+        from gradio_client import Client, handle_file
+    except ImportError as exc:
+        raise VideoUnavailable("Video client unavailable. Install requirements.txt only in the rendering job.") from exc
     args = []
     for value in positional:
         if value == "$image":
