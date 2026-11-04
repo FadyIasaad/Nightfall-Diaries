@@ -2,6 +2,8 @@ name: Nightfall Diaries - One Free Online Workflow
 
 on:
   pull_request:
+  push:
+    branches: [main]
   schedule:
     - cron: '0 10 * * *'
       timezone: 'Africa/Cairo'
@@ -12,6 +14,7 @@ on:
         type: choice
         options:
           - Check setup
+          - Check free motion provider
           - Render quality proof
           - Audition character voices
           - Generate full episode
@@ -73,6 +76,10 @@ jobs:
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'Check setup') || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE != 'true')
         run: python -m studio.run_free --action check_setup
 
+      - name: Inspect public free motion API (no GPU call)
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'Check free motion provider')
+        run: python -m studio.motion_provider
+
       - name: Daily standby (no publication)
         if: github.event_name == 'schedule' && env.NIGHTFALL_LIVE != 'true'
         run: python -m studio.run_free --action scheduled
@@ -82,7 +89,7 @@ jobs:
         run: python -m studio.check
 
       - name: Install free rendering and neural voice dependencies
-        if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish'))
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish'))
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg espeak-ng
@@ -93,13 +100,16 @@ jobs:
         run: python -m studio.voice_audition --series S01_the_last_little_fox
 
       - name: Run one-button production (publishing blocked until proven)
-        if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
+        timeout-minutes: 100
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
         env:
           REQUESTED_ACTION: ${{ inputs.action }}
           REQUESTED_EPISODE: ${{ inputs.episode }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
             python -m studio.run_free --action scheduled
+          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            python -m studio.run_free --action render_quality_proof
           else
             case "$REQUESTED_ACTION" in
               "Render quality proof") MODE=render_quality_proof ;;
@@ -134,6 +144,26 @@ jobs:
         with:
           name: nightfall-original-character-voice-auditions
           path: output/voice_auditions/*
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Read-only free model availability report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-zero-budget-provider-diagnostics
+          path: output/motion_provider_report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Partial animated clips and voice (even on failed free quota)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-motion-progress-clips
+          path: |
+            output/*_norm_*.mp4
+            output/*_line_*.wav
           if-no-files-found: ignore
           retention-days: 7
 

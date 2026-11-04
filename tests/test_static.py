@@ -19,7 +19,7 @@ class SafetyTests(unittest.TestCase):
         self.assertIsNone(plan["cloud_video_provider"])
         self.assertFalse(plan["public_publish_enabled"])
         self.assertEqual(plan["episode_id"], script["episode_id"])
-        self.assertEqual(sum(s["seconds"] for s in plan["shots"]), 13.5)
+        self.assertEqual(sum(s["seconds"] for s in plan["shots"]), 15.0)
         for shot in plan["shots"]:
             original = script["scenes"][shot["script_scene_index"]]
             self.assertEqual(shot["character_id"], original["character_id"])

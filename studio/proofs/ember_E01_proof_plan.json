@@ -9,7 +9,7 @@
   "source_script": "seasons/S01_the_last_little_fox/scripts/E01.json",
   "cast": "seasons/S01_the_last_little_fox/characters/character_registry.json",
   "target": {
-    "seconds": 13.5,
+    "seconds": 15,
     "aspect_ratio": "9:16",
     "width": 1080,
     "height": 1920,
@@ -22,17 +22,19 @@
     "Meaningful locomotion, hand/paw motion, expressions, dramatic reaction and stable anatomy",
     "Natural differentiated voices, lip-sync, music ducked under dialogue, scene-specific SFX",
     "Same environment and character appearance across shots; no static slideshow or simple Blender shapes",
-    "No rendering/production/publishing until provider and references are approved"
+    "No rendering/production/publishing until provider and references are approved",
+    "Image-to-video is not audio-conditioned; generated speech-over-motion is a BODY-MOTION candidate only until independent lip-sync passes."
   ],
   "prerequisites": [
     "Approved multiview Ember and Moss references",
     "Audition and lock Ember, Moss, Narrator voices",
-    "Verify actual available cloud I2V/API service and quotas"
+    "Verify actual available cloud I2V/API service and quotas",
+    "A verified public ZeroGPU endpoint may be blocked by shared free quota; no paid GPU fallback."
   ],
   "shots": [
     {
       "id": "SH01",
-      "seconds": 4.5,
+      "seconds": 5,
       "script_scene_index": 0,
       "character_id": "s01_narrator",
       "dialogue_excerpt": "The forest blazed before thunder reached the valley.",
@@ -43,7 +45,7 @@
     },
     {
       "id": "SH02",
-      "seconds": 4.5,
+      "seconds": 5,
       "script_scene_index": 1,
       "character_id": "s01_ember",
       "dialogue_excerpt": "But why is this blue feather still glowing?",
@@ -54,7 +56,7 @@
     },
     {
       "id": "SH03",
-      "seconds": 4.5,
+      "seconds": 5,
       "script_scene_index": 2,
       "character_id": "s01_moss",
       "dialogue_excerpt": "Do not touch it, little fox.",

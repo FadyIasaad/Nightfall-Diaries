@@ -71,6 +71,7 @@ def proof_scenes(script, episode_id):
             raise RuntimeError("Proof shot diverged from original storyline")
         scenes.append({"character_id": original["character_id"],
                        "text": shot["dialogue_excerpt"],
+                       "seconds": float(shot["seconds"]),
                        "visible": shot["visible"], "direction": shot["direction"]})
     return scenes
 
@@ -128,7 +129,7 @@ def generate(episode_id, mode="proof"):
                 + f"Speaker: {speaker}; line: {scene['text']}"
             )
             source = OUT / f"{episode_id}_ai_{idx:02d}_{ci:02d}.mp4"
-            generate_video(image_file, prompt, source)
+            generate_video(image_file, prompt, source, seconds=float(scene.get("seconds", 5.0)))
             validate_motion(source)
             norm = OUT / f"{episode_id}_norm_{idx:02d}_{ci:02d}.mp4"
             clips.append(normalize(source, norm))
