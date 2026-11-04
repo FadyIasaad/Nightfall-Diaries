@@ -1,28 +1,43 @@
 name: Nightfall Diaries - One Free Online Workflow
+
 on:
+  pull_request:
   schedule:
     - cron: '0 10 * * *'
       timezone: 'Africa/Cairo'
   workflow_dispatch:
     inputs:
       action:
+        description: "Choose one operation. No manual video uploads."
         type: choice
-        options: [check_setup, free_test, generate_only, generate_and_upload, prepare_auto_episode, validate_stories, check_instagram]
-        default: check_setup
+        options:
+          - Check setup
+          - Render quality proof
+          - Generate full episode
+          - Generate + Publish
+          - Retry missing platforms
+          - Prepare episode
+          - Validate stories
+          - Check Instagram
+        default: Check setup
         required: true
       episode:
+        description: "auto or an original episode ID"
         type: string
         default: auto
         required: true
+
 permissions:
   contents: write
+
 concurrency:
   group: nightfall-free-cloud-studio
   cancel-in-progress: false
+
 jobs:
   studio:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
     env:
       GH_TOKEN: ${{ github.token }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -39,68 +54,98 @@ jobs:
       TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
       TIKTOK_POST_MODE: ${{ vars.TIKTOK_POST_MODE }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout original series and studio
+        uses: actions/checkout@v5
+
+      - name: Set up open-source Python runtime
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - name: Validate original scripts
+
+      - name: Validate both original stories
         run: python -m studio.restore
-      - name: Read-only Instagram check
-        if: github.event_name == 'workflow_dispatch' && inputs.action == 'check_instagram'
-        run: python -m studio.check
-      - name: Check free pipeline setup
-        if: github.event_name == 'workflow_dispatch' && inputs.action == 'check_setup'
+
+      - name: Safety and continuity tests (no render or upload)
+        run: python -m unittest discover -s tests -v
+
+      - name: Cloud preflight - safe without video client
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'Check setup') || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE != 'true')
         run: python -m studio.run_free --action check_setup
-      - name: Daily free pipeline standby
+
+      - name: Daily standby (no publication)
         if: github.event_name == 'schedule' && env.NIGHTFALL_LIVE != 'true'
         run: python -m studio.run_free --action scheduled
-      - name: Install open-source neural voice and free video API client
-        if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'free_test' || inputs.action == 'generate_only' || inputs.action == 'generate_and_upload'))
+
+      - name: Read-only Instagram account check
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'Check Instagram'
+        run: python -m studio.check
+
+      - name: Install free rendering and neural voice dependencies
+        if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish'))
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y ffmpeg espeak-ng
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg espeak-ng
           python -m pip install -r requirements.txt
-      - name: Generate actual animated MP4 and optionally upload
-        if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'free_test' || inputs.action == 'generate_only' || inputs.action == 'generate_and_upload'))
+
+      - name: Run one-button production (publishing blocked until proven)
+        if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
         env:
           REQUESTED_ACTION: ${{ inputs.action }}
           REQUESTED_EPISODE: ${{ inputs.episode }}
         run: |
-          if [ "${{ github.event_name }}" = schedule ]; then
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
             python -m studio.run_free --action scheduled
           else
-            python -m studio.run_free --action "$REQUESTED_ACTION" --episode "$REQUESTED_EPISODE"
+            case "$REQUESTED_ACTION" in
+              "Render quality proof") MODE=render_quality_proof ;;
+              "Generate full episode") MODE=generate_full_episode ;;
+              "Generate + Publish") MODE=generate_and_upload ;;
+              "Retry missing platforms") MODE=retry_missing_platforms ;;
+              *) echo "Unrecognized mode" >&2; exit 1 ;;
+            esac
+            python -m studio.run_free --action "$MODE" --episode "$REQUESTED_EPISODE"
           fi
-      - name: Download actual preview if generated
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightfall-actual-motion-proof
-          path: output/*_proof.mp4
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Download full movie if generated
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightfall-full-animated-episode
-          path: output/*_full.mp4
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Validate full original archive
-        if: github.event_name == 'workflow_dispatch' && inputs.action == 'validate_stories'
-        run: python -m unittest discover -s tests -v
-      - name: One click cast / voice direction
-        if: github.event_name == 'workflow_dispatch' && inputs.action == 'prepare_auto_episode'
+
+      - name: Build original episode shot / cast pack
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'Prepare episode'
         env:
           EPISODE: ${{ inputs.episode }}
         run: |
           if [ "$EPISODE" = auto ]; then EPISODE=S01_the_last_little_fox_E01; fi
           python -m studio.auto_prepare --episode "$EPISODE" --output output/automated_episode_pack.json
-      - name: Download production direction
-        if: github.event_name == 'workflow_dispatch' && inputs.action == 'prepare_auto_episode'
-        uses: actions/upload-artifact@v4
+
+      - name: Readiness report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-readiness
+          path: output/nightfall_setup_report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Cinematic motion candidate MP4
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-real-motion-candidate
+          path: output/*_proof.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Original full film (only if technical QA passed)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-full-episode
+          path: output/*_full.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Automated cast and voice directions
+        if: always()
+        uses: actions/upload-artifact@v6
         with:
           name: nightfall-production-direction
           path: output/automated_episode_pack.json
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 7
