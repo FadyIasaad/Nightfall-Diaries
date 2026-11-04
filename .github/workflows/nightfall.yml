@@ -13,6 +13,7 @@ on:
         options:
           - Check setup
           - Render quality proof
+          - Audition character voices
           - Generate full episode
           - Generate + Publish
           - Retry missing platforms
@@ -81,11 +82,15 @@ jobs:
         run: python -m studio.check
 
       - name: Install free rendering and neural voice dependencies
-        if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish'))
+        if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish'))
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg espeak-ng
           python -m pip install -r requirements.txt
+
+      - name: Audition the locked neural cast (no video or posting)
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'Audition character voices'
+        run: python -m studio.voice_audition --series S01_the_last_little_fox
 
       - name: Run one-button production (publishing blocked until proven)
         if: (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
@@ -120,6 +125,15 @@ jobs:
         with:
           name: nightfall-readiness
           path: output/nightfall_setup_report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Neural cast audition WAV files
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-original-character-voice-auditions
+          path: output/voice_auditions/*
           if-no-files-found: ignore
           retention-days: 7
 

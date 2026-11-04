@@ -1,11 +1,16 @@
 """Offline open-source neural voice generation, not espeak robotic speech."""
 from pathlib import Path
+from functools import lru_cache
+
+@lru_cache(maxsize=2)
+def pipeline_for_language(lang):
+    from kokoro import KPipeline
+    return KPipeline(lang_code=lang)
 
 def render_kokoro(text, character, output_path):
     try:
         import numpy as np
         import soundfile as sf
-        from kokoro import KPipeline
     except ImportError as exc:
         raise RuntimeError("Kokoro voice dependencies unavailable; refusing robotic fallback.") from exc
     voice = character.get("voice") or {}
@@ -13,7 +18,7 @@ def render_kokoro(text, character, output_path):
     if not voice_id:
         raise ValueError(f"No locked neural voice for {character.get('id')}")
     lang = "b" if voice_id.startswith("b") else "a"
-    pipeline = KPipeline(lang_code=lang)
+    pipeline = pipeline_for_language(lang)
     parts = []
     for _graphemes, _phonemes, audio in pipeline(text, voice=voice_id, speed=float(voice.get("speed", 1))):
         parts.append(np.asarray(audio, dtype=np.float32))
