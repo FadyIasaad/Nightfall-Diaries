@@ -18,6 +18,7 @@ on:
           - Render quality proof
           - Audition character voices
           - Generate full episode
+          - Generate another episode
           - Generate + Publish
           - Retry missing platforms
           - Prepare episode
@@ -98,7 +99,7 @@ jobs:
             nightfall-shots-v2-
 
       - name: Install free rendering and neural voice dependencies
-        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish'))
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg espeak-ng
@@ -110,7 +111,7 @@ jobs:
 
       - name: Run one-button production (publishing blocked until proven)
         timeout-minutes: 100
-        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && env.NIGHTFALL_LIVE == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
         env:
           REQUESTED_ACTION: ${{ inputs.action }}
           REQUESTED_EPISODE: ${{ inputs.episode }}
@@ -123,6 +124,7 @@ jobs:
             case "$REQUESTED_ACTION" in
               "Render quality proof") MODE=render_quality_proof ;;
               "Generate full episode") MODE=generate_full_episode ;;
+              "Generate another episode") MODE=generate_another_episode ;;
               "Generate + Publish") MODE=generate_and_upload ;;
               "Retry missing platforms") MODE=retry_missing_platforms ;;
               *) echo "Unrecognized mode" >&2; exit 1 ;;
