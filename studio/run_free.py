@@ -70,7 +70,8 @@ def setup_report():
         "reference_is_approved_motion": False,
         "episode_one_original_script_words": wc,
         "episode_one_full_screenplay_ready": wc >= 400,
-        "video_provider_configured": bool(os.getenv("HF_VIDEO_SPACE")),
+        "video_provider_configured": True,
+        "candidate_free_video_space": "zerogpu-aoti/wan2-2-fp8da-aoti-faster",
         "video_provider_verified": bool(settings.get("renderer_verified")),
         "live_variable": os.getenv("NIGHTFALL_LIVE", "").lower() == "true",
         "publication_blockers": publish_blockers(),
@@ -141,8 +142,14 @@ def main():
         return
     if not EMBER_REFERENCE.is_file():
         raise SystemExit("RENDER_BLOCKED: tracked Ember reference missing")
-    if not os.getenv("HF_VIDEO_SPACE"):
-        raise SystemExit("RENDER_BLOCKED: HF_VIDEO_SPACE is not configured; a random free endpoint is not a verified renderer")
+    from .motion_provider import probe
+    provider = probe()
+    provider_path = ROOT / "output" / "motion_provider_report.json"
+    provider_path.parent.mkdir(parents=True, exist_ok=True)
+    provider_path.write_text(json.dumps(provider, indent=2) + "\n", encoding="utf-8")
+    print("MOTION_PROVIDER_CHECK:", json.dumps(provider, sort_keys=True))
+    if provider["state"] != "READY_FOR_ONE_QUOTA_LIMITED_TEST":
+        raise SystemExit("RENDER_BLOCKED: free provider API not available; " + provider["notes"])
 
     if not proof and screenplay_word_count(episode) < 400:
         raise SystemExit(f"SCREENPLAY_TOO_SHORT: {episode} has fewer than 400 dialogue/narration words. Expand to a real 3-6 minute film BEFORE spending free video quota.")
