@@ -109,3 +109,7 @@ No promise of one public 3-minute episode daily, extra same-day completed episod
 - Model source evidence: [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), [Wan2.2](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B), [SDXL](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0), [FLUX-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell), [FLUX-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev), [LTX-2.3](https://huggingface.co/Lightricks/LTX-2.3).
 
 **Status: PHASE 0 DOCUMENTS READY; GATE G0 PENDING. NOTHING PUBLISHED.**
+
+## Contact addendum — November 5, 2026
+
+The owner provided two email addresses for public Nightfall Diaries support and data requests: **fadyasaad.kaz@gmail.com** and **fadyasaad13@gmail.com**. They are now listed in `docs/support.md`, `docs/privacy.md`, `docs/terms.md`, and `docs/index.md`. Actual mailbox deliverability has not been tested; the operator/jurisdiction details and final owner approval are still outstanding. GitHub Pages has not been enabled or verified in this change, and no app-review form or public video publishing has been submitted or activated. **Gate G0 remains pending.**

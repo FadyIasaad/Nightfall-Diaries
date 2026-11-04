@@ -4,7 +4,7 @@ title: Nightfall Diaries — Privacy Policy
 # Nightfall Diaries — Privacy Policy
 
 **Last updated:** November 5, 2026  
-**Status:** Draft for an owner-operated service; requires owner contact and factual approval before an app review submission.
+**Status:** Draft for an owner-operated service; public owner-provided contact addresses are listed, but factual/operator approval is still required before any app review submission.
 
 Nightfall Diaries creates and, after owner approval and successful platform authorization, may distribute original AI-assisted animated videos to the project owner's YouTube, Facebook Page, Instagram and TikTok accounts. At present the automatic publication system is in development.
 
@@ -34,4 +34,6 @@ The app is not designed to collect children's personal information, other users'
 We may update this policy if supported providers, storage or processing change; the new date will appear here. Changes should be reviewed before platform audit submission or public production use.
 
 ## Contact
-**OWNER ACTION REQUIRED:** Publish a real, owner-controlled support contact channel on [the support page](support.md) before submitting this policy to Google, TikTok or another platform as a finalized privacy notice. A placeholder is not an operational contact method.
+For support, privacy questions, access or deletion requests, email **fadyasaad.kaz@gmail.com** or **fadyasaad13@gmail.com**. Both are listed on the [support page](support.md).
+
+**OWNER ACTION REQUIRED:** Confirm that the listed mailboxes receive messages, review the operator description and applicable jurisdiction, and approve this draft before submitting any finalized policy for Google, TikTok or another platform's app review.

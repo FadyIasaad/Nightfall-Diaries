@@ -25,6 +25,6 @@ The service is experimental, depends on limited free resources, and may pause or
 YouTube, Meta, TikTok, GitHub, Kaggle and Hugging Face operate under their own separate terms and privacy policies; they are not affiliated with this project merely because they are used as tools.
 
 ## Support / changes
-See [support and data requests](support.md). These terms can be amended with a documented update date. Any finalized legal/operator details must be supplied by the owner before a third-party app compliance submission.
+Contact support at **fadyasaad.kaz@gmail.com** or **fadyasaad13@gmail.com**. See [support and data requests](support.md). These terms can be amended with a documented update date. Any finalized legal/operator details must be confirmed by the owner before a third-party app compliance submission.
 
-**OWNER REVIEW REQUIRED:** The policy's effective operator identity and support contact are not yet finalized; do not represent this draft as independently approved legal advice.
+**OWNER REVIEW REQUIRED:** The contact addresses were provided by the owner, but mailbox verification and the effective operator identity are not finalized; do not represent this draft as independently approved legal advice.

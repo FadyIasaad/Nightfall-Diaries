@@ -9,6 +9,8 @@ Nightfall Diaries is an owner-operated project developing original AI-assisted a
 - [Privacy policy](privacy.md)
 - [Terms of use](terms.md)
 - [Support and data requests](support.md)
+
+Support email (either address): **fadyasaad.kaz@gmail.com** or **fadyasaad13@gmail.com**.
 - [Development status](https://github.com/FadyIasaad/Nightfall-Diaries/blob/main/README.md)
 
 This repository's GitHub Pages website is *not live* until the repository owner configures **Settings → Pages → Deploy from a branch → main → /docs**, and checks the displayed site URL. Do not submit an imagined or unverified page link to any platform review.
