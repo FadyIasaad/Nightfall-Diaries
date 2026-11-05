@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "updated_on": "2026-11-06",
+  "production_or_publish_approved": false,
+  "gpu_gate": "BLOCKED_ACCESS",
+  "gpu_gate_reason": "Owner checked Kaggle notebook; no GPU T4 or P100 accelerator available",
+  "providers": {
+    "kaggle_p100": {
+      "status": "RETIRED_2026_09_15",
+      "available": false
+    },
+    "kaggle_t4x2": {
+      "status": "OWNER_REPORTED_UNAVAILABLE",
+      "available": false
+    },
+    "huggingface_zerogpu": {
+      "status": "LOW_QUOTA_PREVIOUS_QUALITY_REJECTED",
+      "primary": false
+    },
+    "lightning_ai": {
+      "status": "UNVERIFIED_FREE_STARTER_TRIAL_ONLY",
+      "requires_approval": true
+    },
+    "google_colab": {
+      "status": "NO_GUARANTEED_UNATTENDED_FREE_GPU",
+      "primary": false
+    },
+    "github_actions": {
+      "status": "CPU_ONLY_STANDARD_FREE_RUNNER"
+    }
+  },
+  "selected_gpu_provider": null,
+  "enable_paid_fallback": false,
+  "enable_account_quota_evasion": false,
+  "series3": {
+    "name": "The Interpreter's Debt",
+    "slug": "the-interpreters-debt",
+    "episode_count": 30,
+    "status": "PROPOSAL_ONLY_OWNER_APPROVAL_PENDING",
+    "style": "SP-E Photoreal Micro-Drama",
+    "voice_ids_assigned": false,
+    "images_rendered": false,
+    "screenplays_in_active_queue": false
+  },
+  "active_original_series": [
+    "S01_the_last_little_fox",
+    "S02_the_boy_who_forgot_tomorrow"
+  ],
+  "reference_video": {
+    "filename": "Like 4 Expample (2).mp4",
+    "container_duration_seconds": 231.97,
+    "container_width": 1280,
+    "container_height": 720,
+    "meaning": "Owner-provided browser screen recording of embedded vertical drama examples, only a quality reference"
+  },
+  "notes": "Status-only documentation, not a renderer selection or workflow execution gate. All production and publishing flags remain disabled."
+}
