@@ -1,0 +1,186 @@
+{
+  "project": "Nightfall Diaries",
+  "purpose": "G1 CPU proof immutable source baseline",
+  "baseline_commit": "ef613a5ce78b8d54b9f33fba381060249b7593b9",
+  "generated_on": "2026-11-06",
+  "hash_type": "git-blob-sha1",
+  "protected_file_count": 44,
+  "files": [
+    {
+      "path": "config.json",
+      "git_blob_sha1": "3a7b6674f73345ab4f26f042e276fd7cd8465614"
+    },
+    {
+      "path": "docs/gpu_access_status.json",
+      "git_blob_sha1": "b0bdb54a9a59ecff0c751e0eee3b9092312e63a9"
+    },
+    {
+      "path": "proposals/the-interpreters-debt/SERIES_BIBLE_DRAFT.md",
+      "git_blob_sha1": "cc0da4be808fc66f776276b564188044ad07ece3"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/characters/character_registry.json",
+      "git_blob_sha1": "7adfd77a31ec1b6cf525717ddc418adabe1a3848"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/characters/cloud_reference_locks.json",
+      "git_blob_sha1": "a87241f89daf3a6622f86366fe3419c370f32749"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/characters/s01_ash/cloud_reference.png",
+      "git_blob_sha1": "e83adfabc2e7cdc64f70e09d58e9123a35894e9e"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/characters/s01_ember/cloud_reference.png",
+      "git_blob_sha1": "9e7892eadec26d03398b199defeaab9dfe00d259"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/characters/s01_luma/cloud_reference.png",
+      "git_blob_sha1": "aa877d3a46a17b523d430046f6284fe8f0d5ab66"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/characters/s01_moss/cloud_reference.png",
+      "git_blob_sha1": "05677b1ace663b64e75f1761933b7bb870b89360"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/characters/s01_narrator/cloud_reference.png",
+      "git_blob_sha1": "b35d8025cd4b00d3e5ddde51c6cbf44f6c50b058"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/episodes/episodes.json",
+      "git_blob_sha1": "37eacf6ea89033622b2bcc6aa38a07e03f9bbe97"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E01.json",
+      "git_blob_sha1": "5b11b678edece63d99c2c675edd0e08617c29413"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E02.json",
+      "git_blob_sha1": "f2536892d01d8b31fad18bb1a3f06a5180c05103"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E03.json",
+      "git_blob_sha1": "66b4db7bca83bb9721c51896e80a55d110e67a28"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E04.json",
+      "git_blob_sha1": "54cc572d002c1c4bc805ac48ca2bce2c15da8c3d"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E05.json",
+      "git_blob_sha1": "e135ce4d0df83b661eeac97c1a7c89bb50c7a956"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E06.json",
+      "git_blob_sha1": "4bdd9b99446fe8058945f855d8c586a0ceb00e9d"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E07.json",
+      "git_blob_sha1": "8b6dd1d5201a07756d2878e73e43da75d78edd18"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E08.json",
+      "git_blob_sha1": "3b47669d23c635d29c44a7c7fe6c99c99bc6a9f0"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E09.json",
+      "git_blob_sha1": "8f540d73cc529855e5971491044d06521eec4002"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E10.json",
+      "git_blob_sha1": "ce3ecc8f1292b720add7839e95ab9e4837f9fbf4"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E11.json",
+      "git_blob_sha1": "ba54e5322e5db67d1d220cb1ffaad0cc448847e6"
+    },
+    {
+      "path": "seasons/S01_the_last_little_fox/scripts/E12.json",
+      "git_blob_sha1": "3a94d236fedcf9ce9774896ceec07dbff81719bf"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/characters/character_registry.json",
+      "git_blob_sha1": "614f161ed58eb728e3a3b376d729340ecb7fcf9f"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/characters/cloud_reference_locks.json",
+      "git_blob_sha1": "4dd70b2413fedfff60b97b3006231cfa05ef500e"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/characters/s02_clockkeeper/cloud_reference.png",
+      "git_blob_sha1": "6b07d63b2eb4e0ec8540af278dc34276d2a8a686"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/characters/s02_dr_vale/cloud_reference.png",
+      "git_blob_sha1": "45845035974b4566585f0ac4047e272ba5d5cadd"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/characters/s02_mira/cloud_reference.png",
+      "git_blob_sha1": "003e43562cca9f2500f4813aec58402dbacec12e"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/characters/s02_narrator/cloud_reference.png",
+      "git_blob_sha1": "b6201db3b01181cf1424deb8f3c5d872a1af5880"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/characters/s02_noah/cloud_reference.png",
+      "git_blob_sha1": "8b8c3880b08ddc70896c03c9c85d367a26843488"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/episodes/episodes.json",
+      "git_blob_sha1": "59e52056aae846691b8911ded791eec7fadf273e"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E01.json",
+      "git_blob_sha1": "3a8f385b01dff27ef3b9cea86ce4941208bf2a6f"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E02.json",
+      "git_blob_sha1": "65866626b87f4df8789f382198d8f3ced7016d99"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E03.json",
+      "git_blob_sha1": "593cbd0350ca4697ea697a14bf96f2d3757ae49c"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E04.json",
+      "git_blob_sha1": "e6284f957549b820ac66e0d70ccc71e0ba8fe01a"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E05.json",
+      "git_blob_sha1": "e2c63da30a360345880a113691aa2189845f366b"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E06.json",
+      "git_blob_sha1": "d9bdb8a97dc2e6862b6942b11161dfd4eab78467"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E07.json",
+      "git_blob_sha1": "7a494ec8d4be46dacf55949d5a68e6ae53188dbd"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E08.json",
+      "git_blob_sha1": "167290101851449659ac7b9a716a0ac38b562f46"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E09.json",
+      "git_blob_sha1": "0afd4f30f0c4ef4d578127da2c8398fcc51c2875"
+    },
+    {
+      "path": "seasons/S02_the_boy_who_forgot_tomorrow/scripts/E10.json",
+      "git_blob_sha1": "af202479451bfa8c643b0b4cf64edfa065484cde"
+    },
+    {
+      "path": "studio/episode_length_policy.json",
+      "git_blob_sha1": "25c0881cd3f8cad076cb38d864ef237608e4cf25"
+    },
+    {
+      "path": "studio/production_settings.json",
+      "git_blob_sha1": "265a83b66485334a69b0ada6be73b071ee427baf"
+    },
+    {
+      "path": "studio/voice_profile_locks.json",
+      "git_blob_sha1": "58f73d3dbd4471fcdecd37ef3b1fe9b8c6acffb6"
+    }
+  ]
+}
