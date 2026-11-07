@@ -4,7 +4,7 @@ All meshes, materials, rigs, and animation are authored procedurally here. This
 does NOT replace locked characters, does NOT pass G1 quality, and is NEVER a
 publishable clip. It deliberately tests real moving 3D geometry, not stills.
 """
-import bpy, math, random, sys, json, time
+import bpy, math, random, sys, json, time, subprocess
 from pathlib import Path
 from mathutils import Vector
 from math import sin, cos, pi
@@ -38,13 +38,13 @@ S.render.resolution_x=WIDTH
 S.render.resolution_y=HEIGHT
 S.render.resolution_percentage=100
 S.render.fps=FPS
-S.render.image_settings.file_format="FFMPEG"
-S.render.ffmpeg.format="MPEG4"
-S.render.ffmpeg.codec="H264"
-S.render.ffmpeg.constant_rate_factor="MEDIUM"
-S.render.filepath=str(Path(OUT).resolve())
+# Blender 5 removed direct FFMPEG output; encode the real rendered PNG frames with FFmpeg.
+frame_dir=Path("output/g1_frames")
+frame_dir.mkdir(parents=True,exist_ok=True)
+S.render.image_settings.file_format="PNG"
+S.render.filepath=str((frame_dir/"frame_").resolve())
 S.render.film_transparent=False
-S.view_settings.view_transform="Filmic"
+S.view_settings.view_transform="AgX"
 S.world.use_nodes=True
 S.world.node_tree.nodes["Background"].inputs["Color"].default_value=(0.012,0.028,0.043,1)
 S.world.node_tree.nodes["Background"].inputs["Strength"].default_value=.36
@@ -274,6 +274,10 @@ for f in range(1,FRAMES+1,max(1,FPS//3)):
 
 # This diagnostic is *not* a full G1 and does not include locked voice samples.
 bpy.ops.render.render(animation=True)
+subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-framerate",str(FPS),
+                "-start_number","1","-i",str(frame_dir/"frame_%04d.png"),
+                "-c:v","libx264","-pix_fmt","yuv420p","-crf","21",OUT],
+               check=True,timeout=600)
 seconds=time.time()-start
 report={"status":"UNAPPROVED_CPU_3D_GEOMETRY_DIAGNOSTIC",
         "rendered_video":Path(OUT).exists(),
