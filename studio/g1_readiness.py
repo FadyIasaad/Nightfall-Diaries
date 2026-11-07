@@ -14,7 +14,7 @@ ALLOWED_LICENSES={"CC0-1.0","CC-BY-4.0"}
 EXPECTED_IDS=("s01_ember","s01_moss")
 
 def git_blob_sha1(raw: bytes)->str:
-    return hashlib.sha1(b"blob "+str(len(raw)).encode("ascii")+b"\\0"+raw).hexdigest()
+    return hashlib.sha1(b"blob "+str(len(raw)).encode("ascii")+b"\0"+raw).hexdigest()
 
 def _safe_relative(root: Path, raw: str, *, base: str):
     if not isinstance(raw,str) or not raw.startswith(base+"/") or raw.startswith("/"):
@@ -108,7 +108,7 @@ def main():
     report=assess()
     out=Path(args.output)
     out.parent.mkdir(parents=True,exist_ok=True)
-    out.write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\\n",encoding="utf-8")
+    out.write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
     print("G1_"+report["status"]+": no render or publication was performed")
     print("G1_REPORT: "+str(out))
     for item in report["issues"][:8]:
