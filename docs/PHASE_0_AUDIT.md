@@ -113,3 +113,9 @@ No promise of one public 3-minute episode daily, extra same-day completed episod
 ## Contact addendum — November 5, 2026
 
 The owner provided two email addresses for public Nightfall Diaries support and data requests: **fadyasaad.kaz@gmail.com** and **fadyasaad13@gmail.com**. They are now listed in `docs/support.md`, `docs/privacy.md`, `docs/terms.md`, and `docs/index.md`. Actual mailbox deliverability has not been tested; the operator/jurisdiction details and final owner approval are still outstanding. GitHub Pages has not been enabled or verified in this change, and no app-review form or public video publishing has been submitted or activated. **Gate G0 remains pending.**
+
+## Post-Phase 0 extension — November 7, 2026
+
+| File | Disposition | Why / next action |
+|---|---|---|
+| `studio/g1_readiness.py` | **KEEP / EXTEND** | Strict no-render, no-publish Ember/Moss identity/rights/hash readiness check, callable only through the optional manual G1 mode on the existing workflow. It blocks on unverified/absent rigs and must not be mistaken for a cinematic proof. Actual approved rendering must be implemented under a separate G1 look gate. |
