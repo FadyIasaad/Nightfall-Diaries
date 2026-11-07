@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "status": "BLOCKED_UNVERIFIED_MODELS",
+  "description": "Asset acceptance requirements for G1 original Fox/Tortoise cinematic Blender CPU test; all entries are unapproved.",
+  "render_is_authorized": false,
+  "candidates": [
+    {
+      "character_id": "s01_ember",
+      "character_name": "Ember",
+      "expected_species": "quadruped red fox cub",
+      "source_url": null,
+      "author": null,
+      "spdx_license": null,
+      "license_url": null,
+      "licence_checked_utc": null,
+      "repo_redistribution_allowed": false,
+      "headless_source_verified": false,
+      "commercial_use_verified": false,
+      "asset_file": "assets/g1/ember.blend",
+      "sha256": null,
+      "identity_sheet_file": null,
+      "identity_features_reviewed": false,
+      "face_jaw_rig_reviewed": false,
+      "owner_approved": false,
+      "identity_requirements": [
+        "white-tipped LEFT ear",
+        "amber eyes",
+        "cream muzzle and chest",
+        "teal scarf ONE gold star",
+        "ivory tail tip"
+      ],
+      "notes": "DO NOT use low-poly substitute or copy outside reference assets"
+    },
+    {
+      "character_id": "s01_moss",
+      "character_name": "Moss",
+      "expected_species": "elder olive-green quadruped tortoise",
+      "source_url": null,
+      "author": null,
+      "spdx_license": null,
+      "license_url": null,
+      "licence_checked_utc": null,
+      "repo_redistribution_allowed": false,
+      "headless_source_verified": false,
+      "commercial_use_verified": false,
+      "asset_file": "assets/g1/moss.blend",
+      "sha256": null,
+      "identity_sheet_file": null,
+      "identity_features_reviewed": false,
+      "face_jaw_rig_reviewed": false,
+      "owner_approved": false,
+      "identity_requirements": [
+        "weathered domed shell with spiral growth",
+        "front-right shell crack",
+        "kind half-lidded eyes",
+        "olive-green body",
+        "grounded slow gait"
+      ],
+      "notes": "DO NOT use generic turtle/game viewport"
+    }
+  ],
+  "notes": "The user confirmed $0 spending budgets in a screenshot; this does not verify card presence or grant model rights. CPU standard runners in a public repo are free but artifacts have included storage caps."
+}

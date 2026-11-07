@@ -34,6 +34,14 @@ on:
         type: string
         default: auto
         required: true
+      mode:
+        description: "Optional isolated G1 Blender CPU readiness check (no render, no publishing)."
+        type: choice
+        options:
+          - none
+          - g1_proof
+        default: none
+        required: true
 
 permissions:
   contents: write
@@ -87,6 +95,20 @@ jobs:
       - name: Read-only Instagram account check
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'Check Instagram'
         run: python -m studio.check
+
+      # Only explicit manual dispatch can invoke this. No GPU, rendering or upload.
+      - name: G1 locked-character asset readiness (no render; fail closed)
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'g1_proof'
+        run: python -m studio.g1_readiness --output output/g1_readiness.json
+
+      - name: G1 safety evidence (not a cinematic video)
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'g1_proof'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-g1-readiness-only
+          path: output/g1_readiness.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Restore previous free-cloud animation checkpoints
         if: github.event_name == 'schedule' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
