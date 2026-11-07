@@ -21,7 +21,8 @@ class G1ReadinessTests(unittest.TestCase):
         self.assertIn("mode:",workflow)
         self.assertIn("g1_proof",workflow)
         self.assertIn("github.event_name == 'workflow_dispatch' && inputs.mode == 'g1_proof'",workflow)
-        self.assertEqual(workflow.count("runs-on: ubuntu-latest"),1)
+        self.assertEqual(workflow.count("runs-on: ubuntu-latest"),2)
+        self.assertIn("github.head_ref == 'proof/g1-procedural-cpu-diagnostic-2026-11-07'",workflow)
         self.assertNotIn("runs-on: ubuntu-latest-8-cores",workflow)
         self.assertEqual(workflow.count("name: Nightfall Diaries - One Free Online Workflow"),1)
 

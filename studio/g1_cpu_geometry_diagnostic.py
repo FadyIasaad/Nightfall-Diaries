@@ -59,7 +59,8 @@ def material(name,color,rough=.72,metal=0,emission=None):
     bs.inputs["Roughness"].default_value=rough
     bs.inputs["Metallic"].default_value=metal
     if emission is not None:
-        bs.inputs["Emission Color"].default_value=(*color,1) if "Emission Color" in bs.inputs else (*color,1)
+        key="Emission Color" if "Emission Color" in bs.inputs else "Emission"
+        if key in bs.inputs: bs.inputs[key].default_value=(*color,1)
         if "Emission Strength" in bs.inputs: bs.inputs["Emission Strength"].default_value=emission
     return m
 ORANGE=material("fox rich russet",(.61,.115,.028))
