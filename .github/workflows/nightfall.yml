@@ -254,3 +254,34 @@ jobs:
           path: output/automated_episode_pack.json
           if-no-files-found: ignore
           retention-days: 7
+
+  # Isolated experiment, only on this named draft PR branch. Never scheduled.
+  g1_geometry_diagnostic:
+    if: github.event_name == 'pull_request' && github.head_ref == 'proof/g1-procedural-cpu-diagnostic-2026-11-07'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Blender and FFmpeg from Ubuntu free packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y blender ffmpeg
+          blender --version | head -2
+      - name: Render original 3D actors CPU-only (technical diagnostic, NOT G1 approved)
+        timeout-minutes: 30
+        run: |
+          mkdir -p output
+          blender -b -t 2 --python studio/g1_cpu_geometry_diagnostic.py -- --frames 24 --size 360x640 --fps 12
+          ffprobe -v error -show_entries format=duration,size -of json output/g1_cpu_geometry_diagnostic.mp4
+      - name: Save unapproved geometry diagnostic, never a film release
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: g1-CPU-geometry-UNAPPROVED
+          path: |
+            output/g1_cpu_geometry_diagnostic.mp4
+            output/g1_geometry_report.json
+          if-no-files-found: ignore
+          retention-days: 7

@@ -119,3 +119,5 @@ The owner provided two email addresses for public Nightfall Diaries support and 
 | File | Disposition | Why / next action |
 |---|---|---|
 | `studio/g1_readiness.py` | **KEEP / EXTEND** | Strict no-render, no-publish Ember/Moss identity/rights/hash readiness check, callable only through the optional manual G1 mode on the existing workflow. It blocks on unverified/absent rigs and must not be mistaken for a cinematic proof. Actual approved rendering must be implemented under a separate G1 look gate. |
+
+| `studio/g1_cpu_geometry_diagnostic.py` | **EXPERIMENT ONLY** | Original CPU 3D fox/tortoise engineering diagnostic; no licensed outside 3D assets, no voice, no owner approval; not a cinematic look proof or production renderer. |
