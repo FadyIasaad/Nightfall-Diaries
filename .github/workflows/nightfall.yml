@@ -34,6 +34,14 @@ on:
         type: string
         default: auto
         required: true
+      mode:
+        description: "Optional authorized no-cost engine diagnostic; never creates video."
+        type: choice
+        options:
+          - none
+          - engine_probe
+        default: none
+        required: true
 
 permissions:
   contents: write
@@ -83,6 +91,23 @@ jobs:
       - name: Inspect public free motion API (no GPU call)
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'Check free motion provider')
         run: python -m studio.motion_provider
+
+      # Read-only API metadata only. No billable generation, account changes or posting.
+      # Manual only; never called from schedule, push, or pull request.
+      - name: Agnes engine probe — GET models only, NO video generation
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'engine_probe' && inputs.action == 'Check setup'
+        env:
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+        run: python -m studio.agnes_probe --output output/agnes_engine_probe.json
+
+      - name: Save Agnes safe engine diagnostic (no secrets)
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'engine_probe' && inputs.action == 'Check setup'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-agnes-read-only-engine-probe
+          path: output/agnes_engine_probe.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Read-only Instagram account check
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'Check Instagram'

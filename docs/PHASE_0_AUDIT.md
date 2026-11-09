@@ -113,3 +113,9 @@ No promise of one public 3-minute episode daily, extra same-day completed episod
 ## Contact addendum — November 5, 2026
 
 The owner provided two email addresses for public Nightfall Diaries support and data requests: **fadyasaad.kaz@gmail.com** and **fadyasaad13@gmail.com**. They are now listed in `docs/support.md`, `docs/privacy.md`, `docs/terms.md`, and `docs/index.md`. Actual mailbox deliverability has not been tested; the operator/jurisdiction details and final owner approval are still outstanding. GitHub Pages has not been enabled or verified in this change, and no app-review form or public video publishing has been submitted or activated. **Gate G0 remains pending.**
+
+## November 9, 2026 inventory extension
+
+| File | Disposition | Explanation |
+|---|---|---|
+| `studio/agnes_probe.py` | **KEEP / READ-ONLY** | Only manual GitHub GET-models connection check; never bill, generate media, or publish; price and quota must be verified separately. |
