@@ -84,9 +84,12 @@ class KaggleBridgeSafetyTests(unittest.TestCase):
     def test_kaggle_cli_install_declares_six_and_tests_cli_before_dispatch(self):
         workflow = (EMBER_PATH.parents[4] / ".github/workflows/nightfall.yml").read_text()
         install = workflow.index("- name: Install and smoke-test Kaggle CLI")
+        auth = workflow.index("- name: Validate Kaggle token with read-only own-kernels query")
         dispatch = workflow.index("- name: Dispatch one private Kaggle T4 notebook")
-        self.assertLess(install, dispatch)
-        preflight = workflow[install:dispatch]
+        self.assertLess(install, auth)
+        self.assertLess(auth, dispatch)
+        # The CLI install step uses no secret; the next, manual-only step does.
+        preflight = workflow[install:auth]
         self.assertIn("'six>=1.16,<2'", preflight)
         self.assertIn("from kaggle.cli import main", preflight)
         self.assertIn("kaggle kernels push --help", preflight)
