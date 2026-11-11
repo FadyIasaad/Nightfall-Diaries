@@ -81,5 +81,19 @@ class KaggleBridgeSafetyTests(unittest.TestCase):
         self.assertFalse(settings["publishing_implemented"])
 
 
+    def test_kaggle_cli_install_declares_six_and_tests_cli_before_dispatch(self):
+        workflow = (EMBER_PATH.parents[4] / ".github/workflows/nightfall.yml").read_text()
+        install = workflow.index("- name: Install and smoke-test Kaggle CLI")
+        dispatch = workflow.index("- name: Dispatch one private Kaggle T4 notebook")
+        self.assertLess(install, dispatch)
+        preflight = workflow[install:dispatch]
+        self.assertIn("'six>=1.16,<2'", preflight)
+        self.assertIn("from kaggle.cli import main", preflight)
+        self.assertIn("kaggle kernels push --help", preflight)
+        self.assertIn("github.event_name == 'pull_request'", preflight)
+        self.assertNotIn("KAGGLE_API_TOKEN:", preflight)
+
+
+
 if __name__ == "__main__":
     unittest.main()
