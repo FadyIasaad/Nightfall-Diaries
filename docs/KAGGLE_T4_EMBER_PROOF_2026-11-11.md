@@ -37,3 +37,17 @@
 - The first LTX trial produces a deliberately small smoke clip; **it cannot be used as a substitute for the desired Flow-grade animated film**.
 - Model downloads require Kaggle Notebook internet. If Kaggle refuses external access, leave it blocked and use a legitimate Kaggle Models or Dataset attachment in a later tested PR instead of bypassing restrictions.
 - **Next gates:** test a viable higher-resolution image-to-video renderer, preserve Kokoro WAVs with true animal-face lip-sync, then benchmark the **entire** 90–180 second episode across the real free quota before enabling unattended production.
+
+
+## 2026-11-11 consolidation: serialized Kaggle production, independent PR checks
+
+Previously all GitHub events shared one `concurrency.group` with `cancel-in-progress: false`, so a queued PR validation run could occupy the same group as a manual Kaggle test. The current PR separates:
+- PR verification by PR number (new revisions cancel superseded PR checks).
+- Normal push validation in its own `push-check` lane.
+- Scheduled/manual/Kaggle operations in one serialized `production` lane.
+
+Before any private Kaggle kernel is submitted, the manual workflow now checks the `KAGGLE_API_TOKEN` secret and `KAGGLE_USERNAME` variable, then performs `kaggle kernels list --mine --page-size 1` (read only, no GPU). The Kaggle CLI `six` import and `kernels push --help` preflight introduced in merged PR #31 are retained. The Kaggle actual GPU quota **cannot** be checked by this read-only list and remains to be proven by a manual GPU test.
+
+**Not solved by code:** a GitHub Actions run reporting `Queued` with **zero jobs**, or dynamic Pages `startup_failure`, can be due to GitHub service scheduling or account-level restrictions. No code-only PR can guarantee it will start a hosted runner. Existing queued runs may need cancellation from **Actions** UI; merged PRs cannot be canceled or retroactively undone. Pages deployments are managed independently by GitHub Pages settings and not by this Nightfall workflow.
+
+To clear old queued runs manually, visit their individual Actions run pages, use **Cancel workflow** on stuck runs (if offered), and use **Run workflow → Kaggle GPU check** only once after the PR is merged. Never activate automatic generation/public publishing to test runner scheduling.
