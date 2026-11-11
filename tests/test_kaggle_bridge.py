@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from studio.kaggle_bridge import (
-    EMBER_PATH, LOCKS_PATH, TEMPLATE, dispatch, original_ember_bytes, safe_owner, stage
+    EMBER_PATH, LOCKS_PATH, TEMPLATE, diagnose_last, dispatch, original_ember_bytes, safe_owner, stage
 )
 
 
@@ -116,6 +116,54 @@ class KaggleBridgeSafetyTests(unittest.TestCase):
         self.assertIn("KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}", preflight)
         self.assertIn("github.event_name == 'workflow_dispatch'", preflight)
         self.assertNotIn("github.event_name == 'pull_request'", preflight)
+
+
+    def test_diagnose_last_uses_existing_kernel_without_push_or_gpu(self):
+        with tempfile.TemporaryDirectory() as directory:
+            commands = []
+            def fake_runner(argv, timeout=120):
+                commands.append(tuple(argv))
+                self.assertNotIn("push", argv)
+                if argv[2] == "status":
+                    return 'owner/nightfall-t4-ember-safe has status "KernelWorkerStatus.ERROR"'
+                if argv[2] == "logs":
+                    return "CUDA allocation error: no GPU available"
+                if argv[2] == "output":
+                    return "No notebook outputs"
+                raise AssertionError("Unexpected CLI command")
+            with patch.dict(os.environ, {"KAGGLE_API_TOKEN": "secure-sample-not-real"}):
+                with patch("studio.kaggle_bridge.runner", side_effect=fake_runner):
+                    result = diagnose_last("owner", directory)
+            self.assertEqual(result["status"], "KAGGLE_WORKER_ERROR_DIAGNOSTIC_COLLECTED")
+            self.assertFalse(result["gpu_submission_attempted"])
+            self.assertTrue(result["logs_downloaded"])
+            self.assertEqual([c[2] for c in commands], ["status", "logs", "output"])
+            self.assertIn("CUDA allocation error", (Path(directory) / "kaggle_worker_logs.txt").read_text())
+            self.assertTrue((Path(directory) / "kaggle_diagnostic.json").exists())
+
+    def test_diagnose_redacts_kaggle_token_from_downloaded_logs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"KAGGLE_API_TOKEN": "TOP_SECRET_FAKE_TOKEN_123"}):
+                def fake_runner(argv, timeout=120):
+                    return "TOP_SECRET_FAKE_TOKEN_123" if argv[2] != "output" else ""
+                with patch("studio.kaggle_bridge.runner", side_effect=fake_runner):
+                    diagnose_last("owner", directory)
+            report = (Path(directory) / "kaggle_diagnostic.json").read_text()
+            logs = (Path(directory) / "kaggle_worker_logs.txt").read_text()
+            self.assertNotIn("TOP_SECRET_FAKE_TOKEN_123", logs + report)
+            self.assertIn("[REDACTED]", logs)
+
+    def test_diagnostic_action_is_manual_and_never_submits_new_kernel(self):
+        workflow = (EMBER_PATH.parents[4] / ".github/workflows/nightfall.yml").read_text()
+        self.assertIn("Kaggle diagnose last run", workflow)
+        self.assertIn("python -m studio.kaggle_bridge --mode diagnose", workflow)
+        self.assertIn("output/kaggle_dispatch/kaggle_worker_logs.txt", workflow)
+        self.assertIn("output/kaggle_dispatch/kaggle_diagnostic.json", workflow)
+        # The bridge exposes diagnostics but forbids staging/inference for this mode.
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(ValueError):
+                stage("diagnose", "owner", directory)
+
 
 
 if __name__ == "__main__":

@@ -85,6 +85,88 @@ def runner(args, timeout=120):
     return p.stdout or ""
 
 
+
+
+def _redact_diagnostic(value):
+    """Store bounded diagnostics without accidentally disclosing an API token."""
+    value = str(value)
+    for key in ("KAGGLE_API_TOKEN", "KAGGLE_KEY"):
+        secret = os.getenv(key)
+        if secret:
+            value = value.replace(secret, "[REDACTED]")
+    return value[-60000:]
+
+
+def diagnose_last(owner, output_dir):
+    """Read only: inspect an existing Kaggle kernel; NEVER push or allocate GPU."""
+    owner = safe_owner(owner)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    kernel_id = owner + "/" + KERNEL_SLUG
+    info = {
+        "mode": "diagnose",
+        "kernel_id": kernel_id,
+        "status": "DIAGNOSTIC_INCOMPLETE",
+        "paid_api_calls": False,
+        "gpu_submission_attempted": False,
+        "publishing": False,
+        "kaggle_status": "",
+        "logs_downloaded": False,
+        "output_downloaded": False,
+    }
+    report_path = output_dir / "kaggle_diagnostic.json"
+    try:
+        if not os.getenv("KAGGLE_API_TOKEN"):
+            info["status"] = "BLOCKED_KAGGLE_API_TOKEN_MISSING"
+            return info
+        # Both status and logs are read-only against the previously pushed kernel.
+        for label, command in (
+            ("kaggle_status", ["kaggle", "kernels", "status", kernel_id]),
+            ("kaggle_logs", ["kaggle", "kernels", "logs", kernel_id]),
+        ):
+            try:
+                output = _redact_diagnostic(runner(command, timeout=75))
+                if label == "kaggle_status":
+                    info[label] = output[-1500:]
+                else:
+                    (output_dir / "kaggle_worker_logs.txt").write_text(
+                        output + "\n", encoding="utf-8"
+                    )
+                    info["logs_downloaded"] = True
+            except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                info[label + "_error"] = _redact_diagnostic(str(exc))[-500:]
+        # Output files may be available even after KernelWorkerStatus.ERROR.
+        results = output_dir / "kaggle_results"
+        results.mkdir(exist_ok=True)
+        try:
+            runner(
+                ["kaggle", "kernels", "output", kernel_id,
+                 "-p", str(results), "-o"],
+                timeout=120
+            )
+            info["output_downloaded"] = True
+            info["output_files"] = sorted(
+                p.name for p in results.iterdir() if p.is_file()
+            )[:30]
+        except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+            info["output_error"] = _redact_diagnostic(str(exc))[-500:]
+        status_text = info.get("kaggle_status", "").upper()
+        if "KERNELWORKERSTATUS.ERROR" in status_text:
+            info["status"] = "KAGGLE_WORKER_ERROR_DIAGNOSTIC_COLLECTED"
+        elif info["logs_downloaded"] or info["output_downloaded"]:
+            info["status"] = "DIAGNOSTIC_COLLECTED_REVIEW_ARTIFACTS"
+        else:
+            info["status"] = "DIAGNOSTIC_UNAVAILABLE_CHECK_KAGGLE_WEB_UI"
+        return info
+    finally:
+        report_path.write_text(
+            json.dumps(info, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8"
+        )
+        print("KAGGLE_READ_ONLY_DIAGNOSTIC:", info["status"])
+        print("KAGGLE_GPU_SUBMISSION: NEVER")
+
+
 def dispatch(mode, owner, output_dir, max_wait_seconds=2000, dry_run=False):
     owner = safe_owner(owner)
     if mode not in SUPPORTED_MODES:
@@ -150,9 +232,19 @@ def dispatch(mode, owner, output_dir, max_wait_seconds=2000, dry_run=False):
         info["status"] = "PROOF_COMPLETE_NOT_APPROVED"
         return info
     except Exception as exc:
+        prior_status = info["status"]
         info["status"] = "BLOCKED"
         info["failure_type"] = type(exc).__name__
-        info["reason"] = str(exc)[:600]
+        info["reason"] = _redact_diagnostic(str(exc))[:600]
+        # An errored Kaggle worker can expose its real traceback only in
+        # Kaggle logs; fetch it once, without triggering another GPU run.
+        if prior_status == "SUBMITTED":
+            try:
+                diagnostic = diagnose_last(owner, output_dir)
+                info["diagnostic_status"] = diagnostic["status"]
+                info["diagnostic_log_saved"] = diagnostic["logs_downloaded"]
+            except Exception as diagnostic_exc:
+                info["diagnostic_error"] = type(diagnostic_exc).__name__
         raise
     finally:
         save()
@@ -160,12 +252,17 @@ def dispatch(mode, owner, output_dir, max_wait_seconds=2000, dry_run=False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=SUPPORTED_MODES, required=True)
+    parser.add_argument("--mode", choices=SUPPORTED_MODES + ("diagnose",), required=True)
     parser.add_argument("--owner", default=os.environ.get("KAGGLE_USERNAME", ""))
     parser.add_argument("--output-dir", default="output/kaggle_dispatch")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
-    info = dispatch(args.mode, args.owner, args.output_dir, dry_run=args.dry_run)
+    if args.mode == "diagnose":
+        if args.dry_run:
+            parser.error("diagnose does not support --dry-run")
+        info = diagnose_last(args.owner, args.output_dir)
+    else:
+        info = dispatch(args.mode, args.owner, args.output_dir, dry_run=args.dry_run)
     print(json.dumps(info, sort_keys=True))
 
 
