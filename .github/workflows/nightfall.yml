@@ -126,9 +126,15 @@ jobs:
 
       # Kaggle is opt-in only: no schedule, push, PR, paid API or public upload.
       # The secret is scoped to this manual operation; absent token fails closed.
-      - name: Install Kaggle CLI for manual free GPU trial
-        if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
-        run: python -m pip install 'kaggle>=1.7,<2'
+      - name: Install and smoke-test Kaggle CLI (no GPU or API request)
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof'))
+        run: |
+          # Kaggle CLI currently imports six without requiring it explicitly.
+          # Avoid ModuleNotFoundError before dispatching a real GPU task.
+          python -m pip install 'kaggle>=1.7,<2' 'six>=1.16,<2'
+          python -c "import six; import kaggle; from kaggle.cli import main; print('Kaggle CLI import smoke test PASSED')"
+          kaggle kernels push --help > /dev/null
+          echo "Kaggle CLI push command ready (no authenticated Kaggle operation made)"
 
       - name: Dispatch one private Kaggle T4 notebook (GPU or Ember candidate)
         if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
