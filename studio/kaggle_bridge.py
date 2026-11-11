@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import time
 
 from .restore import ROOT
@@ -119,23 +120,32 @@ def diagnose_last(owner, output_dir):
         if not os.getenv("KAGGLE_API_TOKEN"):
             info["status"] = "BLOCKED_KAGGLE_API_TOKEN_MISSING"
             return info
-        # Both status and logs are read-only against the previously pushed kernel.
-        for label, command in (
-            ("kaggle_status", ["kaggle", "kernels", "status", kernel_id]),
-            ("kaggle_logs", ["kaggle", "kernels", "logs", kernel_id]),
-        ):
-            try:
-                output = _redact_diagnostic(runner(command, timeout=75))
-                if label == "kaggle_status":
-                    info[label] = output[-1500:]
-                else:
-                    (output_dir / "kaggle_worker_logs.txt").write_text(
-                        output + "\n", encoding="utf-8"
-                    )
-                    info["logs_downloaded"] = True
-            except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
-                info[label + "_error"] = _redact_diagnostic(str(exc))[-500:]
-        # Output files may be available even after KernelWorkerStatus.ERROR.
+        # kaggle-cli 1.8.4 has NO 'kernels logs' command. The real
+        # worker .log is delivered by 'kernels output', even for ERROR runs.
+        try:
+            info["kaggle_status"] = _redact_diagnostic(runner(
+                ["kaggle", "kernels", "status", kernel_id], timeout=75
+            ))[-1500:]
+        except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+            info["kaggle_status_error"] = _redact_diagnostic(str(exc))[-500:]
+
+        # Check the ACCELERATOR actually recorded on Kaggle, independently
+        # of the local request. This only downloads metadata/code into a
+        # short-lived folder: it does NOT launch a new GPU session.
+        try:
+            with tempfile.TemporaryDirectory() as temp:
+                runner(["kaggle", "kernels", "pull", kernel_id,
+                        "-p", temp, "-m"], timeout=90)
+                meta_path = Path(temp) / "kernel-metadata.json"
+                if not meta_path.is_file():
+                    raise RuntimeError("Kaggle metadata file unavailable")
+                remote = json.loads(meta_path.read_text(encoding="utf-8"))
+                info["remote_gpu_enabled"] = remote.get("enable_gpu")
+                info["remote_machine_shape"] = remote.get("machine_shape")
+                info["remote_metadata_checked"] = True
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            info["remote_metadata_error"] = _redact_diagnostic(str(exc))[-500:]
+
         results = output_dir / "kaggle_results"
         results.mkdir(exist_ok=True)
         try:
@@ -148,7 +158,42 @@ def diagnose_last(owner, output_dir):
             info["output_files"] = sorted(
                 p.name for p in results.iterdir() if p.is_file()
             )[:30]
-        except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+
+            # Kaggle writes e.g. 'nightfall-t4-ember-safe.log' to output.
+            # Sanitize and limit its size before publishing the CI artifact.
+            worker_logs = sorted(
+                p for p in results.glob("*.log") if p.is_file()
+            )
+            if worker_logs:
+                with worker_logs[0].open(
+                    "r", encoding="utf-8", errors="replace"
+                ) as handle:
+                    # Avoid embedding full scripts, images, or huge raw logs
+                    # in Actions artifacts; only last 60k chars of early text.
+                    raw = handle.read(100_000)
+                lines = raw.splitlines()
+                bounded = "\n".join(line[:1200] for line in lines)
+                log_text = _redact_diagnostic(bounded)
+                (output_dir / "kaggle_worker_logs.txt").write_text(
+                    log_text + "\n", encoding="utf-8"
+                )
+                info["logs_downloaded"] = True
+                info["log_source"] = worker_logs[0].name
+
+            gpu_report = results / "nightfall_kaggle_report.json"
+            if gpu_report.is_file():
+                data = json.loads(gpu_report.read_text(encoding="utf-8"))
+                info["gpu_report_result"] = data.get("result")
+                info["cuda_devices"] = data.get("gpu_devices", [])
+                info["cuda_reported_available"] = bool(
+                    data.get("free_gpu_confirmed", False)
+                )
+                if (
+                    data.get("error_type") == "RuntimeError"
+                    and "No Kaggle GPU allocated" in data.get("error", "")
+                ):
+                    info["root_cause"] = "KAGGLE_CUDA_NOT_ALLOCATED"
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
             info["output_error"] = _redact_diagnostic(str(exc))[-500:]
         status_text = info.get("kaggle_status", "").upper()
         if "KERNELWORKERSTATUS.ERROR" in status_text:
