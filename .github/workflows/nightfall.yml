@@ -19,6 +19,7 @@ on:
           - Check setup
           - Check free motion provider
           - Kaggle GPU check
+          - Kaggle diagnose last run
           - Kaggle Ember proof
           - Render quality proof
           - Audition character voices
@@ -130,7 +131,7 @@ jobs:
       # Kaggle is opt-in only: no schedule, push, PR, paid API or public upload.
       # The secret is scoped to this manual operation; absent token fails closed.
       - name: Install and smoke-test Kaggle CLI (no GPU or API request)
-        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof'))
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof' || inputs.action == 'Kaggle diagnose last run'))
         run: |
           # Kaggle CLI currently imports six without requiring it explicitly.
           # Avoid ModuleNotFoundError before dispatching a real GPU task.
@@ -141,7 +142,7 @@ jobs:
           echo "Dependency check passed; authenticated CLI check is manual only"
 
       - name: Validate Kaggle token with read-only own-kernels query (no GPU)
-        if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
+        if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof' || inputs.action == 'Kaggle diagnose last run')
         env:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
           KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
@@ -163,7 +164,7 @@ jobs:
           echo "Kaggle API authentication passed (does not guarantee GPU quota)"
 
       - name: Dispatch one private Kaggle T4 notebook (GPU or Ember candidate)
-        if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
+        if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof' || inputs.action == 'Kaggle diagnose last run')
         env:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
           KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
@@ -174,17 +175,22 @@ jobs:
             python -m studio.kaggle_bridge --mode gpu_probe
           elif [ "$KAGGLE_ACTION" = "Kaggle Ember proof" ]; then
             python -m studio.kaggle_bridge --mode ember_i2v
+          elif [ "$KAGGLE_ACTION" = "Kaggle diagnose last run" ]; then
+            # Read only: fetch existing Kaggle kernel's status and logs.
+            python -m studio.kaggle_bridge --mode diagnose
           else
             exit 1
           fi
 
       - name: Save free Kaggle execution report (never includes access token)
-        if: always() && github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
+        if: always() && github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof' || inputs.action == 'Kaggle diagnose last run')
         uses: actions/upload-artifact@v6
         with:
           name: nightfall-kaggle-t4-report
           path: |
             output/kaggle_dispatch/kaggle_dispatch.json
+            output/kaggle_dispatch/kaggle_diagnostic.json
+            output/kaggle_dispatch/kaggle_worker_logs.txt
             output/kaggle_dispatch/kaggle_results/nightfall_kaggle_report.json
           if-no-files-found: ignore
           retention-days: 7
