@@ -80,3 +80,47 @@ When an ordinary Kaggle GPU check or Ember proof fails **after submission**,
 the bridge also attempts the same read-only log capture automatically. If Kaggle
 does not return logs, the status remains blocked and the Kaggle Notebook UI
 is the next source of evidence. **GitHub success does not imply GPU success.**
+
+
+## 2026-11-11: Findings from the owner's uploaded Kaggle diagnostic ZIP
+
+The **actual** `nightfall_kaggle_report.json` from the owner's GPU check says:
+
+```json
+{
+  "result": "BLOCKED",
+  "error": "No Kaggle GPU allocated; verify account GPU access/quota",
+  "free_gpu_confirmed": false,
+  "gpu_devices": [],
+  "inference_attempted": false
+}
+```
+
+The existing `kernel-metadata.json` requests `enable_gpu: true` and
+`machine_shape: "NvidiaTeslaT4"`, which is the **official T4×2** identifier:
+[Kaggle kernel metadata reference](https://github.com/Kaggle/kaggle-cli/blob/main/docs/kernels_metadata.md).
+**Do not switch to P100 or assume two T4s combine into 32GB on one device.**
+
+The uploaded diagnostic showed `kaggle kernels output` returned both
+`nightfall_kaggle_report.json` and `nightfall-t4-ember-safe.log`; however
+the original script attempted `kaggle kernels logs` (unsupported in the
+installed **1.8.4** CLI), and the GitHub artifact ignored the downloaded
+`.log`. This PR fixes diagnosis to **read the actual worker log from
+`kernels output`**, sanitize it, and save a bounded
+`kaggle_worker_logs.txt` file.
+
+A second **read-only** check calls `kaggle kernels pull -m` to inspect
+Kaggle's committed `enable_gpu` and `machine_shape` for the existing
+notebook. It downloads code into a temporary directory and **does not push
+or run** the kernel. Future GPU probes also record `nvidia-smi -L`,
+`torch.version.cuda`, `torch.cuda.is_available()` and device count before
+failing, to distinguish worker allocation from a Python CUDA mismatch.
+
+**Next step, without using another GPU session:** After CI and merging,
+run `Kaggle diagnose last run` once and read the updated artifact.
+If remote metadata has `enable_gpu=false`, this is a configuration
+mismatch. If it says T4 is enabled but no GPU was visible to the worker,
+check the owner's Kaggle Notebook **Settings → Accelerator** and GPU quota/
+account eligibility, or Kaggle-side availability; the GitHub workflow
+cannot grant GPUs. Do not attempt the Ember film until a separate real
+CUDA probe has passed.
