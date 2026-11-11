@@ -100,6 +100,19 @@ jobs:
           AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
         run: python -m studio.agnes_probe --output output/agnes_engine_probe.json
 
+      - name: Agnes public zero-cost price check + LTX fallback metadata (GET only)
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'engine_probe' && inputs.action == 'Check setup'
+        run: python -m studio.agnes_cost_gate --output output/agnes_cost_gate.json
+
+      - name: Save read-only Agnes cost gate evidence (no key or generation)
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'engine_probe' && inputs.action == 'Check setup'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-agnes-free-trial-cost-gate
+          path: output/agnes_cost_gate.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Save Agnes safe engine diagnostic (no secrets)
         if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'engine_probe' && inputs.action == 'Check setup'
         uses: actions/upload-artifact@v6
