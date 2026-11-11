@@ -91,8 +91,9 @@ class KaggleBridgeSafetyTests(unittest.TestCase):
         # The CLI install step uses no secret; the next, manual-only step does.
         preflight = workflow[install:auth]
         self.assertIn("'six>=1.16,<2'", preflight)
-        self.assertIn("from kaggle.cli import main", preflight)
-        self.assertIn("kaggle kernels push --help", preflight)
+        self.assertIn("from importlib.metadata import version", preflight)
+        self.assertNotIn("from kaggle.cli import main", preflight)
+        self.assertNotIn("kaggle kernels push --help", preflight)
         self.assertIn("github.event_name == 'pull_request'", preflight)
         self.assertNotIn("KAGGLE_API_TOKEN:", preflight)
 
@@ -109,6 +110,8 @@ class KaggleBridgeSafetyTests(unittest.TestCase):
         self.assertLess(auth, dispatch)
         preflight = workflow[auth:dispatch]
         self.assertIn("kaggle kernels list --mine --page-size 1", preflight)
+        self.assertIn("from kaggle.cli import main", preflight)
+        self.assertIn("kaggle kernels push --help", preflight)
         self.assertIn("KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}", preflight)
         self.assertIn("KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}", preflight)
         self.assertIn("github.event_name == 'workflow_dispatch'", preflight)
