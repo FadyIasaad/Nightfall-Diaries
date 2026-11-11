@@ -128,3 +128,13 @@ The owner provided two email addresses for public Nightfall Diaries support and 
 | `studio/agnes_cost_gate.py` | **KEEP / READ-ONLY** | Exact public Flash promotional pricing and LTX-2.5 metadata via allowlisted GET requests. Prepares Ember shot instructions only. Does not authorize video inference, payment, account changes, or publishing. Account hard zero-spend gate remains unverified. |
 
 See `docs/AGNES_FLASH_ZERO_COST_GATE_2026-11-11.md`. No original story, cast voice lock, character image or production switch was changed.
+
+
+## 2026-11-11: Kaggle manual free T4 GPU bridge (proposed experiment, not production approval)
+
+| Studio file | Disposition | Rationale |
+|---|---|---|
+| `studio/kaggle_bridge.py` | **KEEP — experimental, manual-only** | Stages SHA-locked original Ember image into a private Kaggle notebook, submits a single GPU check or low-res image-to-video candidate using the official Kaggle CLI, polls and downloads results; no paid API/publishing/schedule. |
+
+See `docs/KAGGLE_T4_EMBER_PROOF_2026-11-11.md` and `kaggle/nightfall_gpu_job.py`.
+Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owner's account.
