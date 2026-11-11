@@ -95,5 +95,22 @@ class KaggleBridgeSafetyTests(unittest.TestCase):
 
 
 
+    def test_pr_runs_cannot_block_kaggle_and_auth_precedes_gpu(self):
+        workflow = (EMBER_PATH.parents[4] / ".github/workflows/nightfall.yml").read_text()
+        self.assertIn("format('pr-{0}', github.event.pull_request.number)", workflow)
+        self.assertIn("'push-check'", workflow)
+        self.assertIn("'production'", workflow)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", workflow)
+        auth = workflow.index("- name: Validate Kaggle token with read-only own-kernels query")
+        dispatch = workflow.index("- name: Dispatch one private Kaggle T4 notebook")
+        self.assertLess(auth, dispatch)
+        preflight = workflow[auth:dispatch]
+        self.assertIn("kaggle kernels list --mine --page-size 1", preflight)
+        self.assertIn("KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}", preflight)
+        self.assertIn("KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}", preflight)
+        self.assertIn("github.event_name == 'workflow_dispatch'", preflight)
+        self.assertNotIn("github.event_name == 'pull_request'", preflight)
+
+
 if __name__ == "__main__":
     unittest.main()
