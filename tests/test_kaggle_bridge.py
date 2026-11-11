@@ -118,40 +118,78 @@ class KaggleBridgeSafetyTests(unittest.TestCase):
         self.assertNotIn("github.event_name == 'pull_request'", preflight)
 
 
-    def test_diagnose_last_uses_existing_kernel_without_push_or_gpu(self):
+    def test_diagnose_last_uses_existing_kernel_without_gpu_submission(self):
         with tempfile.TemporaryDirectory() as directory:
             commands = []
+
             def fake_runner(argv, timeout=120):
                 commands.append(tuple(argv))
                 self.assertNotIn("push", argv)
+                self.assertNotIn("logs", argv)  # Not supported in Kaggle CLI 1.8.4.
                 if argv[2] == "status":
                     return 'owner/nightfall-t4-ember-safe has status "KernelWorkerStatus.ERROR"'
-                if argv[2] == "logs":
-                    return "CUDA allocation error: no GPU available"
+                if argv[2] == "pull":
+                    remote = Path(argv[argv.index("-p") + 1])
+                    (remote / "kernel-metadata.json").write_text(json.dumps({
+                        "enable_gpu": True, "machine_shape": "NvidiaTeslaT4",
+                    }))
+                    return "Pulled source and metadata (no run)"
                 if argv[2] == "output":
-                    return "No notebook outputs"
+                    output = Path(argv[argv.index("-p") + 1])
+                    (output / "nightfall-t4-ember-safe.log").write_text(
+                        "Worker CUDA not available; torch.cuda.device_count=0"
+                    )
+                    (output / "nightfall_kaggle_report.json").write_text(
+                        json.dumps({
+                            "error_type": "RuntimeError",
+                            "error": "No Kaggle GPU allocated; verify account GPU access/quota",
+                            "free_gpu_confirmed": False,
+                            "gpu_devices": [],
+                            "result": "BLOCKED",
+                        })
+                    )
+                    return "Downloaded output files"
                 raise AssertionError("Unexpected CLI command")
+
             with patch.dict(os.environ, {"KAGGLE_API_TOKEN": "secure-sample-not-real"}):
                 with patch("studio.kaggle_bridge.runner", side_effect=fake_runner):
                     result = diagnose_last("owner", directory)
-            self.assertEqual(result["status"], "KAGGLE_WORKER_ERROR_DIAGNOSTIC_COLLECTED")
-            self.assertFalse(result["gpu_submission_attempted"])
-            self.assertTrue(result["logs_downloaded"])
-            self.assertEqual([c[2] for c in commands], ["status", "logs", "output"])
-            self.assertIn("CUDA allocation error", (Path(directory) / "kaggle_worker_logs.txt").read_text())
-            self.assertTrue((Path(directory) / "kaggle_diagnostic.json").exists())
 
-    def test_diagnose_redacts_kaggle_token_from_downloaded_logs(self):
+            self.assertEqual([x[2] for x in commands], ["status", "pull", "output"])
+            self.assertEqual(result["status"], "KAGGLE_WORKER_ERROR_DIAGNOSTIC_COLLECTED")
+            self.assertEqual(result["root_cause"], "KAGGLE_CUDA_NOT_ALLOCATED")
+            self.assertTrue(result["remote_gpu_enabled"])
+            self.assertEqual(result["remote_machine_shape"], "NvidiaTeslaT4")
+            self.assertTrue(result["logs_downloaded"])
+            self.assertFalse(result["gpu_submission_attempted"])
+            self.assertIn("CUDA not available", (Path(directory) / "kaggle_worker_logs.txt").read_text())
+            self.assertTrue((Path(directory) / "kaggle_diagnostic.json").is_file())
+
+    def test_diagnose_redacts_tokens_in_downloaded_kaggle_output_logs(self):
         with tempfile.TemporaryDirectory() as directory:
             with patch.dict(os.environ, {"KAGGLE_API_TOKEN": "TOP_SECRET_FAKE_TOKEN_123"}):
                 def fake_runner(argv, timeout=120):
-                    return "TOP_SECRET_FAKE_TOKEN_123" if argv[2] != "output" else ""
+                    if argv[2] == "status":
+                        return "TOP_SECRET_FAKE_TOKEN_123"
+                    if argv[2] == "pull":
+                        remote = Path(argv[argv.index("-p") + 1])
+                        (remote / "kernel-metadata.json").write_text(
+                            '{"enable_gpu": false, "machine_shape": null}'
+                        )
+                    if argv[2] == "output":
+                        output = Path(argv[argv.index("-p") + 1])
+                        (output / "nightfall-t4-ember-safe.log").write_text(
+                            "CUDA error: TOP_SECRET_FAKE_TOKEN_123"
+                        )
+                    return ""
+
                 with patch("studio.kaggle_bridge.runner", side_effect=fake_runner):
-                    diagnose_last("owner", directory)
+                    result = diagnose_last("owner", directory)
             report = (Path(directory) / "kaggle_diagnostic.json").read_text()
             logs = (Path(directory) / "kaggle_worker_logs.txt").read_text()
             self.assertNotIn("TOP_SECRET_FAKE_TOKEN_123", logs + report)
             self.assertIn("[REDACTED]", logs)
+            self.assertIs(result["remote_gpu_enabled"], False)
 
     def test_diagnostic_action_is_manual_and_never_submits_new_kernel(self):
         workflow = (EMBER_PATH.parents[4] / ".github/workflows/nightfall.yml").read_text()
