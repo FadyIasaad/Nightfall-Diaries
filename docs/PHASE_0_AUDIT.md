@@ -119,3 +119,12 @@ The owner provided two email addresses for public Nightfall Diaries support and 
 | File | Disposition | Explanation |
 |---|---|---|
 | `studio/agnes_probe.py` | **KEEP / READ-ONLY** | Only manual GitHub GET-models connection check; never bill, generate media, or publish; price and quota must be verified separately. |
+
+
+## 2026-11-11: Agnes pricing-only diagnostic extension
+
+| File | Disposition | Explanation |
+|---|---|---|
+| `studio/agnes_cost_gate.py` | **KEEP / READ-ONLY** | Exact public Flash promotional pricing and LTX-2.5 metadata via allowlisted GET requests. Prepares Ember shot instructions only. Does not authorize video inference, payment, account changes, or publishing. Account hard zero-spend gate remains unverified. |
+
+See `docs/AGNES_FLASH_ZERO_COST_GATE_2026-11-11.md`. No original story, cast voice lock, character image or production switch was changed.
