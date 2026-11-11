@@ -84,15 +84,38 @@ class KaggleBridgeSafetyTests(unittest.TestCase):
     def test_kaggle_cli_install_declares_six_and_tests_cli_before_dispatch(self):
         workflow = (EMBER_PATH.parents[4] / ".github/workflows/nightfall.yml").read_text()
         install = workflow.index("- name: Install and smoke-test Kaggle CLI")
+        auth = workflow.index("- name: Validate Kaggle token with read-only own-kernels query")
         dispatch = workflow.index("- name: Dispatch one private Kaggle T4 notebook")
-        self.assertLess(install, dispatch)
-        preflight = workflow[install:dispatch]
+        self.assertLess(install, auth)
+        self.assertLess(auth, dispatch)
+        # The CLI install step uses no secret; the next, manual-only step does.
+        preflight = workflow[install:auth]
         self.assertIn("'six>=1.16,<2'", preflight)
-        self.assertIn("from kaggle.cli import main", preflight)
-        self.assertIn("kaggle kernels push --help", preflight)
+        self.assertIn("from importlib.metadata import version", preflight)
+        self.assertNotIn("from kaggle.cli import main", preflight)
+        self.assertNotIn("kaggle kernels push --help", preflight)
         self.assertIn("github.event_name == 'pull_request'", preflight)
         self.assertNotIn("KAGGLE_API_TOKEN:", preflight)
 
+
+
+    def test_pr_runs_cannot_block_kaggle_and_auth_precedes_gpu(self):
+        workflow = (EMBER_PATH.parents[4] / ".github/workflows/nightfall.yml").read_text()
+        self.assertIn("format('pr-{0}', github.event.pull_request.number)", workflow)
+        self.assertIn("'push-check'", workflow)
+        self.assertIn("'production'", workflow)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", workflow)
+        auth = workflow.index("- name: Validate Kaggle token with read-only own-kernels query")
+        dispatch = workflow.index("- name: Dispatch one private Kaggle T4 notebook")
+        self.assertLess(auth, dispatch)
+        preflight = workflow[auth:dispatch]
+        self.assertIn("kaggle kernels list --mine --page-size 1", preflight)
+        self.assertIn("from kaggle.cli import main", preflight)
+        self.assertIn("kaggle kernels push --help", preflight)
+        self.assertIn("KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}", preflight)
+        self.assertIn("KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}", preflight)
+        self.assertIn("github.event_name == 'workflow_dispatch'", preflight)
+        self.assertNotIn("github.event_name == 'pull_request'", preflight)
 
 
 if __name__ == "__main__":

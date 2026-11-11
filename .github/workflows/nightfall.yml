@@ -48,9 +48,12 @@ on:
 permissions:
   contents: write
 
+# Separate PR validation and ordinary push checks from the single production lane.
+# Keep schedule/manual runs serialized: they can target the same Kaggle kernel.
+# A new PR commit supersedes old PR validation, instead of holding production.
 concurrency:
-  group: nightfall-free-cloud-studio
-  cancel-in-progress: false
+  group: nightfall-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[nightfall-first-motion-proof]') && 'push-check') || 'production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   studio:
@@ -132,9 +135,32 @@ jobs:
           # Kaggle CLI currently imports six without requiring it explicitly.
           # Avoid ModuleNotFoundError before dispatching a real GPU task.
           python -m pip install 'kaggle>=1.7,<2' 'six>=1.16,<2'
-          python -c "import six; import kaggle; from kaggle.cli import main; print('Kaggle CLI import smoke test PASSED')"
+          # Kaggle currently authenticates during "import kaggle".
+          # Pull-request checks must never need account credentials.
+          python -c "import six; from importlib.metadata import version; print('Kaggle CLI installed:', version('kaggle'))"
+          echo "Dependency check passed; authenticated CLI check is manual only"
+
+      - name: Validate Kaggle token with read-only own-kernels query (no GPU)
+        if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+          KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+        run: |
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::KAGGLE_API_TOKEN GitHub Actions secret is missing"
+            exit 1
+          fi
+          if [ -z "$KAGGLE_USERNAME" ]; then
+            echo "::error::KAGGLE_USERNAME repository variable is missing"
+            exit 1
+          fi
+          # Kaggle imports authenticate on current CLI versions.
+          # This step alone has the Actions secret; PR checks do not.
+          python -c "import six; import kaggle; from kaggle.cli import main; print('Authenticated Kaggle CLI import PASSED')"
           kaggle kernels push --help > /dev/null
-          echo "Kaggle CLI push command ready (no authenticated Kaggle operation made)"
+          # Read-only authentication check. No notebook push, compute, or model use.
+          kaggle kernels list --mine --page-size 1 >/dev/null
+          echo "Kaggle API authentication passed (does not guarantee GPU quota)"
 
       - name: Dispatch one private Kaggle T4 notebook (GPU or Ember candidate)
         if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
