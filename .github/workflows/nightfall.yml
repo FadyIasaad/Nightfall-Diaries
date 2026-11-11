@@ -18,6 +18,8 @@ on:
         options:
           - Check setup
           - Check free motion provider
+          - Kaggle GPU check
+          - Kaggle Ember proof
           - Render quality proof
           - Audition character voices
           - Generate full episode
@@ -120,6 +122,48 @@ jobs:
           name: nightfall-agnes-read-only-engine-probe
           path: output/agnes_engine_probe.json
           if-no-files-found: error
+          retention-days: 7
+
+      # Kaggle is opt-in only: no schedule, push, PR, paid API or public upload.
+      # The secret is scoped to this manual operation; absent token fails closed.
+      - name: Install Kaggle CLI for manual free GPU trial
+        if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
+        run: python -m pip install 'kaggle>=1.7,<2'
+
+      - name: Dispatch one private Kaggle T4 notebook (GPU or Ember candidate)
+        if: github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+          KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+          KAGGLE_ACTION: ${{ inputs.action }}
+        timeout-minutes: 45
+        run: |
+          if [ "$KAGGLE_ACTION" = "Kaggle GPU check" ]; then
+            python -m studio.kaggle_bridge --mode gpu_probe
+          elif [ "$KAGGLE_ACTION" = "Kaggle Ember proof" ]; then
+            python -m studio.kaggle_bridge --mode ember_i2v
+          else
+            exit 1
+          fi
+
+      - name: Save free Kaggle execution report (never includes access token)
+        if: always() && github.event_name == 'workflow_dispatch' && (inputs.action == 'Kaggle GPU check' || inputs.action == 'Kaggle Ember proof')
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-kaggle-t4-report
+          path: |
+            output/kaggle_dispatch/kaggle_dispatch.json
+            output/kaggle_dispatch/kaggle_results/nightfall_kaggle_report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Save unpublished Kaggle Ember candidate MP4 (visual QA only)
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.action == 'Kaggle Ember proof'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-kaggle-ember-unapproved-mp4
+          path: output/kaggle_dispatch/kaggle_results/nightfall_ember_candidate.mp4
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Read-only Instagram account check
