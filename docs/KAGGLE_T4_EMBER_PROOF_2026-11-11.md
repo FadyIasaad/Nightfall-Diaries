@@ -51,3 +51,32 @@ Before any private Kaggle kernel is submitted, the manual workflow now checks th
 **Not solved by code:** a GitHub Actions run reporting `Queued` with **zero jobs**, or dynamic Pages `startup_failure`, can be due to GitHub service scheduling or account-level restrictions. No code-only PR can guarantee it will start a hosted runner. Existing queued runs may need cancellation from **Actions** UI; merged PRs cannot be canceled or retroactively undone. Pages deployments are managed independently by GitHub Pages settings and not by this Nightfall workflow.
 
 To clear old queued runs manually, visit their individual Actions run pages, use **Cancel workflow** on stuck runs (if offered), and use **Run workflow → Kaggle GPU check** only once after the PR is merged. Never activate automatic generation/public publishing to test runner scheduling.
+
+
+## 2026-11-11: Debugging the first actual Kaggle worker error (run #43102587747)
+
+The first authenticated GitHub Kaggle run **did reach Kaggle**:
+- `kaggle kernels list --mine` authentication passed using the stored secret.
+- `kaggle kernels push` created **version 1** of the private notebook at
+  `https://www.kaggle.com/code/fadyasaadnightfall/nightfall-t4-ember-safe`.
+- The remote status was `KernelWorkerStatus.ERROR`, **not** a Kaggle CLI
+  import failure. GitHub previously stopped without downloading the worker
+  logs, so this alone does **not** establish missing quota or GPU availability.
+- No visual clip or validated CUDA report was returned.
+
+The existing single GitHub Actions workflow now offers **Kaggle diagnose last run**:
+1. Run this action after merging this PR, not `Kaggle GPU check`; it does
+   **not** push a new kernel version or consume another GPU session.
+2. It authenticates to Kaggle using the existing `KAGGLE_API_TOKEN` secret,
+   reads `kaggle kernels status`, `kaggle kernels logs`, and tries downloading
+   any existing kernel output files with `kaggle kernels output`.
+3. Get the GitHub Actions `nightfall-kaggle-t4-report` artifact, and inspect
+   `kaggle_diagnostic.json` plus `kaggle_worker_logs.txt` (when available).
+4. If the logs report no GPU, account restriction, worker startup failure,
+   Python import error, or other root cause, fix **that exact failure** before
+   running another GPU test. No automatic retry, paid fallback or publication.
+
+When an ordinary Kaggle GPU check or Ember proof fails **after submission**,
+the bridge also attempts the same read-only log capture automatically. If Kaggle
+does not return logs, the status remains blocked and the Kaggle Notebook UI
+is the next source of evidence. **GitHub success does not imply GPU success.**
