@@ -70,6 +70,8 @@ def setup_report():
         "reference_is_approved_motion": False,
         "episode_one_original_script_words": wc,
         "episode_one_full_screenplay_ready": 240 <= wc <= 430,
+        "min_episode_seconds": 120,
+        "target_episode_seconds": 150,
         "max_episode_seconds": 180,
         "manual_same_day_episodes": True,
         "video_provider_configured": True,
@@ -79,7 +81,7 @@ def setup_report():
         "publication_blockers": publish_blockers(),
         "notes": [
             "An approved still image is not a verified moving animation.",
-            "No under-three-minute episode or lip-synced character action has passed visual review.",
+            "The E01 target is 150 seconds (hard minimum 120 seconds); real cinematic acting and lip-sync are not yet verified.",
             "Missing account authorizations and publishing proof must not be bypassed.",
             "Tests and this report never upload or render media.",
         ],
