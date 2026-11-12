@@ -143,19 +143,21 @@ def one_shot(output_dir, report, proof, cast):
                        raw, seconds=5.0)
         if not raw.is_file() or raw.stat().st_size < 10000:
             raise RuntimeError("Provider did not return nonempty moving video")
+        info = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries",
+             "format=duration:stream=codec_type,width,height",
+             "-of", "json", str(raw)],
+            capture_output=True, text=True, check=True, timeout=20
+        )
+        media = json.loads(info.stdout)
+        video = next((x for x in media.get("streams", [])
+                      if x.get("codec_type") == "video"), None)
+        duration = float(media.get("format", {}).get("duration") or 0)
+        if not video or duration < 2 or (video.get("width") or 0) < 320:
+            raise RuntimeError("Invalid candidate video track or duration")
+        report["single_test_ffprobe"] = media
         report["single_test_status"] = "VIDEO_CANDIDATE_UNAPPROVED"
         report["single_test_clip_mp4"] = raw.name
-        try:
-            info = subprocess.run(
-                ["ffprobe", "-v", "error", "-show_entries",
-                 "format=duration:stream=codec_type,width,height",
-                 "-of", "json", str(raw)],
-                capture_output=True, text=True, check=True, timeout=20
-            )
-            report["single_test_ffprobe"] = json.loads(info.stdout)
-        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired,
-                ValueError) as exc:
-            report["ffprobe_error"] = type(exc).__name__
         return 0
     except Exception as exc:
         detail = str(exc)[:320]
