@@ -77,7 +77,12 @@ class FirstEpisodePilotIntegrationTests(unittest.TestCase):
                 with patch("pilot.e01_pilot.motion_probe", return_value={
                         "state": "READY_FOR_ONE_QUOTA_LIMITED_TEST"}):
                     with patch("studio.free_video.generate_video", side_effect=fake_generator):
-                        result = one_shot(d, report, proof, cast)
+                        with patch("pilot.e01_pilot.subprocess.run") as ffprobe:
+                            ffprobe.return_value.stdout = json.dumps({
+                                "streams": [{"codec_type": "video", "width": 320, "height": 576}],
+                                "format": {"duration": "5.0"},
+                            })
+                            result = one_shot(d, report, proof, cast)
             self.assertEqual(result, 0)
             self.assertEqual(len(calls), 1)
             self.assertEqual(calls[0][1], 5.0)
