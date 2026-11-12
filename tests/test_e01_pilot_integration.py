@@ -97,6 +97,8 @@ class FirstEpisodePilotIntegrationTests(unittest.TestCase):
         self.assertIn("github.event.action == 'opened'", workflow)
         self.assertIn("NIGHTFALL_E01_ONE_SHOT: YES_ONCE", workflow)
         self.assertIn("e01_first_shot_unapproved.mp4", workflow)
+        self.assertIn("command -v ffprobe", workflow)
+        self.assertIn("sudo apt-get install -y ffmpeg", workflow)
         self.assertNotIn("NIGHTFALL_LIVE: true", workflow)
 
 
