@@ -98,6 +98,56 @@ jobs:
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'Check free motion provider')
         run: python -m studio.motion_provider
 
+      # LTX-2.5 is a separate official model from the rejected Wan pilot.
+      # No API token, no paid endpoints, no social posting or recurring task.
+      - name: Audit original Ember and E01 locks for LTX-2.5 (no GPU)
+        if: github.event_name == 'pull_request' && github.head_ref == 'pilot/ltx25-ember-cinematic-20261112'
+        run: python -m pilot.ltx25_ember --mode audit
+
+      - name: Try ONE anonymous LTX-2.5 image-to-video candidate (not public)
+        if: github.event_name == 'pull_request' && github.event.action == 'opened' && github.head_ref == 'pilot/ltx25-ember-cinematic-20261112'
+        timeout-minutes: 30
+        continue-on-error: true
+        env:
+          NIGHTFALL_LTX25_ONE_SHOT: YES
+          HF_TOKEN: ''
+          GH_TOKEN: ''
+          AGNES_API_KEY: ''
+          KAGGLE_API_TOKEN: ''
+          YOUTUBE_REFRESH_TOKEN: ''
+          YOUTUBE_CLIENT_ID: ''
+          YOUTUBE_CLIENT_SECRET: ''
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCOUNT_ID: ''
+          TIKTOK_ACCESS_TOKEN: ''
+        run: |
+          # Free cloud runner only. ffprobe must verify real video data.
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+          python -m pip install 'gradio_client>=1.10,<3'
+          python -m pilot.ltx25_ember --mode trial
+
+      - name: Archive LTX-2.5 free trial report (no video approval implied)
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/ltx25-ember-cinematic-20261112'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-ltx25-ember-report
+          path: output/ltx25_ember_pilot/ltx25_report.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Archive unapproved LTX-2.5 video candidate if one was produced
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/ltx25-ember-cinematic-20261112'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-ltx25-ember-unapproved-mp4
+          path: output/ltx25_ember_pilot/ltx25_ember_first_shot_unapproved.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+
       # Read-only API metadata only. No billable generation, account changes or posting.
       # Manual only; never called from schedule, push, or pull request.
       - name: Agnes engine probe — GET models only, NO video generation
