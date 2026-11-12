@@ -98,6 +98,54 @@ jobs:
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'Check free motion provider')
         run: python -m studio.motion_provider
 
+      # One independent trial of the NEW cinematic Ember reference (not a complete episode).
+      - name: Verify cinematic Ember image and first episode identity locks (offline)
+        if: github.event_name == 'pull_request' && github.head_ref == 'pilot/ember-cinematic-ltx25-20261113'
+        run: python -m pilot.ember_cinematic_trial audit
+
+      - name: ONE anonymous free LTX-2.5 motion proof from cinematic Ember reference
+        if: github.event_name == 'pull_request' && github.event.action == 'opened' && github.head_ref == 'pilot/ember-cinematic-ltx25-20261113' && github.run_attempt == 1
+        timeout-minutes: 30
+        continue-on-error: true
+        env:
+          NIGHTFALL_EMBER_LTX_ONCE: YES
+          HF_TOKEN: ''
+          AGNES_API_KEY: ''
+          RUNWAY_API_KEY: ''
+          LTX_API_KEY: ''
+          YOUTUBE_REFRESH_TOKEN: ''
+          YOUTUBE_CLIENT_ID: ''
+          YOUTUBE_CLIENT_SECRET: ''
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCOUNT_ID: ''
+          TIKTOK_ACCESS_TOKEN: ''
+        run: |
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+          python -m pip install 'gradio_client>=1.10,<3'
+          python -m pilot.ember_cinematic_trial trial
+
+      - name: Save Ember cinematic-reference I2V QA diagnostic
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/ember-cinematic-ltx25-20261113'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-cinematic-ember-first-I2V-report
+          path: output/ember_cinematic_ltx25/trial.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Save unapproved two-second cinematic Ember motion only if generated
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/ember-cinematic-ltx25-20261113'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-ember-cinematic-motion-review-only
+          path: output/ember_cinematic_ltx25/ember_cinematic_2sec_unapproved.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+
       # Read-only API metadata only. No billable generation, account changes or posting.
       # Manual only; never called from schedule, push, or pull request.
       - name: Agnes engine probe — GET models only, NO video generation
