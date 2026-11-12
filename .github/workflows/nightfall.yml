@@ -130,6 +130,15 @@ jobs:
           python -m pip install 'gradio_client>=1.10,<3'
           python -m pilot.ltx25_ember --mode trial
 
+      - name: Archive unchanged original Ember image for reference audit
+        if: github.event_name == 'pull_request' && github.head_ref == 'pilot/ltx25-ember-cinematic-20261112'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-original-ember-source-for-QA
+          path: seasons/S01_the_last_little_fox/characters/s01_ember/cloud_reference.png
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Archive LTX-2.5 free trial report (no video approval implied)
         if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/ltx25-ember-cinematic-20261112'
         uses: actions/upload-artifact@v6
