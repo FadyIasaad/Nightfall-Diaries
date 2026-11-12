@@ -25,3 +25,31 @@
 
 ## Key safety rule
 One trial only; not retriggered on PR updates, push, schedule or other branches. Do not run a paid GPU or Agnes production request and do not enable social publishing as a workaround. Avoid confusing GitHub CI **success** with successful film creation; read the report and artifacts.
+
+
+## Actual first-run result and visual QA (12 Nov 2026)
+
+**GitHub run:** [#43306872905](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/43306872905) — CI and first-episode integration passed **91 tests**, and the first-shot test produced a real video file:
+[unapproved first-shot artifact](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/43306872905/artifacts/13985075076).
+
+**Independent MP4 inspection:** 1,188,064 bytes; **5.0625 seconds**, **H.264**, **720×832**, **16 fps**, 81 frames, **video only / no audio**. The target for a finished episode is true 9:16 at >=720×1280, target 24fps with AAC audio; this artifact does NOT pass that gate.
+
+**Visual inspection of extracted frames at 0.25s, 1.75s, 3.15s, 4.8s:**
+- Character appears as **flat, simple 2D orange cartoon**, not refined cinematic stylized CGI with fur.
+- Dark forest/fire effects and some pose/scene movement exist, but acting, facial detail and continuity are poor.
+- **Unwanted garbled text/title overlays** appear on the frames.
+- Ear/scarf detailing is unreliable across shots; one gold scarf star is not a dependable continuity result.
+- No Kokoro voices, synchronized mouth movement, sound effects, subtitles, or full 14-scene episode.
+- **Decision: reject this model output as a Flow-quality proof. Do not upload or use in a finished episode.**
+
+**Important report correction:** The automated one-shot report labeled the outcome `BLOCKED_BY_FREE_PROVIDER_OR_QUOTA` with `FileNotFoundError: 'ffprobe'`. This diagnosis was incomplete: the provider **actually returned an MP4** and it was uploaded as a GitHub Artifact, but the GitHub runner lacked the external `ffprobe` binary. The independent review above successfully probed the output. The CI job now installs free `ffmpeg` tools when needed before the next expressly authorized test. **This correction is code-only on PR update; it does NOT retrigger any additional GPU trial.**
+
+**Final status of E01:**
+- Source screenplay, 14 scenes, 5 locked cast members: validated.
+- One real 5-second moving scene: generated, **visually rejected**.
+- Full first episode: **NOT RENDERED**.
+- Premium cinematic motion and true emotional lip-sync: **NOT PROVEN**.
+- Production/public publishing: **DISABLED**.
+- Kaggle GPU: still not allocated in the owner's previous actual check; no Kaggle GPU was used in this trial.
+
+Next engine selection must pass one **visually impressive, identity-locked moving test** before scaling to 14 scenes, neural lip-sync and a complete episode. Do not relabel this 5-second demo as a full episode.
