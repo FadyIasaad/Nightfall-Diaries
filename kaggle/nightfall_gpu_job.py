@@ -58,8 +58,24 @@ def main():
         if RUN_MODE not in ("gpu_probe", "ember_i2v"):
             raise ValueError("Unsupported job mode")
         import torch
+        # Distinguish a missing Kaggle accelerator from a torch/CUDA build
+        # mismatch. This is observation only, not an inference operation.
+        report["torch_version"] = str(torch.__version__)
+        report["torch_cuda_compiled_version"] = torch.version.cuda
+        report["cuda_visible_devices"] = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+        try:
+            smi = subprocess.run(
+                ["nvidia-smi", "-L"], capture_output=True, text=True,
+                check=False, timeout=12
+            )
+            report["nvidia_smi_returncode"] = smi.returncode
+            report["nvidia_smi_devices"] = (smi.stdout or smi.stderr)[-1000:]
+        except (OSError, subprocess.TimeoutExpired) as err:
+            report["nvidia_smi_error"] = type(err).__name__
         count = torch.cuda.device_count()
-        if not torch.cuda.is_available() or not count:
+        report["torch_cuda_available"] = torch.cuda.is_available()
+        report["torch_cuda_device_count"] = count
+        if not report["torch_cuda_available"] or not count:
             raise RuntimeError("No Kaggle GPU allocated; verify account GPU access/quota")
         for i in range(count):
             props = torch.cuda.get_device_properties(i)
