@@ -122,6 +122,21 @@ jobs:
           python -m pip check
           python -m pilot.e01_free_resume --mode one-shot
 
+      # Notify the owner AS SOON AS the previous step has saved a genuine
+      # new sub-shot. A SHA-checked run ID gates out old cache and quota pauses.
+      # A missing Telegram credential cannot stop film generation.
+      - name: Telegram — report each newly finished REAL AI video shot
+        if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python -m pip install 'requests>=2.31,<3'
+          python -m pilot.e01_telegram_notify --mode progress
+
       - name: Detect all 36 original E01 shots before technical assembly
         if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
         id: assembly
@@ -262,7 +277,7 @@ jobs:
             echo "- **Selected next episode (automatic):** $SELECTED_EPISODE"
             echo "- **Story renderer:** $STORY_STATUS"
             echo "- **Public posting:** automatically upon real complete film + official eligibility, no approval button"
-            echo "- **Telegram:** E01 completion + verified four-platform public results; secrets required"
+            echo "- **Telegram:** each real new motion shot, film completion, and verified public platform states"
             echo "- **Publishing schedule:** NONE — the four-platform step runs on completion"
             echo "- **Free GPU quota checks:** 10:00/10:17 Cairo (rendering only, not posting)"
           } >> "$GITHUB_STEP_SUMMARY"

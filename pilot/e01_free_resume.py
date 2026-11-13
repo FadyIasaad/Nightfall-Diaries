@@ -277,6 +277,9 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
         })
         state["status"] = "PARTIAL_REAL_MOTION_UNAPPROVED"
         state["last_real_motion_saved_utc"] = datetime.now(timezone.utc).isoformat()
+        # A run-specific marker ensures Telegram announces only a clip created
+        # in THIS workflow run, never an old cached one after quota pauses.
+        state["last_real_motion_run_id"] = os.getenv("GITHUB_RUN_ID", "")
         state["consecutive_provider_errors"] = 0
         state["quota_resets_at"] = quota["quota_resets_at"]
         _save(state)
