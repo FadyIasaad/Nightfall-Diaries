@@ -128,11 +128,11 @@ def audit():
         record["account_configuration_ready"] = (
             not record["missing_configuration_names"]
             and record["identity_verified"]
-            and (record.get("expected_account_matches") is not False)
+            and (name == "tiktok" or record.get("expected_account_matches") is True)
             and (name != "tiktok" or (
                 record.get("creator_info_accepted") is True
                 and record.get("public_option_offered") is True
-                and record.get("max_video_post_duration_sec", 0) >= 180))
+                and int(record.get("max_video_post_duration_sec") or 0) >= 180))
         )
         if name == "tiktok":
             record["audit_flag_is_claim_only_not_official_approval_evidence"] = True
