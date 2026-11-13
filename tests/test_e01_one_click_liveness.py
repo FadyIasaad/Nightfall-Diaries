@@ -17,7 +17,7 @@ class CairoLivenessTests(unittest.TestCase):
         self.assertIn("timezone: 'Africa/Cairo'", wf)
         self.assertIn("python -m pilot.e01_progress_health", wf)
         self.assertIn("python -m pilot.e01_daily_telegram_status", wf)
-        self.assertNotIn("  schedule:\\n", (resume.ROOT / ".github/workflows/nightfall.yml").read_text())
+        self.assertNotIn("  schedule:\n", (resume.ROOT / ".github/workflows/nightfall.yml").read_text())
         self.assertIn("nightfall-e01-cumulative-real-shots", wf)
         self.assertIn("python -m pilot.e01_free_resume --mode assemble", wf)
 
