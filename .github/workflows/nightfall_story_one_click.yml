@@ -11,7 +11,11 @@ on:
         default: "The Last Little Fox"
         required: true
   schedule:
+    # Primary morning run, plus a 10:17 backup for occasional GitHub cron drops.
+    # The E01 runner saves a Cairo-day attempt marker: at most ONE free request/day.
     - cron: '0 10 * * *'
+      timezone: 'Africa/Cairo'
+    - cron: '17 10 * * *'
       timezone: 'Africa/Cairo'
 
 permissions:
@@ -186,6 +190,14 @@ jobs:
           path: output/e01_resumable/
           if-no-files-found: ignore
           retention-days: 30
+
+      - name: Verify cumulative E01 motion health and alert on provider stalls
+        if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+        run: |
+          # This step runs after MP4/WAV artifacts have been backed up.
+          # An auth/provider failure causes a visible red run, but does NOT
+          # disable tomorrow's automatic resumption.
+          python -m pilot.e01_progress_health
 
       - name: Explicitly report one-click status
         if: always()
