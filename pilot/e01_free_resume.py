@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import hashlib
 import json
 import os
+import time
 from pathlib import Path
 
 from pilot import e01_full_run as film
@@ -181,6 +182,26 @@ def account_preflight(token, *, hf_api_factory=None, minimum_seconds=220):
     }
 
 
+def optional_postshot_quota(token, *, hf_api_factory=None):
+    """Read-only optional measurement. Never blocks a successfully generated MP4.
+
+    A quota delta is diagnostic, not a reservation: unrelated account usage
+    could also affect it. Does not purchase credits or request a GPU.
+    """
+    if os.getenv("NIGHTFALL_READ_POSTSHOT_QUOTA") != "YES":
+        return None
+    try:
+        if hf_api_factory is None:
+            from huggingface_hub import HfApi
+            hf_api_factory = HfApi
+        q = hf_api_factory(token=token).get_zero_gpu_quota()
+        if float(q.overquota_used or 0) > 0:
+            return None
+        return float(q.remaining)
+    except Exception:
+        return None
+
+
 def status():
     cast, plan = film.scene_plan()
     state = load_state(plan)
@@ -275,13 +296,28 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None,
                 raise RuntimeError("Continuity missing for prior shot")
             input_image = film.last_actual_frame(
                 OUT / previous["file"], scene["scene_no"], number - 1)
+        inference_started = time.monotonic()
         dest, actual = film.generate_shot(client, scene, number, seconds, input_image)
+        inference_wall = round(time.monotonic() - inference_started, 3)
         if not dest.is_file():
             raise RuntimeError("No generated video to save")
+        # Optional telemetry does not affect the film plan hash, output, or
+        # quota safety threshold. It only measures the real provider cost.
+        before_quota = float(quota["quota_remaining_seconds"])
+        telemetry = {
+            "inference_wall_seconds": inference_wall,
+            "quota_remaining_preflight_seconds": before_quota,
+        }
+        after_quota = optional_postshot_quota(token, hf_api_factory=hf_api_factory)
+        if after_quota is not None:
+            telemetry["quota_remaining_postflight_seconds"] = round(after_quota, 3)
+            if before_quota > after_quota:
+                telemetry["quota_delta_observed_seconds"] = round(before_quota - after_quota, 3)
         state["completed"].append({
             "scene": scene["scene_no"], "part": number,
             "file": dest.name, "sha256": sha256(dest),
             "seconds": round(actual, 3), "requested_seconds": seconds,
+            "gpu_telemetry": telemetry,
         })
         state["status"] = "PARTIAL_REAL_MOTION_UNAPPROVED"
         state["last_real_motion_saved_utc"] = datetime.now(timezone.utc).isoformat()
