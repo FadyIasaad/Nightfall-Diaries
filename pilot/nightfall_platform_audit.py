@@ -104,6 +104,24 @@ def _instagram_alternative():
             "instagram_login_account_type": user.get("account_type", "unknown")}
 
 
+def _instagram_facebook_error():
+    """Meta numeric error only; never disclose token or Graph response message."""
+    import requests
+    resp = requests.get(
+        GRAPH + "/" + os.environ["INSTAGRAM_ACCOUNT_ID"],
+        headers={"Authorization": "Bearer " + os.environ["INSTAGRAM_ACCESS_TOKEN"]},
+        params={"fields": "id,username,account_type"}, timeout=25)
+    if resp.ok:
+        return {"facebook_graph_identity_recheck_ok": True}
+    error = (resp.json() or {}).get("error") or {}
+    return {"facebook_graph_identity_recheck_ok": False,
+            "meta_graph_http_status": resp.status_code,
+            "meta_error_code": error.get("code") if
+                 isinstance(error.get("code"), int) else None,
+            "meta_error_subcode": error.get("error_subcode") if
+                 isinstance(error.get("error_subcode"), int) else None}
+
+
 def _youtube_oauth_error():
     """Return only OAuth's finite diagnostic error category; never credentials."""
     import requests
@@ -115,7 +133,27 @@ def _youtube_oauth_error():
               "client_secret": os.environ["YOUTUBE_CLIENT_SECRET"]},
         timeout=25)
     if resp.ok:
-        return {"oauth_refresh_succeeded": True}
+        access = resp.json()["access_token"]
+        check = requests.get(
+            "https://www.googleapis.com/youtube/v3/channels",
+            headers={"Authorization": "Bearer " + access},
+            params={"part": "id", "mine": "true", "maxResults": 1},
+            timeout=25)
+        if check.ok:
+            return {"oauth_refresh_succeeded": True,
+                    "youtube_channels_read_succeeded": True}
+        error = (check.json() or {}).get("error") or {}
+        reasons = error.get("errors") or []
+        reason = reasons[0].get("reason", "") if reasons else ""
+        if reason not in ("insufficientPermissions", "accessNotConfigured",
+                          "quotaExceeded", "dailyLimitExceeded",
+                          "channelForbidden", "forbidden", "authError",
+                          "youtubeSignupRequired", "keyInvalid"):
+            reason = "OTHER_CHANNELS_API_ERROR"
+        return {"oauth_refresh_succeeded": True,
+                "youtube_channels_read_succeeded": False,
+                "youtube_channels_http_status": check.status_code,
+                "youtube_channels_api_reason": reason}
     reason = (resp.json() or {}).get("error", "")
     if reason not in ("invalid_grant", "invalid_client", "unauthorized_client",
                       "invalid_scope", "access_denied", "unsupported_grant_type"):
@@ -160,6 +198,11 @@ def audit():
                 record.update(why)
             elif error:
                 record["instagram_login_probe_error"] = error
+            fb_why, fb_error = _safe_call(_instagram_facebook_error)
+            if fb_why:
+                record.update(fb_why)
+            elif fb_error:
+                record["instagram_fb_probe_error"] = fb_error
         if record["identity_verified"]:
             if name in ("youtube", "facebook"):
                 details, error = _safe_call(
@@ -209,7 +252,10 @@ def main():
               "HTTP=" + str(item.get("identity_http_status") or "none"),
               "OAUTH=" + str(item.get("oauth_error_category") or "none"),
               "IG_LOGIN=" + str(item.get("instagram_login_graph_verified", "not_checked")),
-              "IG_LOGIN_HTTP=" + str(item.get("instagram_login_graph_http_status") or "none"))
+              "IG_LOGIN_HTTP=" + str(item.get("instagram_login_graph_http_status") or "none"),
+              "IG_META_CODE=" + str(item.get("meta_error_code") or "none"),
+              "IG_META_SUBCODE=" + str(item.get("meta_error_subcode") or "none"),
+              "YT_API_REASON=" + str(item.get("youtube_channels_api_reason") or "none"))
         lines += ["- **" + name.title() + ":** identity=" + item["identity_status"]
                   + "; configuration_ready=" + str(item["account_configuration_ready"])
                   + "; missing=" + (", ".join(item["missing_configuration_names"]) or "none")]
