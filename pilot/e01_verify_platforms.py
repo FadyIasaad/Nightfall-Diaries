@@ -160,10 +160,11 @@ def reconcile_once(*, receipts, session=None):
 
 def poll_public_status(*, max_seconds=0, sleep_seconds=20, receipts=None,
                        reader=None, writer=None, session=None, sleeper=time.sleep):
-    from studio.crosspost import receipts_read, receipt_save
     if reader is None:
+        from studio.crosspost import receipts_read
         reader = receipts_read
     if writer is None:
+        from studio.crosspost import receipt_save
         writer = lambda state: receipt_save(EPISODE, state)
     if receipts is None:
         receipts, _ = reader(EPISODE)
