@@ -12,10 +12,12 @@ from pilot import e01_progress_health as monitor
 class CairoLivenessTests(unittest.TestCase):
     def test_two_daily_cron_slots_but_not_two_hf_calls(self):
         wf = (resume.ROOT / ".github/workflows/nightfall_story_one_click.yml").read_text()
-        self.assertIn("cron: '0 10 * * *'", wf)
-        self.assertIn("cron: '17 10 * * *'", wf)
+        self.assertIn("cron: '7 10 * * *'", wf)
+        self.assertIn("cron: '27 10 * * *'", wf)
         self.assertIn("timezone: 'Africa/Cairo'", wf)
         self.assertIn("python -m pilot.e01_progress_health", wf)
+        self.assertIn("python -m pilot.e01_daily_telegram_status", wf)
+        self.assertNotIn("  schedule:\\n", (resume.ROOT / ".github/workflows/nightfall.yml").read_text())
         self.assertIn("nightfall-e01-cumulative-real-shots", wf)
         self.assertIn("python -m pilot.e01_free_resume --mode assemble", wf)
 
