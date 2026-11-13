@@ -12,5 +12,7 @@
   "tiktok_verified": false,
   "publishing_implemented": false,
   "automatic_new_series": false,
-  "notes": "Photo style was approved in chat; no real cinematic MP4, neural lip-sync or four-platform publishing is verified. Enable flags only after actual tests, not simply because a plan rendered."
+  "notes": "Owner explicitly authorized no per-episode approval click and automatic release upon genuine episode completion. Authentic cinematic and lip-sync quality + official platform authorization are still unverified; DO NOT mark them verified without evidence. Public release remains fail-closed until real technical and platform checks pass.",
+  "owner_auto_public_release_authorized": true,
+  "owner_approval_per_episode_required": false
 }
