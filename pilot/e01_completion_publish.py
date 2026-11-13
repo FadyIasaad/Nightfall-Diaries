@@ -57,6 +57,12 @@ def film_gate():
         result["technical_mp4_passed"] = media["technical_check_passed"]
         result["duration_seconds"] = media["duration_seconds"]
     settings, cfg = _flags()
+    result["owner_auto_public_release_authorized"] = (
+        settings.get("owner_auto_public_release_authorized") is True
+        and settings.get("owner_approval_per_episode_required") is False
+    )
+    if not result["owner_auto_public_release_authorized"]:
+        result["blockers"].append("OWNER_AUTO_RELEASE_NOT_AUTHORIZED")
     result["real_lipsync_approved"] = (
         state.get("true_lipsync_verified") is True
         and settings.get("voice_lipsync_verified") is True)
