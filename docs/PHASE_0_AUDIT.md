@@ -138,3 +138,8 @@ See `docs/AGNES_FLASH_ZERO_COST_GATE_2026-11-11.md`. No original story, cast voi
 
 See `docs/KAGGLE_T4_EMBER_PROOF_2026-11-11.md` and `kaggle/nightfall_gpu_job.py`.
 Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owner's account.
+
+
+## 13 November 2026 addendum — later owner-selected story state
+
+- `studio/active_story.json` — **KEEP (non-secret active-story selector)**. This small JSON file is written by the owner-authorized GitHub Actions `Nightfall - One Click Story` workflow. It stores which of the two original story series was selected and enables future daily runs to resume from that story. It stores no credentials, episode MP4 footage, or permission to release unfinished video. This is a post-Phase-0 addition; the historic Phase-0 evidence and other file decisions above are unchanged.
