@@ -23,6 +23,8 @@ on:
           - Kaggle Ember proof
           - Render quality proof
           - Audition character voices
+          - Resume E01 one free HF shot
+          - Assemble E01 from 36 real shots (no publish)
           - Generate full episode
           - Generate another episode
           - Generate + Publish
@@ -48,6 +50,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 # Separate PR validation and ordinary push checks from the single production lane.
 # Keep schedule/manual runs serialized: they can target the same Kaggle kernel.
@@ -238,6 +241,105 @@ jobs:
           path: output/e01_full_real_attempt/S01_the_last_little_fox_E01_full_unapproved.mp4
           if-no-files-found: ignore
           retention-days: 7
+
+      # This opt-in checkpointed experiment uses ONE normal free Hugging Face user.
+      # Exactly one real I2V inference per manual click, no free-account rotation.
+      # No schedule or public posting; no provider request before quota check.
+      - name: Restore previously completed E01 MP4 shot checkpoints (best effort)
+        if: (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')) || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true')
+        id: e01_free_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: output/e01_resumable
+          key: nightfall-free-e01-parts-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            nightfall-free-e01-parts-
+
+      - name: Recover cumulative E01 checkpoint from previous Actions artifact if cache was evicted
+        if: (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')) || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f output/e01_resumable/progress.json ]; then
+            echo "Previous E01 checkpoint restored from cache"
+          else
+            RUN_ID=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=nightfall-e01-cumulative-real-shots&per_page=100" \
+              --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | last | .workflow_run.id // empty')
+            if [ -n "$RUN_ID" ]; then
+              mkdir -p output/e01_resumable
+              gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
+                --name nightfall-e01-cumulative-real-shots --dir output/e01_resumable
+              echo "Recovered most recent long-lived E01 artifact"
+            else
+              echo "No earlier E01 checkpoint available; start at shot 1"
+            fi
+          fi
+
+      - name: Attempt ONE genuinely new E01 motion shot using verified non-billed free HF account
+        if: (github.event_name == 'workflow_dispatch' && inputs.action == 'Resume E01 one free HF shot') || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true')
+        timeout-minutes: 40
+        env:
+          NIGHTFALL_FREE_RESUME: YES
+          NIGHTFALL_FREE_DAILY_ENABLED: ${{ vars.NIGHTFALL_E01_RESUME_ENABLED == 'true' && 'YES' || 'NO' }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          EPISODE: ${{ inputs.episode }}
+          YOUTUBE_REFRESH_TOKEN: ''
+          YOUTUBE_CLIENT_ID: ''
+          YOUTUBE_CLIENT_SECRET: ''
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCOUNT_ID: ''
+          TIKTOK_ACCESS_TOKEN: ''
+        run: |
+          if [ -n "$EPISODE" ] && [ "$EPISODE" != "auto" ] && [ "$EPISODE" != "S01_the_last_little_fox_E01" ]; then
+            echo "::error::Only the original Fox E01 is authorized for this free account test"
+            exit 1
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          python -m pip install 'gradio_client>=1.10,<3' 'huggingface_hub>=0.36,<2'
+          python -m pilot.e01_free_resume --mode one-shot
+
+      - name: Assemble all original E01 scenes and Kokoro voices only after 36 shots exist
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'Assemble E01 from 36 real shots (no publish)'
+        timeout-minutes: 60
+        env:
+          NIGHTFALL_FREE_ASSEMBLE: YES
+          HF_TOKEN: ''
+          YOUTUBE_REFRESH_TOKEN: ''
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          TIKTOK_ACCESS_TOKEN: ''
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg espeak-ng
+          python -m pip install -r requirements.txt
+          python -m pilot.e01_free_resume --mode assemble
+
+      - name: Archive unapproved full E01 MP4 only if every genuine shot exists
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.action == 'Assemble E01 from 36 real shots (no publish)'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-full-real-film-awaiting-lipsync-review
+          path: output/e01_resumable/S01_the_last_little_fox_E01_full_unapproved.mp4
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Preserve cumulative E01 checkpoint between GitHub runs
+        if: always() && ((github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')) || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true')) && steps.e01_free_cache.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: output/e01_resumable
+          key: nightfall-free-e01-parts-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Preserve cumulative E01 MP4 shots and SHA manifest in Actions artifacts
+        if: always() && ((github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')) || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true'))
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-cumulative-real-shots
+          path: output/e01_resumable/
+          if-no-files-found: ignore
+          retention-days: 30
 
       # Read-only API metadata only. No billable generation, account changes or posting.
       # Manual only; never called from schedule, push, or pull request.
