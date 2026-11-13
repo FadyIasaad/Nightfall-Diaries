@@ -1,0 +1,37 @@
+name: Nightfall Telegram - Connection Test
+
+# Sends one owner-authorized, NON-episode test message on the matching
+# merge commit, to verify BOTH repository secrets are actually usable.
+# Normal merges / PRs / render jobs do not send this test again.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  telegram-connection:
+    if: >-
+      (github.event_name == 'push' &&
+       contains(github.event.head_commit.message, '[telegram-connection-test-20261113]')) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out one-click Telegram notification code
+        uses: actions/checkout@v5
+
+      - name: Install Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Send one Telegram message to verify owner connection
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python -m pip install 'requests>=2.31,<3'
+          python -m pilot.e01_telegram_notify --mode connection-test
