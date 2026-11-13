@@ -485,6 +485,38 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # A green technical CI check must never be mistaken for a full E01 film.
+      # Fail the ONE authorized production evidence run if the real 150s movie
+      # is absent, but only after its partial WAV/MP4 and JSON are archived.
+      - name: Assert 150s actual production result — reject partial success
+        if: always() && github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113' && github.run_attempt == 1
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.head.sha }}"
+          if [ "$(git show -s --format=%s "${{ github.event.pull_request.head.sha }}")" != '[nightfall-E01-150s-run-once]' ]; then
+            exit 0
+          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("output/e01_full_real_attempt/full_e01_evidence.json")
+          if not p.exists():
+              raise SystemExit("E01_FULL_PROOF_FAILED: no actual production report")
+          r = json.loads(p.read_text())
+          if (not r.get("film_created") or
+              not r.get("technical_acceptance_passed") or
+              r.get("distinct_scenes_generated") != 14 or
+              r.get("unique_motion_shots_generated") != 36 or
+              r.get("real_kokoro_audio_files") != 14):
+              raise SystemExit(
+                  "E01_FULL_PROOF_FAILED: scenes=%s/14, real shots=%s/36, "
+                  "Kokoro lines=%s/14; blocker=%s" %
+                  (r.get("distinct_scenes_generated"),
+                   r.get("unique_motion_shots_generated"),
+                   r.get("real_kokoro_audio_files"),
+                   r.get("failure_type", "unknown")))
+          print("E01_TECHNICAL_MP4_COMPLETE_BUT_HUMAN_LIPSYNC_QA_STILL_REQUIRED")
+          PY
+
       - name: Automated cast and voice directions
         if: always()
         uses: actions/upload-artifact@v6
