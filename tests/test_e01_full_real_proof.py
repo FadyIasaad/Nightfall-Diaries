@@ -67,7 +67,7 @@ class FullEpisodeRealProofTests(unittest.TestCase):
             }
             with patch.dict(os.environ, env):
                 with patch("pilot.e01_full_run.subprocess.run") as git:
-                    git.return_value.stdout = film.TRIGGER_MARKER + "\\n"
+                    git.return_value.stdout = film.TRIGGER_MARKER + "\n"
                     self.assertTrue(film.authorized_run())
                     self.assertEqual(git.call_args.args[0][-1], "a" * 40)
             data = json.loads(event.read_text())
