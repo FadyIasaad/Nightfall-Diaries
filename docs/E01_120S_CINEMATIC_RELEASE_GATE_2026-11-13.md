@@ -169,3 +169,16 @@ is still **150 seconds**, but no claim that the current anonymous ZeroGPU
 quota can support 36 GPU requests. Abort at first genuine provider failure,
 report actual generated seconds and keep all partial media in artifacts.
 This is a capability test, **not** a production/publication authorization.
+
+
+## Second authorized real 150-second attempt: 36 unique sub-shots
+
+Commit subject `[nightfall-E01-150s-run-once]` authorizes the redesigned
+single PR synchronization run, only once (`GITHUB_RUN_ATTEMPT=1`).
+[CI #43337707780](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/43337707780)
+passed all offline tests. This is a genuine attempt at creating **36 different
+2–5-second motion clips** (aggregating to 150 seconds across the original
+14 different scripted scenes), with locked Kokoro speech and sequential
+last-frame reference continuity. Shared provider quota may still block
+the run before the full film; the JSON and media artifacts will record
+exactly how many seconds actually emerged. No paid API or public post.
