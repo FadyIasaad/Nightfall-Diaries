@@ -1,7 +1,9 @@
 """No-cost regression checks: the free quota pause must be resumable, not a fake success."""
 import json
+import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -53,8 +55,11 @@ class FreeQuotaTests(unittest.TestCase):
     def test_status_report_explicitly_denies_public_posting(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/"report.json"
-            report=write_report("S01_the_last_little_fox_E02","full",
-                                "PAUSED_FREE_QUOTA","waiting",path=path)
+            # This is a fixture, NOT a real E02 production run. Never write
+            # a fake quota-pause status into the real GitHub job summary.
+            with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""}):
+                report=write_report("S01_the_last_little_fox_E02","full",
+                                    "PAUSED_FREE_QUOTA","waiting",path=path)
             self.assertFalse(report["completed_full_episode"])
             self.assertFalse(report["publicly_published"])
             self.assertTrue(path.is_file())
