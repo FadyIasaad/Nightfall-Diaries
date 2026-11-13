@@ -45,6 +45,39 @@ class FullEpisodeRealProofTests(unittest.TestCase):
                         factory.assert_not_called()
         self.assertFalse(report["film_created"])
 
+    def test_only_actual_pr_head_with_activation_message_authorizes_full_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            event = Path(tmp) / "event.json"
+            event.write_text(json.dumps({
+                "action": "synchronize",
+                "pull_request": {
+                    "head": {
+                        "sha": "a" * 40,
+                        "repo": {"full_name": "FadyIasaad/Nightfall-Diaries"},
+                    }
+                }
+            }))
+            env = {
+                "GITHUB_EVENT_NAME": "pull_request",
+                "GITHUB_HEAD_REF": film.PR_BRANCH,
+                "GITHUB_RUN_ATTEMPT": "1",
+                "NIGHTFALL_E01_FULL_REAL": "YES",
+                "GITHUB_EVENT_PATH": str(event),
+                "HF_TOKEN": "",
+            }
+            with patch.dict(os.environ, env):
+                with patch("pilot.e01_full_run.subprocess.run") as git:
+                    git.return_value.stdout = film.TRIGGER_MARKER + "\\n"
+                    self.assertTrue(film.authorized_run())
+                    self.assertEqual(git.call_args.args[0][-1], "a" * 40)
+            data = json.loads(event.read_text())
+            data["pull_request"]["head"]["repo"]["full_name"] = "untrusted/fork"
+            event.write_text(json.dumps(data))
+            with patch.dict(os.environ, env):
+                with patch("pilot.e01_full_run.subprocess.run") as git:
+                    self.assertFalse(film.authorized_run())
+                    git.assert_not_called()
+
     def test_fourteen_scene_motion_never_uses_static_fill_or_loop(self):
         source = (film.ROOT / "pilot/e01_full_run.py").read_text()
         self.assertIn("for scene in report[\"scenes\"]:", source)
