@@ -191,10 +191,12 @@ class OfficialPublicVerificationTests(unittest.TestCase):
         self.assertIn("secrets.TELEGRAM_BOT_TOKEN", workflow)
         self.assertIn("secrets.TELEGRAM_CHAT_ID", workflow)
         self.assertNotIn("Stage a fully assembled E01 as YouTube PRIVATE", workflow)
+        intent = __import__("json").loads(
+            (ROOT / "pilot/owner_release_intent.json").read_text())
+        self.assertTrue(intent["owner_auto_public_release_authorized"])
+        self.assertFalse(intent["owner_approval_per_episode_required"])
         settings = __import__("json").loads(
             (ROOT / "studio/production_settings.json").read_text())
-        self.assertTrue(settings["owner_auto_public_release_authorized"])
-        self.assertFalse(settings["owner_approval_per_episode_required"])
         self.assertFalse(settings["voice_lipsync_verified"])
         self.assertFalse(settings["cinematic_video_approved"])
 
