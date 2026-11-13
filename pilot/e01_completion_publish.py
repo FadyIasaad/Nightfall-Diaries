@@ -16,7 +16,6 @@ from pathlib import Path
 from pilot import e01_free_resume as resume
 from pilot import e01_private_youtube as youtube_preview
 from pilot.official_platform_preflight import credential_probe
-from studio import crosspost
 from studio.continuity import sha256
 from studio.quality_gate import check_media
 from studio.restore import ROOT
@@ -153,6 +152,7 @@ def _youtube_public(video, title, description, state):
             raise RuntimeError("YouTube did not return the existing video ID")
         return {"id": updated["id"], "status": "public_status_requested"}
     os.environ["YOUTUBE_VISIBILITY"] = "public"
+    from studio import crosspost
     return crosspost.publish_youtube(video, title, description)
 
 
@@ -187,6 +187,7 @@ def _facebook_full_page_video(video, title, description):
 
 def _instagram_reel(video, title, description):
     """The official Graph API reads public HTTPS video_url, not local bytes."""
+    from studio import crosspost
     hosted_url = crosspost.public_video_release(video, EPISODE)
     return crosspost.publish_instagram(hosted_url, description)
 
@@ -211,12 +212,19 @@ def _tiktok_direct(video, title, description, duration):
         raise RuntimeError("TikTok creator's public privacy or duration is not allowed")
     os.environ["TIKTOK_POST_MODE"] = "direct"
     os.environ["TIKTOK_PRIVACY"] = "PUBLIC_TO_EVERYONE"
+    from studio import crosspost
     return crosspost.publish_tiktok(video, title)
 
 
 def _save(receipts):
     """Remote main branch is durable across GitHub runner/cache eviction."""
+    from studio import crosspost
     crosspost.receipt_save(EPISODE, receipts)
+
+
+def _read_receipts(episode):
+    from studio import crosspost
+    return crosspost.receipts_read(episode)
 
 
 def release_once(*, adapters=None, receipt_read=None, receipt_write=None):
@@ -243,7 +251,7 @@ def release_once(*, adapters=None, receipt_read=None, receipt_write=None):
     if not all(x["official_identity_verified"] for x in result["platforms"].values()):
         result["status"] = "BLOCKED_OFFICIAL_PLATFORM_IDENTITIES_NOT_VERIFIED"
         return result
-    read = receipt_read or crosspost.receipts_read
+    read = receipt_read or _read_receipts
     write = receipt_write or _save
     try:
         receipts, _etag = read(EPISODE)
