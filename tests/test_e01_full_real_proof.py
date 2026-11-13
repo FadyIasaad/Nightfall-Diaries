@@ -64,7 +64,7 @@ class FullEpisodeRealProofTests(unittest.TestCase):
             fake.write_bytes(b"x" * 25000)
             client = MagicMock()
             client.predict.return_value = (str(fake),)
-            with patch("sys.modules", {"gradio_client": types.SimpleNamespace(handle_file=lambda x: x)}):
+            with patch.dict("sys.modules", {"gradio_client": types.SimpleNamespace(handle_file=lambda x: x)}):
                 with patch.object(film, "OUT", Path(tmp)):
                     with patch("pilot.e01_full_run.ffprobe", return_value={
                         "streams": [{"codec_type": "video", "width": 576, "height": 1024}],
