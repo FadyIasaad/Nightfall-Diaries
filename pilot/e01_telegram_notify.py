@@ -183,6 +183,18 @@ def format_message(kind, progress, receipts):
             episode,
             "",
         ])
+    elif kind.startswith("platform_"):
+        platform = kind.removeprefix("platform_")
+        if platform not in TARGETS or not (
+                _destinations(receipts).get(platform, {}).get("phase") == "confirmed_public"
+                and _destinations(receipts).get(platform, {}).get("public_confirmed") is True):
+            raise ValueError("Cannot announce an unconfirmed platform publication")
+        lines.extend([
+            "✅ تم تأكيد نشر الحلقة على " + platform.title(),
+            episode,
+            "باقي المنصات تظهر حالتها الفعلية أدناه، بدون ادعاء نجاح غير مؤكد.",
+            "",
+        ])
     else:
         raise ValueError("Unknown Telegram notification kind")
     for label, key in (("YouTube", "youtube"), ("Facebook", "facebook"),
@@ -251,6 +263,14 @@ def notify_once(*, state, receipts, save=None, sender=None):
     kinds = ["film_complete"]
     if _all_public(receipts):
         kinds.append("all_public")
+    else:
+        # Confirm each platform independently, even when other accounts are blocked.
+        # The full four-platform celebration replaces per-platform repeats when
+        # all four are already confirmed before this notification runs.
+        for platform in TARGETS:
+            row = _destinations(receipts).get(platform, {})
+            if row.get("phase") == "confirmed_public" and row.get("public_confirmed") is True:
+                kinds.append("platform_" + platform)
     for kind in kinds:
         old = notices.get(kind, {})
         if old.get("phase") in ("initiated", "sent", "uncertain"):
