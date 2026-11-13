@@ -166,11 +166,17 @@ class ResumableFreeAccountTests(TestCase):
                                 self.assertFalse(info["automatic_publishing"])
                                 self.assertFalse(info["paid_api_calls"])
 
-    def test_github_workflow_starts_manual_and_daily_only_if_opted_in(self):
+    def test_github_workflow_resumes_daily_and_assembles_only_real_shots(self):
         wf = (m.ROOT / ".github/workflows/nightfall.yml").read_text()
         self.assertIn("Resume E01 one free HF shot", wf)
         self.assertIn("Assemble E01 from 36 real shots (no publish)", wf)
-        self.assertIn("NIGHTFALL_E01_RESUME_ENABLED == 'true'", wf)
+        self.assertIn("github.event.schedule == '0 10 * * *'", wf)
+        self.assertNotIn("NIGHTFALL_E01_RESUME_ENABLED == 'true'", wf)
+        self.assertIn("python -m pilot.e01_free_resume --mode assembly-gate", wf)
+        self.assertIn("python -m pilot.e01_free_resume --mode assemble", wf)
+        self.assertIn("python -m pilot.e01_private_youtube", wf)
+        self.assertIn("YOUTUBE_VISIBILITY: private", wf)
+        self.assertIn("PRIVATE review", (m.ROOT / "pilot/e01_private_youtube.py").read_text())
         self.assertIn("secrets.HF_TOKEN", wf)
         self.assertIn("nightfall-e01-cumulative-real-shots", wf)
         self.assertIn("actions/cache/restore@v4", wf)
@@ -184,6 +190,7 @@ class ResumableFreeAccountTests(TestCase):
                 "GITHUB_EVENT_NAME": "workflow_dispatch",
                 "GITHUB_REF": "refs/heads/main",
                 "NIGHTFALL_FREE_ASSEMBLE": "YES",
+                "GITHUB_RUN_ATTEMPT": "1",
             }):
                 with patch.object(m, "OUT", out), patch.object(m, "STATE", out / "progress.json"):
                     with self.assertRaisesRegex(RuntimeError, "all 36 real motion clips"):

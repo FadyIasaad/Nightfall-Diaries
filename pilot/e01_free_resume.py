@@ -211,8 +211,10 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
     state = load_state(plan)
     target = next_unfinished(state, plan)
     if target is None:
-        state["status"] = "ALL_SHOTS_READY_REQUIRES_MANUAL_AUDIO_AND_LIPSYNC_QA"
-        _save(state)
+        # Scheduled runs never spend GPU after the last of 36 genuine clips.
+        if not state.get("technical_full_mp4"):
+            state["status"] = "ALL_SHOTS_READY_AUTOMATIC_ASSEMBLY_PENDING"
+            _save(state)
         return status()
     scene, number, seconds = target
     # Observed 5s xlarge request failed at 194s on unauthenticated tier;
@@ -266,14 +268,33 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
 
 def assemble_unapproved():
     """CPU-only assembly: all 36 verified moving shots required before any output."""
-    if (os.getenv("GITHUB_EVENT_NAME") != "workflow_dispatch"
-            or os.getenv("GITHUB_REF") != "refs/heads/main"
-            or os.getenv("NIGHTFALL_FREE_ASSEMBLE") != "YES"):
-        raise RuntimeError("Unapproved assembly is manual main-branch only")
+    event = os.getenv("GITHUB_EVENT_NAME")
+    if event not in ("workflow_dispatch", "schedule"):
+        raise RuntimeError("Assembly is allowed only in manual or scheduled workflow")
+    if (os.getenv("GITHUB_REF") != "refs/heads/main"
+            or os.getenv("NIGHTFALL_FREE_ASSEMBLE") != "YES"
+            or os.getenv("GITHUB_RUN_ATTEMPT") != "1"):
+        raise RuntimeError("Assembly requires authorized main-branch first-attempt workflow")
+    if event == "schedule" and os.getenv("NIGHTFALL_FREE_DAILY_ENABLED") != "YES":
+        raise RuntimeError("Scheduled assembly must be the authorized free daily run")
     cast, plan = film.scene_plan()
     state = load_state(plan)
     if next_unfinished(state, plan) is not None:
         raise RuntimeError("Cannot assemble incomplete E01: all 36 real motion clips required")
+    # Idempotent: do not regenerate voices or film on every daily schedule.
+    if state.get("technical_full_mp4"):
+        existing = OUT / "S01_the_last_little_fox_E01_full_unapproved.mp4"
+        if (not existing.is_file()
+                or sha256(existing) != state.get("assembled_video_sha256")):
+            raise RuntimeError("Previously assembled film SHA-256 missing/mismatch")
+        return {
+            "status": state["status"],
+            "duration_seconds": state.get("full_duration_seconds"),
+            "video_file": existing.name,
+            "already_assembled": True,
+            "public_publishing": False,
+            "true_lipsync_verified": False,
+        }
     film.OUT = OUT
     records = {(x["scene"], x["part"]): x for x in state["completed"]}
     voiced = []
@@ -302,6 +323,7 @@ def assemble_unapproved():
                      "-c", "copy", "-movflags", "+faststart", film_path)
     metrics = check_media(film_path, mode="full")
     state["technical_full_mp4"] = True
+    state["assembled_video_sha256"] = sha256(film_path)
     state["full_duration_seconds"] = metrics["duration_seconds"]
     state["status"] = "TECHNICAL_MP4_ONLY_AWAITING_TRUE_LIPSYNC_AND_VISUAL_QA"
     # Critically, audio-on-video does not certify animal mouth/viseme sync.
@@ -317,6 +339,29 @@ def assemble_unapproved():
         "public_publishing": False,
         "true_lipsync_verified": False,
     }
+
+
+def assembly_gate():
+    """Read-only determination; never turn planned shots into actual media."""
+    _, plan = film.scene_plan()
+    state = load_state(plan)
+    all_shots_present = next_unfinished(state, plan) is None
+    ready = all_shots_present and not state.get("technical_full_mp4", False)
+    result = {
+        "episode": film.EPISODE,
+        "all_36_genuine_shots_verified": all_shots_present,
+        "ready": ready,
+        "already_assembled": bool(state.get("technical_full_mp4")),
+        "shots_completed": len(state["completed"]),
+        "movie_will_not_be_published": True,
+    }
+    output = os.getenv("GITHUB_OUTPUT")
+    if output:
+        with open(output, "a", encoding="utf-8") as handle:
+            handle.write("ready=" + ("true" if ready else "false") + "\n")
+            handle.write("assembled=" + (
+                "true" if state.get("technical_full_mp4") else "false") + "\n")
+    return result
 
 
 def write_job_summary(result, mode):
@@ -360,12 +405,14 @@ def write_job_summary(result, mode):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=("status", "one-shot", "assemble"), required=True)
+    p.add_argument("--mode", choices=("status", "one-shot", "assemble", "assembly-gate"), required=True)
     args = p.parse_args()
     if args.mode == "status":
         result = status()
     elif args.mode == "assemble":
         result = assemble_unapproved()
+    elif args.mode == "assembly-gate":
+        result = assembly_gate()
     else:
         result = resume_one_shot()
     print(json.dumps(result, ensure_ascii=False, indent=2))
