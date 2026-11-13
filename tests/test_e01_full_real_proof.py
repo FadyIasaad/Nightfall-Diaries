@@ -133,7 +133,7 @@ class PlatformIdentitySafetyTests(unittest.TestCase):
 
     def test_facebook_identity_uses_only_get(self):
         mock = MagicMock()
-        mock.get.return_value.json.return_value = {"id": "123456789", "name": "Nightfall Diaries"}
+        mock.get.return_value.json.return_value = {"id": "123456789", "name": "Nightfall Diaries", "category": "Entertainment"}
         with patch.dict(os.environ, {"FB_PAGE_ACCESS_TOKEN": "secret"}):
             result = auth.credential_probe("facebook", session=mock)
         self.assertTrue(result["read_only_identity_verified"])
