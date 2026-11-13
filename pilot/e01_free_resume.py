@@ -175,8 +175,12 @@ def status():
 
 def resume_one_shot(*, client_factory=None, hf_api_factory=None):
     """No more than 1 fresh inference per explicit GitHub workflow execution."""
-    if (os.getenv("GITHUB_EVENT_NAME") != "workflow_dispatch" or
-        os.getenv("GITHUB_REF") != "refs/heads/main" or
+    event = os.getenv("GITHUB_EVENT_NAME")
+    if not (event == "workflow_dispatch" or
+            (event == "schedule" and
+             os.getenv("NIGHTFALL_FREE_DAILY_ENABLED") == "YES")):
+        raise RuntimeError("Not the authorized manual/daily free one-shot operation")
+    if (os.getenv("GITHUB_REF") != "refs/heads/main" or
         os.getenv("NIGHTFALL_FREE_RESUME") != "YES" or
         os.getenv("GITHUB_RUN_ATTEMPT") != "1"):
         raise RuntimeError("Not the manually approved main-branch one-shot operation")
