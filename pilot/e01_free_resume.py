@@ -319,6 +319,45 @@ def assemble_unapproved():
     }
 
 
+def write_job_summary(result, mode):
+    """Report only the real E01 operation, never test fixtures or old queues."""
+    target = os.getenv("GITHUB_STEP_SUMMARY")
+    if not target or mode == "status":
+        return
+    if mode == "one-shot":
+        completed = int(result["shots_completed"])
+        total = int(result["shots_total"])
+        seconds = float(result["real_motion_seconds"])
+        next_part = result["next"]
+        lines = [
+            "## Nightfall E01 — actual registered-free video progress",
+            "",
+            "- **Episode:** S01_the_last_little_fox_E01",
+            f"- **Generated moving shots:** {completed}/{total}",
+            f"- **Real generated motion:** {seconds:.2f}/150 requested seconds",
+            f"- **State:** {result['state']}",
+            ("- **Next shot:** Scene {scene}, part {part} ({seconds}s)".format(
+                **next_part) if next_part else "- **Next shot:** None; all 36 saved"),
+            "- **Public upload:** Not attempted",
+            "- **Fully approved episode:** No",
+            "",
+        ]
+    elif mode == "assemble":
+        lines = [
+            "## Nightfall E01 — technical assembly (not release approval)",
+            "",
+            "- **Episode:** S01_the_last_little_fox_E01",
+            f"- **Technical MP4 duration:** {float(result['duration_seconds']):.2f}s",
+            "- **Lip sync & cinematic quality approval:** Not verified",
+            "- **Public upload:** Not attempted",
+            "",
+        ]
+    else:
+        return
+    with open(target, "a", encoding="utf-8") as file:
+        file.write("\n".join(lines) + "\n")
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--mode", choices=("status", "one-shot", "assemble"), required=True)
@@ -330,6 +369,7 @@ def main():
     else:
         result = resume_one_shot()
     print(json.dumps(result, ensure_ascii=False, indent=2))
+    write_job_summary(result, args.mode)
 
 
 if __name__ == "__main__":
