@@ -124,6 +124,57 @@ def _instagram_facebook_error():
                  isinstance(error.get("error_subcode"), int) else None}
 
 
+def _facebook_page_access_diagnostic():
+    """Return non-sensitive page-token diagnostics only, no names or IDs."""
+    import requests
+    token = os.environ["FB_PAGE_ACCESS_TOKEN"]
+    basic = requests.get(
+        GRAPH + "/me",
+        headers={"Authorization": "Bearer " + token},
+        params={"fields": "id,name"}, timeout=25)
+    basic.raise_for_status()
+    who = basic.json()
+    result = {
+        "token_owner_matches_requested_page_name":
+            str(who.get("name") or "").strip().casefold() == "nightfall diaries",
+    }
+    category = requests.get(
+        GRAPH + "/me",
+        headers={"Authorization": "Bearer " + token},
+        params={"fields": "id,category"}, timeout=25)
+    result["page_category_field_accepted"] = category.ok
+    # User access token may list manageable Pages. Never store names or IDs.
+    if not result["token_owner_matches_requested_page_name"]:
+        pages = requests.get(
+            GRAPH + "/me/accounts",
+            headers={"Authorization": "Bearer " + token},
+            params={"fields": "id,name", "limit": 100}, timeout=25)
+        result["user_can_list_pages"] = pages.ok
+        if pages.ok:
+            result["nightfall_page_in_user_page_list"] = any(
+                str(row.get("name") or "").strip().casefold() == "nightfall diaries"
+                for row in (pages.json().get("data") or []))
+    return result
+
+
+def _instagram_minimal_id():
+    """Distinguish an invalid ID/token from an unsupported requested field."""
+    import requests
+    response = requests.get(
+        GRAPH + "/" + os.environ["INSTAGRAM_ACCOUNT_ID"],
+        headers={"Authorization": "Bearer " + os.environ["INSTAGRAM_ACCESS_TOKEN"]},
+        params={"fields": "id"}, timeout=25)
+    if response.ok:
+        return {"instagram_id_only_query_success": True,
+                "instagram_id_matches": str(response.json().get("id")) ==
+                    os.environ["INSTAGRAM_ACCOUNT_ID"]}
+    body = (response.json() or {}).get("error") or {}
+    return {"instagram_id_only_query_success": False,
+            "instagram_id_only_http_status": response.status_code,
+            "instagram_id_only_error_code": body.get("code")
+                if isinstance(body.get("code"), int) else None}
+
+
 def _youtube_oauth_error():
     """Return only OAuth's finite diagnostic error category; never credentials."""
     import requests
@@ -223,6 +274,19 @@ def audit():
                     record["creator_info_check_error"] = error
                 else:
                     record.update(details)
+        if name == "facebook" and record["identity_verified"]:
+            diagnosis, error = _safe_call(_facebook_page_access_diagnostic)
+            if diagnosis:
+                record.update(diagnosis)
+            else:
+                record["facebook_page_diagnostic_error"] = error
+        if name == "instagram" and (
+                os.getenv("INSTAGRAM_ACCESS_TOKEN") and os.getenv("INSTAGRAM_ACCOUNT_ID")):
+            diagnosis, error = _safe_call(_instagram_minimal_id)
+            if diagnosis:
+                record.update(diagnosis)
+            else:
+                record["instagram_minimal_diagnostic_error"] = error
         if name == "facebook" and record.get("exact_page_name_matches") is True:
             record["missing_configuration_names"] = [
                 x for x in record["missing_configuration_names"]
@@ -262,7 +326,10 @@ def main():
               "IG_META_CODE=" + str(item.get("meta_error_code") or "none"),
               "IG_META_SUBCODE=" + str(item.get("meta_error_subcode") or "none"),
               "YT_API_REASON=" + str(item.get("youtube_channels_api_reason") or "none"),
-              "FB_PAGE_NAME_MATCH=" + str(item.get("exact_page_name_matches", "not_checked")))
+              "FB_PAGE_NAME_MATCH=" + str(item.get("exact_page_name_matches", "not_checked")),
+              "FB_PAGE_TOKEN_LIKE=" + str(item.get("page_category_field_accepted", "not_checked")),
+              "FB_ACCESSIBLE_NIGHTFALL_PAGE=" + str(item.get("nightfall_page_in_user_page_list", "not_checked")),
+              "IG_MINIMAL_ID_SUCCESS=" + str(item.get("instagram_id_only_query_success", "not_checked")))
         lines += ["- **" + name.title() + ":** identity=" + item["identity_status"]
                   + "; configuration_ready=" + str(item["account_configuration_ready"])
                   + "; missing=" + (", ".join(item["missing_configuration_names"]) or "none")]
