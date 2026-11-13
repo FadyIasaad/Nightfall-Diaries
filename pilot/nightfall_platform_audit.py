@@ -1,0 +1,172 @@
+"""Read-only, secret-safe diagnosis of four Nightfall publishing connections.
+
+No public post, media container, upload, secret value, or payment is created.
+A successful diagnosis job does NOT mean any platform is ready to publish.
+"""
+import json
+import os
+from pathlib import Path
+
+from pilot.e01_completion_publish import token_preflight
+from pilot.official_platform_preflight import credential_probe
+
+TARGETS = ("youtube", "facebook", "instagram", "tiktok")
+OUT = Path("output/platform_readiness_diagnostic.json")
+GRAPH = "https://graph.facebook.com/" + os.getenv("META_API_VERSION", "v25.0")
+
+
+def _safe_call(fn):
+    try:
+        return fn(), None
+    except Exception as exc:
+        response = getattr(exc, "response", None)
+        status = getattr(response, "status_code", None)
+        return None, {"failure_type": type(exc).__name__, "http_status": status}
+
+
+def _youtube_matches_expected():
+    import requests
+    expected = os.getenv("YOUTUBE_EXPECTED_CHANNEL_ID")
+    if not expected:
+        return {"expected_account_configured": False, "expected_account_matches": False}
+    token = requests.post(
+        "https://oauth2.googleapis.com/token",
+        data={"grant_type": "refresh_token",
+              "refresh_token": os.environ["YOUTUBE_REFRESH_TOKEN"],
+              "client_id": os.environ["YOUTUBE_CLIENT_ID"],
+              "client_secret": os.environ["YOUTUBE_CLIENT_SECRET"]},
+        timeout=25)
+    token.raise_for_status()
+    access = token.json()["access_token"]
+    channel = requests.get(
+        "https://www.googleapis.com/youtube/v3/channels",
+        headers={"Authorization": "Bearer " + access},
+        params={"part": "id", "mine": "true", "maxResults": 1},
+        timeout=25)
+    channel.raise_for_status()
+    items = channel.json().get("items", [])
+    return {"expected_account_configured": True,
+            "expected_account_matches": len(items) == 1 and items[0].get("id") == expected}
+
+
+def _facebook_matches_expected():
+    import requests
+    expected = os.getenv("FB_EXPECTED_PAGE_ID")
+    if not expected:
+        return {"expected_account_configured": False, "expected_account_matches": False}
+    page = requests.get(
+        GRAPH + "/me",
+        params={"fields": "id", "access_token": os.environ["FB_PAGE_ACCESS_TOKEN"]},
+        timeout=25)
+    page.raise_for_status()
+    return {"expected_account_configured": True,
+            "expected_account_matches": str(page.json().get("id")) == expected}
+
+
+def _tiktok_public_options():
+    import requests
+    resp = requests.post(
+        "https://open.tiktokapis.com/v2/post/publish/creator_info/query/",
+        headers={"Authorization": "Bearer " + os.environ["TIKTOK_ACCESS_TOKEN"],
+                 "Content-Type": "application/json"},
+        json={}, timeout=25)
+    resp.raise_for_status()
+    data = resp.json()
+    error = (data.get("error") or {}).get("code")
+    if error not in ("ok", 0):
+        return {"creator_info_accepted": False,
+                "official_error_code": error if error in (
+                    "scope_not_authorized", "access_token_invalid",
+                    "rate_limit_exceeded", "unaudited_client_can_only_post_to_private_accounts"
+                ) else "OTHER_PLATFORM_ERROR"}
+    info = data.get("data") or {}
+    return {"creator_info_accepted": True,
+            "public_option_offered": "PUBLIC_TO_EVERYONE" in
+                (info.get("privacy_level_options") or []),
+            "max_video_post_duration_sec": info.get("max_video_post_duration_sec")}
+
+
+def audit():
+    setup = token_preflight()
+    result = {"mode": "READ_ONLY_NO_UPLOAD", "actual_public_uploads_tested": False,
+              "accounts": {}}
+    for name in TARGETS:
+        item = setup[name]
+        record = {
+            "missing_configuration_names": item["missing_names"],
+            "identity_checked": False,
+            "identity_verified": False,
+            "posting_permissions_verified": False,
+            "public_video_uploaded": False,
+        }
+        identity = credential_probe(name)
+        record["identity_status"] = identity["status"]
+        record["identity_verified"] = identity["read_only_identity_verified"]
+        record["identity_checked"] = identity["status"] != "NOT_CONFIGURED"
+        if identity.get("http_status"):
+            record["identity_http_status"] = identity["http_status"]
+        if identity.get("missing_secret_names"):
+            record["missing_secret_names"] = identity["missing_secret_names"]
+        if record["identity_verified"]:
+            if name in ("youtube", "facebook"):
+                details, error = _safe_call(
+                    _youtube_matches_expected if name == "youtube" else
+                    _facebook_matches_expected)
+                if error:
+                    record["expected_account_check_error"] = error
+                else:
+                    record.update(details)
+            elif name == "instagram":
+                record["expected_account_matches"] = True  # GET matched INSTAGRAM_ACCOUNT_ID
+                record["account_type"] = identity.get("account_type", "unknown")
+            elif name == "tiktok":
+                details, error = _safe_call(_tiktok_public_options)
+                if error:
+                    record["creator_info_check_error"] = error
+                else:
+                    record.update(details)
+        record["account_configuration_ready"] = (
+            not record["missing_configuration_names"]
+            and record["identity_verified"]
+            and (record.get("expected_account_matches") is not False)
+            and (name != "tiktok" or (
+                record.get("creator_info_accepted") is True
+                and record.get("public_option_offered") is True
+                and record.get("max_video_post_duration_sec", 0) >= 180))
+        )
+        if name == "tiktok":
+            record["audit_flag_is_claim_only_not_official_approval_evidence"] = True
+        result["accounts"][name] = record
+    return result
+
+
+def main():
+    report = audit()
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+    summary = os.getenv("GITHUB_STEP_SUMMARY")
+    lines = ["## Nightfall — read-only four-platform diagnostic", "",
+             "This did not upload, publish, or create a media container.",
+             "A successful identity test is NOT proof of upload permission.", ""]
+    for name, item in report["accounts"].items():
+        print("NIGHTFALL_PLATFORM_CHECK", name,
+              "IDENTITY=" + item["identity_status"],
+              "CONFIG_READY=" + str(item["account_configuration_ready"]),
+              "MISSING=" + ",".join(item["missing_configuration_names"]))
+        lines += ["- **" + name.title() + ":** identity=" + item["identity_status"]
+                  + "; configuration_ready=" + str(item["account_configuration_ready"])
+                  + "; missing=" + (", ".join(item["missing_configuration_names"]) or "none")]
+        if item.get("expected_account_matches") is False:
+            lines.append("  - Expected destination is missing or mismatched")
+        if item.get("creator_info_check_error"):
+            lines.append("  - TikTok creator-info check returned a non-secret error")
+        if item.get("official_error_code"):
+            lines.append("  - TikTok status: " + item["official_error_code"])
+    if summary:
+        with open(summary, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    print("PUBLIC_POSTS_CREATED false")
+
+
+if __name__ == "__main__":
+    main()
