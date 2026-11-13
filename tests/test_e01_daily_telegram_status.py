@@ -33,7 +33,7 @@ class DailyTelegramTests(unittest.TestCase):
         message = daily.status_text(state(), date="2026-11-13")
         self.assertIn("2 من 36", message)
         self.assertIn("10.08", message)
-        self.assertIn("الحصة", message)
+        self.assertIn("حصة توليد الفيديو المجانية", message)
         self.assertIn("لم يتم إثبات نشر", message)
 
     def test_one_per_day_even_with_two_scheduled_slots(self):
