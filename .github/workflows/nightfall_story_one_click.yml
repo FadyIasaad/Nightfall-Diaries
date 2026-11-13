@@ -112,6 +112,7 @@ jobs:
         timeout-minutes: 130
         env:
           NIGHTFALL_FREE_RESUME: YES
+          NIGHTFALL_READ_POSTSHOT_QUOTA: YES  # Read-only, no GPU or billing request
           NIGHTFALL_FREE_DAILY_ENABLED: YES
           NIGHTFALL_OWNER_START_NOW: ${{ github.event_name == 'push' && 'YES' || 'NO' }}
           GH_TOKEN: ${{ github.token }}
@@ -258,6 +259,10 @@ jobs:
         run: |
           python -m pip install 'requests>=2.31,<3'
           python -m pilot.e01_telegram_notify --mode completion
+
+      - name: Report measured free-GPU shot cost and unmet duration target (read-only)
+        if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+        run: python -m pilot.e01_capacity_audit
 
       - name: Archive complete technical MP4 only after genuine shot assembly
         if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
