@@ -92,7 +92,7 @@ def token_preflight():
     names = {
         "youtube": ("YOUTUBE_REFRESH_TOKEN", "YOUTUBE_CLIENT_ID",
                     "YOUTUBE_CLIENT_SECRET", "YOUTUBE_EXPECTED_CHANNEL_ID"),
-        "facebook": ("FB_PAGE_ACCESS_TOKEN", "FB_EXPECTED_PAGE_ID"),
+        "facebook": ("FB_PAGE_ACCESS_TOKEN",),
         "instagram": ("INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_ACCOUNT_ID"),
         "tiktok": ("TIKTOK_ACCESS_TOKEN",),
     }
@@ -168,9 +168,11 @@ def _youtube_public(video, title, description, state):
 def _facebook_full_page_video(video, title, description):
     """150s film goes to Page Videos, not the shorter Reel upload path."""
     import requests
+    from pilot.facebook_page_auth import resolve_nightfall_page
+    page = resolve_nightfall_page()
     version = os.getenv("META_API_VERSION", "v25.0")
-    page_id = os.environ["FB_EXPECTED_PAGE_ID"]
-    token = os.environ["FB_PAGE_ACCESS_TOKEN"]
+    page_id = page["id"]
+    token = page["access_token"]
     base = "https://graph.facebook.com/" + version
     who = requests.get(
         base + "/me", params={"fields": "id", "access_token": token},
