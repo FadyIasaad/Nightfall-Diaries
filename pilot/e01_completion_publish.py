@@ -124,6 +124,10 @@ def _youtube_public(video, title, description, state):
     if problem or channel != os.environ["YOUTUBE_EXPECTED_CHANNEL_ID"]:
         raise RuntimeError("YouTube channel identity or OAuth scope not verified")
     private = state.get("youtube_private_receipt")
+    # A prior private upload can have reached YouTube without returning an ID.
+    # In that case a second public upload might create a duplicate. Stop.
+    if state.get("youtube_private_attempt_started") and not private:
+        raise RuntimeError("Uncertain prior YouTube private upload: no duplicate")
     if private:
         if private.get("channel_id") != channel:
             raise RuntimeError("Private video was uploaded to a different channel")
@@ -256,7 +260,7 @@ def release_once(*, adapters=None, receipt_read=None, receipt_write=None):
         "tiktok": "Nightfall Diaries | The Last Little Fox E01 #AIanimation",
     }
     title = "Nightfall Diaries — The Last Little Fox | Episode 01"
-    state, _ = resume.film.scene_plan(), None  # preserve source-lock verification
+    # Inspect verified private YouTube receipts to reuse an existing private copy.
     progress = resume.load_state(resume.film.scene_plan()[1])
     routes = adapters or {
         "youtube": lambda: _youtube_public(MOVIE, title, descriptions["youtube"], progress),
