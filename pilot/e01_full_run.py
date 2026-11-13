@@ -232,7 +232,7 @@ def combine_unique_subshots(scene_no, clips):
                     "-an", "-c:v", "libx264", "-crf", "22", p)
         normalized.append(p)
     playlist = OUT / f"scene_{scene_no:02d}_subshots.txt"
-    playlist.write_text("".join("file '" + str(p.resolve()) + "'\\n" for p in normalized))
+    playlist.write_text("".join("file '" + str(p.resolve()) + "'\n" for p in normalized))
     scene_video = OUT / f"scene_{scene_no:02d}_genuine_motion.mp4"
     safe_ffmpeg("-f", "concat", "-safe", "0", "-i", playlist,
                 "-c", "copy", "-movflags", "+faststart", scene_video)
