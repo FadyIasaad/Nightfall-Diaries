@@ -134,3 +134,38 @@ Official references:
 ## 2026-11-13: Single authorized full production and account-auth attempt
 
 All **101 offline tests** and the account-check safety tests passed in [CI #43336896632](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/43336896632). This commit is a **one-time authorized full-length generation attempt** using the real head SHA (not GitHub's synthetic PR merge commit), followed by read-only official platform-account checks. A green workflow is never proof of film completion: read the exported evidence JSON. Never repeat inference on a rerun or activate public uploads.
+
+
+## Actual official I2V limit and first full-run evidence
+
+[GitHub Actions #43337014270](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/43337014270)
+ran the real E01 generation path (not merely offline tests). It generated
+the **original Kokoro narrator's first WAV**, 11.7 seconds, but the official
+LTX-2.5 Space rejected the first 13-second scene request before generating
+any motion: `Value 13.0 is greater than maximum value 5.0.`
+That proves the deployed public Space enforces **5 seconds per inference**.
+The workflow's green conclusion reflected `continue-on-error`, NOT
+successful episode rendering. The evidence JSON correctly reported
+`BLOCKED_BEFORE_FULL_EPISODE_COMPLETION`, 0 rendered scenes, 0 real video
+seconds, 1 Kokoro WAV and no posts. Do not mistake successful GitHub
+execution for a completed film.
+
+The actual official read-only identity tests in the same run returned:
+- YouTube: `HTTP 403` on channel `mine=true` identity query. OAuth secrets
+  were present; the read scope/account cannot be declared verified.
+- Facebook: page-token identity GET succeeded (publish scope still unknown).
+- Instagram: `HTTP 400` on account identity GET; not verified.
+- TikTok: `TIKTOK_ACCESS_TOKEN` absent from Actions Secrets.
+- None were sent media. No media-upload API response is available yet.
+
+**Revised technical strategy for next single authorized run:** split the
+original 14 scene times into **36 unique sub-shots of 2–5 seconds**, with
+a separate public-LTX inference for EACH sub-shot, and each subsequent
+part conditioned on the true last video frame from its immediately preceding
+part. Audio is synthesized once per original scene using its locked Kokoro
+voice, and mixed only against that scene's real generated footage. No
+clip looping, slideshow or artificial length extension. Target total
+is still **150 seconds**, but no claim that the current anonymous ZeroGPU
+quota can support 36 GPU requests. Abort at first genuine provider failure,
+report actual generated seconds and keep all partial media in artifacts.
+This is a capability test, **not** a production/publication authorization.
