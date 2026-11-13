@@ -69,6 +69,27 @@ def select_story(text):
     return {"schema_version": 1, "series_id": sid, "title": title}
 
 
+def _approved_production_finished(episode_id):
+    """Only trusted complete animated-film QA receipts can advance a season.
+
+    Unlike platform publishing, production completion can be confirmed before
+    connecting Facebook/YouTube/Instagram/TikTok. No record exists initially.
+    """
+    record = ROOT / "produced" / (episode_id + ".json")
+    if not record.is_file():
+        return False
+    proof = json.loads(record.read_text(encoding="utf-8"))
+    digest = proof.get("film_sha256")
+    return (proof.get("episode_id") == episode_id
+            and proof.get("real_cinematic_motion_verified") is True
+            and proof.get("true_character_lipsync_verified") is True
+            and proof.get("film_quality_approved") is True
+            and isinstance(digest, str) and len(digest) == 64
+            and all(char in "0123456789abcdef" for char in digest.lower())
+            and isinstance(proof.get("duration_seconds"), (int, float))
+            and 180 <= proof["duration_seconds"] <= 360)
+
+
 def choose_episode(selection):
     sid = selection["series_id"]
     episodes = json.loads((ROOT / "seasons" / sid / "episodes/episodes.json")
@@ -79,23 +100,35 @@ def choose_episode(selection):
         # Do not equate a generated preview or YouTube private copy with a
         # fully approved/publicly distributed episode.
         archived = ROOT / "published" / (item["id"] + ".json")
-        if archived.is_file():
+        ok = _approved_production_finished(item["id"])
+        if not ok and archived.is_file():
             receipt = json.loads(archived.read_text(encoding="utf-8"))
             ok = receipt.get("all_destinations_public") is True
-        else:
-            ok = False
         if not ok:
             return item["id"]
     return None
 
 
 def current_state(selection):
+    # The owner authorized starting the SECOND original series as soon as
+    # all 12 first-series films are genuinely produced and quality-approved.
+    # Do not wait for social publishing, which is a separate later task.
+    transitioned = []
+    positions = [entry[0] for entry in CATALOG]
+    pos = positions.index(selection["series_id"])
+    while choose_episode(selection) is None and pos + 1 < len(CATALOG):
+        transitioned.append(selection["title"])
+        pos += 1
+        selection = {"schema_version": 1, "series_id": CATALOG[pos][0],
+                     "title": CATALOG[pos][1]}
     episode = choose_episode(selection)
     ready = episode == ELIGIBLE_EPISODE
     return {
         "series_id": selection["series_id"],
         "story_title": selection["title"],
         "episode_id": episode,
+        "series_completed_before_current": transitioned,
+        "next_series_automatically_selected": bool(transitioned),
         "e01_free_motion_supported": ready,
         "status": (
             "RESUME_FROM_LAST_SHA_VERIFIED_E01_SHOT" if ready else
@@ -166,6 +199,7 @@ def write_output(result):
             ("series", result["series_id"]),
             ("episode", result["episode_id"] or ""),
             ("status", result["status"]),
+            ("transition", str(result["next_series_automatically_selected"]).lower()),
         ):
             f.write(field + "=" + value + "\n")
 

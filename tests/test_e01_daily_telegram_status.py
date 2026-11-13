@@ -100,6 +100,22 @@ class DailyTelegramTests(unittest.TestCase):
         self.assertEqual(again["status"], "ALREADY_SENT_FOR_CAIRO_DAY")
         self.assertEqual(send.call_count, 1)
 
+    def test_owner_now_start_gets_status_when_free_quota_prevents_new_clip(self):
+        receipts = {}
+        send = Mock(return_value=41)
+        settings = env(event="push")
+        settings["NIGHTFALL_OWNER_START_NOW"] = "YES"
+        with patch.dict(os.environ, settings, clear=True):
+            first = daily.report_once(state=state(), receipts=receipts,
+                                      save=Mock(), sender=send, date="2026-11-13")
+            again = daily.report_once(state=state(), receipts=receipts,
+                                      save=Mock(), sender=send, date="2026-11-13")
+        self.assertEqual(first["status"], "DAILY_HEALTH_NOTICE_SENT")
+        self.assertEqual(again["status"], "ALREADY_SENT_FOR_CAIRO_DAY")
+        self.assertEqual(send.call_count, 1)
+        self.assertIn("owner_start_123456",
+                      receipts["telegram_notifications"]["daily_health"])
+
     def test_remote_receipt_failure_does_not_send(self):
         send = Mock()
         with patch.dict(os.environ, env(), clear=True):

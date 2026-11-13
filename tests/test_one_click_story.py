@@ -109,7 +109,7 @@ class OneClickStoryTests(unittest.TestCase):
         self.assertIn("The Last Little Fox", manual)
         self.assertIn("python -m pilot.story_one_click --mode select", content)
         self.assertIn("python -m pilot.story_one_click --mode current", content)
-        self.assertIn("python -m pilot.e01_free_resume --mode one-shot", content)
+        self.assertIn("python -m pilot.e01_continuous_free", content)
         self.assertIn("python -m pilot.e01_free_resume --mode assemble", content)
         self.assertIn("python -m pilot.e01_completion_publish", content)
         self.assertIn("python -m pilot.e01_verify_platforms", content)

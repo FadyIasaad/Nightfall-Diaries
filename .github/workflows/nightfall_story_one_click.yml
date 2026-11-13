@@ -3,6 +3,12 @@ name: Nightfall - One Click Story
 # ONE user-facing field: the story name. No episode ID or renderer selection.
 # Next day's run reads the story saved in studio/active_story.json.
 on:
+  # One explicit owner-requested kickoff can start NOW via a marker-file push.
+  # Never auto-generate on arbitrary source-code pushes or PR updates.
+  push:
+    branches: [main]
+    paths:
+      - '.github/nightfall_start_now.txt'
   workflow_dispatch:
     inputs:
       story:
@@ -51,8 +57,8 @@ jobs:
         run: |
           python -m pilot.story_one_click --mode select --story "$STORY_NAME"
 
-      - name: Read previously chosen story for the automatic Cairo daily run
-        if: github.event_name == 'schedule'
+      - name: Read chosen story for scheduled runs or owner-authorized NOW start
+        if: github.event_name == 'schedule' || github.event_name == 'push'
         id: scheduled
         run: python -m pilot.story_one_click --mode current
 
@@ -99,14 +105,18 @@ jobs:
             fi
           fi
 
-      - name: Continue the next genuine motion shot on ONE free HF account
+      - name: Continue EVERY next genuine motion shot while ONE free HF account has quota
         if: steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true'
         id: one_shot
         continue-on-error: true
-        timeout-minutes: 45
+        timeout-minutes: 130
         env:
           NIGHTFALL_FREE_RESUME: YES
           NIGHTFALL_FREE_DAILY_ENABLED: YES
+          NIGHTFALL_OWNER_START_NOW: ${{ github.event_name == 'push' && 'YES' || 'NO' }}
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           YOUTUBE_REFRESH_TOKEN: ''
           YOUTUBE_CLIENT_ID: ''
@@ -119,12 +129,13 @@ jobs:
           if ! command -v ffprobe >/dev/null 2>&1; then
             sudo apt-get update -qq && sudo apt-get install -y ffmpeg
           fi
-          python -m pip install 'gradio_client>=2.7.2,<3' 'huggingface_hub>=2.1.1,<3'
+          python -m pip install 'gradio_client>=2.7.2,<3' 'huggingface_hub>=2.1.1,<3' 'requests>=2.31,<3'
           python -m pip check
-          python -m pilot.e01_free_resume --mode one-shot
+          python -m pilot.e01_continuous_free
 
-      # Notify the owner AS SOON AS the previous step has saved a genuine
-      # new sub-shot. A SHA-checked run ID gates out old cache and quota pauses.
+      # Backstop: the continuous renderer already notifies after EACH shot.
+      # This step safely verifies/retries no *new* notification when a previous
+      # per-shot delivery was already recorded. No false old-cache alerts.
       # A missing Telegram credential cannot stop film generation.
       - name: Telegram — report each newly finished REAL AI video shot
         if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
@@ -141,12 +152,13 @@ jobs:
       # Users must not be left without an explanation when ZeroGPU quota
       # blocks a new clip. One verified morning report per Cairo date, only
       # for scheduled runs; suppress it if a successful clip notice was sent.
-      - name: Telegram — daily E01 health when no new clip was produced
-        if: always() && github.event_name == 'schedule' && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+      - name: Telegram — report scheduled or owner NOW run even when no clip finished
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'push') && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
         continue-on-error: true
         timeout-minutes: 3
         env:
           GH_TOKEN: ${{ github.token }}
+          NIGHTFALL_OWNER_START_NOW: ${{ github.event_name == 'push' && 'YES' || 'NO' }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
@@ -166,6 +178,7 @@ jobs:
         env:
           NIGHTFALL_FREE_ASSEMBLE: YES
           NIGHTFALL_FREE_DAILY_ENABLED: YES
+          NIGHTFALL_OWNER_START_NOW: ${{ github.event_name == 'push' && 'YES' || 'NO' }}
           HF_TOKEN: ''
           YOUTUBE_REFRESH_TOKEN: ''
           FB_PAGE_ACCESS_TOKEN: ''

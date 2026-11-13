@@ -52,8 +52,10 @@ def status_text(state, *, date):
 
 def report_once(*, state, receipts, save=None, sender=None, date=None):
     result = {"provider": "telegram", "messages_sent": 0, "status": "NOT_SCHEDULED"}
-    if (os.getenv("GITHUB_EVENT_NAME") != "schedule"
-            or os.getenv("GITHUB_REF") != "refs/heads/main"
+    event = os.getenv("GITHUB_EVENT_NAME")
+    authorized = (event == "schedule" or
+                  (event == "push" and os.getenv("NIGHTFALL_OWNER_START_NOW") == "YES"))
+    if (not authorized or os.getenv("GITHUB_REF") != "refs/heads/main"
             or os.getenv("GITHUB_RUN_ATTEMPT") != "1"):
         return result
     run_id = os.getenv("GITHUB_RUN_ID", "")
@@ -67,7 +69,8 @@ def report_once(*, state, receipts, save=None, sender=None, date=None):
     date = date or local_day()
     notices = receipts.setdefault("telegram_notifications", {})
     days = notices.setdefault("daily_health", {})
-    if days.get(date, {}).get("phase") in ("initiated", "sent", "uncertain"):
+    notice_key = date if event == "schedule" else "owner_start_" + run_id
+    if days.get(notice_key, {}).get("phase") in ("initiated", "sent", "uncertain"):
         result["status"] = "ALREADY_SENT_FOR_CAIRO_DAY"
         return result
 
@@ -85,7 +88,7 @@ def report_once(*, state, receipts, save=None, sender=None, date=None):
         save = lambda r: receipt_save(telegram.EPISODE, r)
     if sender is None:
         sender = telegram._send_message
-    days[date] = {
+    days[notice_key] = {
         "phase": "initiated",
         "run_id": run_id,
         "shots_completed": len(state.get("completed") or []),
@@ -93,16 +96,16 @@ def report_once(*, state, receipts, save=None, sender=None, date=None):
     try:
         save(receipts)
     except Exception as exc:
-        days.pop(date, None)
+        days.pop(notice_key, None)
         result["status"] = "RECEIPT_SAVE_FAILED_" + type(exc).__name__
         return result
     try:
         msg = sender(token, chat_id, status_text(state, date=date))
-        days[date].update({"phase": "sent", "telegram_message_id": int(msg)})
+        days[notice_key].update({"phase": "sent", "telegram_message_id": int(msg)})
         result["messages_sent"] = 1
         result["status"] = "DAILY_HEALTH_NOTICE_SENT"
     except Exception as exc:
-        days[date].update({"phase": "uncertain", "failure_type": type(exc).__name__})
+        days[notice_key].update({"phase": "uncertain", "failure_type": type(exc).__name__})
         result["status"] = "TELEGRAM_OUTCOME_UNKNOWN_NO_AUTOMATIC_DUPLICATE"
     try:
         save(receipts)

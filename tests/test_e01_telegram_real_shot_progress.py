@@ -140,7 +140,7 @@ class ShotProgressNotifications(unittest.TestCase):
 
     def test_workflow_sends_shot_notice_after_gpu_before_assembly(self):
         content = (ROOT / ".github/workflows/nightfall_story_one_click.yml").read_text()
-        a = content.index("python -m pilot.e01_free_resume --mode one-shot")
+        a = content.index("python -m pilot.e01_continuous_free")
         b = content.index("python -m pilot.e01_telegram_notify --mode progress")
         c = content.index("python -m pilot.e01_free_resume --mode assembly-gate")
         d = content.index("python -m pilot.e01_telegram_notify --mode completion")
