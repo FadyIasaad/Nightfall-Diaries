@@ -86,6 +86,44 @@ def _tiktok_public_options():
             "max_video_post_duration_sec": info.get("max_video_post_duration_sec")}
 
 
+def _instagram_alternative():
+    """Identify an Instagram Login token without creating content."""
+    import requests
+    resp = requests.get(
+        "https://graph.instagram.com/v25.0/me",
+        headers={"Authorization": "Bearer " + os.environ["INSTAGRAM_ACCESS_TOKEN"]},
+        params={"fields": "user_id,username,account_type"}, timeout=25)
+    if not resp.ok:
+        return {"instagram_login_graph_http_status": resp.status_code,
+                "instagram_login_graph_verified": False}
+    user = resp.json()
+    ident = str(user.get("user_id") or user.get("id") or "")
+    return {"instagram_login_graph_verified": bool(ident) and
+            ident == os.environ["INSTAGRAM_ACCOUNT_ID"],
+            "instagram_login_graph_http_status": resp.status_code,
+            "instagram_login_account_type": user.get("account_type", "unknown")}
+
+
+def _youtube_oauth_error():
+    """Return only OAuth's finite diagnostic error category; never credentials."""
+    import requests
+    resp = requests.post(
+        "https://oauth2.googleapis.com/token",
+        data={"grant_type": "refresh_token",
+              "refresh_token": os.environ["YOUTUBE_REFRESH_TOKEN"],
+              "client_id": os.environ["YOUTUBE_CLIENT_ID"],
+              "client_secret": os.environ["YOUTUBE_CLIENT_SECRET"]},
+        timeout=25)
+    if resp.ok:
+        return {"oauth_refresh_succeeded": True}
+    reason = (resp.json() or {}).get("error", "")
+    if reason not in ("invalid_grant", "invalid_client", "unauthorized_client",
+                      "invalid_scope", "access_denied", "unsupported_grant_type"):
+        reason = "OTHER_OAUTH_ERROR"
+    return {"oauth_refresh_succeeded": False,
+            "oauth_error_category": reason, "oauth_http_status": resp.status_code}
+
+
 def audit():
     setup = token_preflight()
     result = {"mode": "READ_ONLY_NO_UPLOAD", "actual_public_uploads_tested": False,
@@ -107,6 +145,21 @@ def audit():
             record["identity_http_status"] = identity["http_status"]
         if identity.get("missing_secret_names"):
             record["missing_secret_names"] = identity["missing_secret_names"]
+        if name == "youtube" and not record["identity_verified"] and (
+                os.getenv("YOUTUBE_REFRESH_TOKEN") and os.getenv("YOUTUBE_CLIENT_ID")
+                and os.getenv("YOUTUBE_CLIENT_SECRET")):
+            why, error = _safe_call(_youtube_oauth_error)
+            if why:
+                record.update(why)
+            elif error:
+                record["oauth_check_error"] = error
+        if name == "instagram" and not record["identity_verified"] and (
+                os.getenv("INSTAGRAM_ACCESS_TOKEN") and os.getenv("INSTAGRAM_ACCOUNT_ID")):
+            why, error = _safe_call(_instagram_alternative)
+            if why:
+                record.update(why)
+            elif error:
+                record["instagram_login_probe_error"] = error
         if record["identity_verified"]:
             if name in ("youtube", "facebook"):
                 details, error = _safe_call(
@@ -152,7 +205,11 @@ def main():
         print("NIGHTFALL_PLATFORM_CHECK", name,
               "IDENTITY=" + item["identity_status"],
               "CONFIG_READY=" + str(item["account_configuration_ready"]),
-              "MISSING=" + ",".join(item["missing_configuration_names"]))
+              "MISSING=" + ",".join(item["missing_configuration_names"]),
+              "HTTP=" + str(item.get("identity_http_status") or "none"),
+              "OAUTH=" + str(item.get("oauth_error_category") or "none"),
+              "IG_LOGIN=" + str(item.get("instagram_login_graph_verified", "not_checked")),
+              "IG_LOGIN_HTTP=" + str(item.get("instagram_login_graph_http_status") or "none"))
         lines += ["- **" + name.title() + ":** identity=" + item["identity_status"]
                   + "; configuration_ready=" + str(item["account_configuration_ready"])
                   + "; missing=" + (", ".join(item["missing_configuration_names"]) or "none")]
