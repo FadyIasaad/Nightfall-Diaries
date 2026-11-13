@@ -11,11 +11,12 @@ on:
         default: "The Last Little Fox"
         required: true
   schedule:
-    # Primary morning run, plus a 10:17 backup for occasional GitHub cron drops.
+    # Off the top of the hour to reduce delayed/dropped GitHub cron triggers.
+    # Approximate 10:00 Cairo morning run; backup only if the first was missed.
     # The E01 runner saves a Cairo-day attempt marker: at most ONE free request/day.
-    - cron: '0 10 * * *'
+    - cron: '7 10 * * *'
       timezone: 'Africa/Cairo'
-    - cron: '17 10 * * *'
+    - cron: '27 10 * * *'
       timezone: 'Africa/Cairo'
 
 permissions:
@@ -136,6 +137,21 @@ jobs:
         run: |
           python -m pip install 'requests>=2.31,<3'
           python -m pilot.e01_telegram_notify --mode progress
+
+      # Users must not be left without an explanation when ZeroGPU quota
+      # blocks a new clip. One verified morning report per Cairo date, only
+      # for scheduled runs; suppress it if a successful clip notice was sent.
+      - name: Telegram — daily E01 health when no new clip was produced
+        if: always() && github.event_name == 'schedule' && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python -m pip install 'requests>=2.31,<3'
+          python -m pilot.e01_daily_telegram_status
 
       - name: Detect all 36 original E01 shots before technical assembly
         if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
@@ -279,5 +295,5 @@ jobs:
             echo "- **Public posting:** automatically upon real complete film + official eligibility, no approval button"
             echo "- **Telegram:** each real new motion shot, film completion, and verified public platform states"
             echo "- **Publishing schedule:** NONE — the four-platform step runs on completion"
-            echo "- **Free GPU quota checks:** 10:00/10:17 Cairo (rendering only, not posting)"
+            echo "- **Free GPU quota checks:** 10:07/10:27 Cairo (rendering only, not posting)"
           } >> "$GITHUB_STEP_SUMMARY"

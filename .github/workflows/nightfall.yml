@@ -1,15 +1,11 @@
-name: Nightfall Diaries - One Free Online Workflow
+name: Nightfall - Legacy Diagnostics (manual / PR only)
 
 on:
   pull_request:
   push:
     branches: [main]
-  schedule:
-    - cron: '0 10 * * *'
-      timezone: 'Africa/Cairo'
-    # Safe resume check, NOT a second publishing schedule.
-    - cron: '0 23 * * *'
-      timezone: 'Africa/Cairo'
+  # No schedule here. The ONE owner-facing production schedule lives in
+  # .github/workflows/nightfall_story_one_click.yml; avoid competing jobs.
   workflow_dispatch:
     inputs:
       action:
