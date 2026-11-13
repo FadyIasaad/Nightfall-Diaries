@@ -209,6 +209,7 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
         if len(params) != 10:
             raise RuntimeError("LTX-2.5 API schema changed: no inference")
         # Continue from the last REAL model-generated frame, not an arbitrary still.
+        film.OUT = OUT
         input_image = ROOT / scene["reference_file"]
         if number > 1:
             previous = next((r for r in state["completed"]
@@ -217,7 +218,6 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
                 raise RuntimeError("Continuity missing for prior shot")
             input_image = film.last_actual_frame(
                 OUT / previous["file"], scene["scene_no"], number - 1)
-        film.OUT = OUT
         dest, actual = film.generate_shot(client, scene, number, seconds, input_image)
         if not dest.is_file():
             raise RuntimeError("No generated video to save")
