@@ -1,0 +1,7 @@
+Nightfall owner-authorized immediate generation start
+Date: 2026-11-13
+Workflow: .github/workflows/nightfall_story_one_click.yml
+Selected original series: The Last Little Fox
+Action: continue real E01 moving-shot production from existing SHA-verified cumulative artifact, automatically try the next shot immediately if registered-free HF quota remains, and notify Telegram per completed clip
+Safety: no paid quota, no public posting, no replacing scripts/characters, no faked completed footage
+This marker is not a finished film, upload receipt, or approval of an unverified engine.
