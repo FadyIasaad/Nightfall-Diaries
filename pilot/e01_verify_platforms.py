@@ -177,6 +177,14 @@ def poll_public_status(*, max_seconds=0, sleep_seconds=20, receipts=None,
         if all((receipts.get("destinations") or {}).get(name, {}).get("public_confirmed")
                is True for name in TARGETS):
             break
+        # There is no point waiting when no platform is still processing an
+        # accepted upload (e.g. missing OAuth or true-lipsync QA blocked it).
+        awaiting = any(
+            (receipts.get("destinations") or {}).get(name, {}).get("phase") == "accepted"
+            for name in TARGETS
+        )
+        if not awaiting:
+            break
         if i < attempts - 1:
             sleeper(sleep_seconds)
     return {
