@@ -291,7 +291,7 @@ jobs:
           INSTAGRAM_ACCOUNT_ID: ''
           TIKTOK_ACCESS_TOKEN: ''
         run: |
-          if [ "$EPISODE" != "auto" ] && [ "$EPISODE" != "S01_the_last_little_fox_E01" ]; then
+          if [ -n "$EPISODE" ] && [ "$EPISODE" != "auto" ] && [ "$EPISODE" != "S01_the_last_little_fox_E01" ]; then
             echo "::error::Only the original Fox E01 is authorized for this free account test"
             exit 1
           fi
@@ -326,14 +326,14 @@ jobs:
           retention-days: 30
 
       - name: Preserve cumulative E01 checkpoint between GitHub runs
-        if: always() && (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')) || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true') && steps.e01_free_cache.outcome == 'success'
+        if: always() && ((github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')) || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true')) && steps.e01_free_cache.outcome == 'success'
         uses: actions/cache/save@v4
         with:
           path: output/e01_resumable
           key: nightfall-free-e01-parts-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Preserve cumulative E01 MP4 shots and SHA manifest in Actions artifacts
-        if: always() && (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')) || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true')
+        if: always() && ((github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')) || (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *' && vars.NIGHTFALL_E01_RESUME_ENABLED == 'true'))
         uses: actions/upload-artifact@v6
         with:
           name: nightfall-e01-cumulative-real-shots
