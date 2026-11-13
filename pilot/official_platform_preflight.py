@@ -87,21 +87,22 @@ def credential_probe(platform, session=None):
                 raise ValueError("OAuth token does not identify an accessible channel")
             out["account_id_redacted"] = redacted_id(items[0].get("id"))
         elif platform == "facebook":
-            result = official_get(GRAPH + "/me", token=os.environ["FB_PAGE_ACCESS_TOKEN"],
-                                  params={"fields": "id,name"}, session=session)
-            if not result.get("id"):
-                raise ValueError("Page identity GET returned no id")
-            out["account_id_redacted"] = redacted_id(result["id"])
+            from pilot.facebook_page_auth import resolve_nightfall_page
+            page = resolve_nightfall_page(
+                session=session, token=os.environ["FB_PAGE_ACCESS_TOKEN"])
+            out["account_id_redacted"] = redacted_id(page["id"])
+            out["page_auth_source"] = page["source"]
+            out["expected_page_name_verified"] = True
         elif platform == "instagram":
             account = os.environ["INSTAGRAM_ACCOUNT_ID"]
             result = official_get(GRAPH + "/" + account,
                                   token=os.environ["INSTAGRAM_ACCESS_TOKEN"],
-                                  params={"fields": "id,username,account_type"},
+                                  params={"fields": "id"},
                                   session=session)
             if str(result.get("id")) != account:
                 raise ValueError("IG account ID mismatch")
             out["account_id_redacted"] = redacted_id(account)
-            out["account_type"] = result.get("account_type") or "unknown"
+            out["account_type"] = "not_probed_minimal_identity_only"
         else:
             result = official_get(TIKTOK, token=os.environ["TIKTOK_ACCESS_TOKEN"],
                                   params={"fields": "open_id,display_name"}, session=session)
