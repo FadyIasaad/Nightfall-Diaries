@@ -5,6 +5,8 @@ No account rotation, no billable inference, no public uploads, no fake loops.
 GitHub Actions cache + artifacts keep verified MP4/WAV checkpoints between runs.
 """
 import argparse
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import hashlib
 import json
 import os
@@ -195,6 +197,16 @@ def status():
     }
 
 
+def cairo_run_day():
+    """Date marker for two GitHub daily cron slots; no duplicate GPU inference."""
+    return datetime.now(ZoneInfo("Africa/Cairo")).date().isoformat()
+
+
+def _record_attempt(state):
+    state["last_attempt_utc"] = datetime.now(timezone.utc).isoformat()
+    _save(state)
+
+
 def resume_one_shot(*, client_factory=None, hf_api_factory=None):
     """No more than 1 fresh inference per explicit GitHub workflow execution."""
     event = os.getenv("GITHUB_EVENT_NAME")
@@ -217,6 +229,14 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
             _save(state)
         return status()
     scene, number, seconds = target
+    # The 10:17 Cairo backup schedule must never burn a second free GPU quota
+    # if the primary 10:00 run has already attempted this same day.
+    if event == "schedule":
+        today = cairo_run_day()
+        if state.get("last_scheduled_attempt_day") == today:
+            return status()
+        state["last_scheduled_attempt_day"] = today
+        _record_attempt(state)
     # Observed 5s xlarge request failed at 194s on unauthenticated tier;
     # conservative budget check errs toward waiting, not paying.
     required = 220 if seconds >= 4 else 140
@@ -226,6 +246,7 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
         if not quota["within_observed_budget"]:
             state["status"] = "PAUSED_FREE_QUOTA_INSUFFICIENT"
             state["quota_resets_at"] = quota["quota_resets_at"]
+            state["consecutive_provider_errors"] = 0
             _save(state)
             return status()
         if client_factory is None:
@@ -255,6 +276,8 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
             "seconds": round(actual, 3), "requested_seconds": seconds,
         })
         state["status"] = "PARTIAL_REAL_MOTION_UNAPPROVED"
+        state["last_real_motion_saved_utc"] = datetime.now(timezone.utc).isoformat()
+        state["consecutive_provider_errors"] = 0
         state["quota_resets_at"] = quota["quota_resets_at"]
         _save(state)
         return status()
@@ -262,6 +285,9 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
         # Never persist raw exception content: HF exceptions can contain tokens.
         state["status"] = "BLOCKED_FREE_PROVIDER_OR_AUTH"
         state["error_type"] = type(exc).__name__
+        state["consecutive_provider_errors"] = int(
+            state.get("consecutive_provider_errors", 0)) + 1
+        # No token/exception body is ever committed or placed in artifacts.
         _save(state)
         raise
 
