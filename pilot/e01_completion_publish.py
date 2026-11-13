@@ -24,6 +24,7 @@ EPISODE = "S01_the_last_little_fox_E01"
 TARGETS = ("youtube", "facebook", "instagram", "tiktok")
 SETTINGS = ROOT / "studio/production_settings.json"
 CONFIG = ROOT / "config.json"
+OWNER_RELEASE = ROOT / "pilot/owner_release_intent.json"
 OUT = resume.OUT / "four_platform_completion_status.json"
 MOVIE = resume.OUT / youtube_preview.FULL_VIDEO
 
@@ -57,9 +58,11 @@ def film_gate():
         result["technical_mp4_passed"] = media["technical_check_passed"]
         result["duration_seconds"] = media["duration_seconds"]
     settings, cfg = _flags()
+    owner = json.loads(OWNER_RELEASE.read_text(encoding="utf-8"))
     result["owner_auto_public_release_authorized"] = (
-        settings.get("owner_auto_public_release_authorized") is True
-        and settings.get("owner_approval_per_episode_required") is False
+        owner.get("episode") == EPISODE
+        and owner.get("owner_auto_public_release_authorized") is True
+        and owner.get("owner_approval_per_episode_required") is False
     )
     if not result["owner_auto_public_release_authorized"]:
         result["blockers"].append("OWNER_AUTO_RELEASE_NOT_AUTHORIZED")
