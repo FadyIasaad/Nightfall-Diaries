@@ -65,3 +65,67 @@ A PR green check does NOT change those facts.
 
 The PR is an isolated investigation, not a release approval. Keep main
 and its existing schedules unchanged until the above has real evidence.
+
+
+## Actual 150-second generation and official account identity verification attempt
+
+This one-time owner-requested experiment is activated **only** when this PR's
+last Git commit subject matches `[nightfall-E01-150s-run-once]`. The
+GitHub Actions job runs on a PR `synchronize` event, `run_attempt=1`.
+Regular pushes, scheduled runs, reruns and later PR edits are disallowed.
+No paid account key is passed to Hugging Face; this is an anonymous ZeroGPU
+queue user limited by shared daily GPU quota.
+
+### Actual film proof implementation
+
+`pilot/e01_full_run.py` requests **14 DISTINCT LTX-2.5
+image-to-video generations** from all 14 original E01 screenplay directions
+with budgets `[13,11,11,12,10,10,10,11,11,8,10,12,10,11]` seconds —
+total **150 seconds**. All 14 requests are unique. Clips must be real
+model-generated motion: no loops, duplicate stills, stop-frame padding,
+synthetic slowdown or other fake length extensions.
+
+The same code requests the locked Kokoro voice for each speaker and merges
+it with that scene's real generated motion. It refuses to stretch motion
+to audio or upload output when media is missing. Partial WAV and MP4
+progress is archived if the free provider returns quota or runtime errors.
+It produces a complete unapproved MP4 only if all scenes are present and
+`studio.quality_gate.check_media(..., mode="full")` verifies H.264,
+AAC, 9:16 720×1280+ and **120–180s** duration.
+
+### Official publisher verification implementation
+
+`pilot/official_platform_preflight.py` checks configured credentials
+on official APIs with read-only identity calls:
+
+- YouTube: OAuth refresh (token POST) and `channels.list(mine=true)` GET.
+- Facebook: Page-token `/me?fields=id,name` GET.
+- Instagram: account-id and account-type Graph GET.
+- TikTok: `/v2/user/info/?fields=open_id,display_name` GET.
+
+Results distinguish absent credentials, revoked token, account mismatch,
+HTTP 403/scope rejection and successful account-identity lookup; all IDs
+are redacted. No video upload session is initialized. In particular,
+**identity success is NOT proof of video publishing permission**.
+True private/draft upload is blocked unless a complete approved 120–180s
+cinematic E01 exists. No public videos, drafts, or reels are uploaded
+by this PR, because facial lip-sync and owner visual QA are still missing.
+
+### Expected capability limits
+
+Official Hugging Face ZeroGPU documentation currently gives anonymous
+access around 2 GPU minutes daily, with the xlarge shared GPU charging
+2× quota. Even though LTX-2.5 can make short shots, this has **not**
+been shown to sustain 14 distinct 8–13-second shots for E01 at no cost.
+If it stops early, the result must explicitly report how many scenes and
+seconds were truly produced and whether any Kokoro WAV was completed.
+
+**No credit usage, paid API, public uploads, or false episode-completion
+claims are permitted.** Keep this as a draft PR until actual output,
+Kokoro dialogue performance and character-mouth lip sync pass review.
+
+Official references:
+- https://huggingface.co/docs/hub/spaces-zerogpu
+- https://huggingface.co/spaces/Lightricks/LTX-2.5
+- https://developers.google.com/youtube/v3/docs/channels/list
+- https://developers.tiktok.com/docs/en/tiktok-api-v2-get-user-info
