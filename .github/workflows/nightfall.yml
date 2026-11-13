@@ -251,13 +251,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      # OWNER-AUTHORIZED AUTO RESUME: ONE genuine free-model shot per day, 10 AM Cairo.
+      # LEGACY MANUAL E01 controls ONLY; scheduled E01 runs now use\n      # .github/workflows/nightfall_story_one_click.yml (single story name).
       # Keeps a cumulative hashed cache + Actions artifact across runs.
       # Assembles only after 36 verified clips. Can upload PRIVATE to YouTube
       # after 14 voice WAVs and 120-180s MP4 pass, never publicly posts.
       # A single FREE HF account and its daily quota are mandatory.
       - name: Restore cumulative E01 checkpoints
-        if: (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)'))
+        if: (false) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)'))
         id: e01_free_cache
         uses: actions/cache/restore@v4
         with:
@@ -267,7 +267,7 @@ jobs:
             nightfall-free-e01-parts-
 
       - name: Recover cumulative E01 shot manifest and media if cache was evicted
-        if: (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)'))
+        if: (false) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)'))
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -287,7 +287,7 @@ jobs:
           fi
 
       - name: Generate up to ONE new real E01 motion sub-shot within free quota
-        if: (github.event_name == 'schedule' && github.event.schedule == '0 10 * * *') || (github.event_name == 'workflow_dispatch' && inputs.action == 'Resume E01 one free HF shot')
+        if: (false) || (github.event_name == 'workflow_dispatch' && inputs.action == 'Resume E01 one free HF shot')
         id: e01_free_shot
         timeout-minutes: 40
         continue-on-error: true
@@ -317,7 +317,7 @@ jobs:
           python -m pilot.e01_free_resume --mode one-shot
 
       - name: Check E01 completion and automated assembly readiness (no GPU)
-        if: always() && ((github.event_name == 'schedule' && github.event.schedule == '0 10 * * *') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')))
+        if: always() && ((false) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')))
         id: e01_assembly_gate
         run: python -m pilot.e01_free_resume --mode assembly-gate
 
@@ -341,7 +341,7 @@ jobs:
           python -m pilot.e01_free_resume --mode assemble
 
       - name: Stage completed technical E01 on owner's YouTube as PRIVATE review (never public)
-        if: always() && (steps.e01_auto_assemble.outcome == 'success' || steps.e01_assembly_gate.outputs.assembled == 'true') && ((github.event_name == 'schedule' && github.event.schedule == '0 10 * * *') || github.event_name == 'workflow_dispatch')
+        if: always() && (steps.e01_auto_assemble.outcome == 'success' || steps.e01_assembly_gate.outputs.assembled == 'true') && ((false) || github.event_name == 'workflow_dispatch')
         timeout-minutes: 25
         continue-on-error: true
         env:
@@ -359,7 +359,7 @@ jobs:
           python -m pilot.e01_private_youtube
 
       - name: Archive any genuinely complete unapproved E01 MP4 for technical review
-        if: always() && ((github.event_name == 'schedule' && github.event.schedule == '0 10 * * *') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')))
+        if: always() && ((false) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')))
         uses: actions/upload-artifact@v6
         with:
           name: nightfall-e01-full-real-film-awaiting-lipsync-review
@@ -368,14 +368,14 @@ jobs:
           retention-days: 30
 
       - name: Save verified E01 checkpoint for the next automatic daily attempt
-        if: always() && ((github.event_name == 'schedule' && github.event.schedule == '0 10 * * *') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)'))) && steps.e01_free_cache.outcome == 'success'
+        if: always() && ((false) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)'))) && steps.e01_free_cache.outcome == 'success'
         uses: actions/cache/save@v4
         with:
           path: output/e01_resumable
           key: nightfall-free-e01-parts-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Archive all E01 moving clips and idempotent progress receipts cumulatively
-        if: always() && ((github.event_name == 'schedule' && github.event.schedule == '0 10 * * *') || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')))
+        if: always() && ((false) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Resume E01 one free HF shot' || inputs.action == 'Assemble E01 from 36 real shots (no publish)')))
         uses: actions/upload-artifact@v6
         with:
           name: nightfall-e01-cumulative-real-shots
