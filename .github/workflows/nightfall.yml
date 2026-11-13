@@ -98,6 +98,147 @@ jobs:
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'Check free motion provider')
         run: python -m studio.motion_provider
 
+      # Controlled trial: the newly generated CGI reference is a separate asset.
+      # Never activate upload, produce long episode, or call a paid video engine.
+      - name: Audit 14 E01 story scenes and new Ember CGI source (no inference)
+        if: github.event_name == 'pull_request' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113'
+        run: |
+          python -m pilot.e01_new_cinematic_ref --mode audit
+          python -m studio.auto_prepare --episode S01_the_last_little_fox_E01 --output output/e01_new_reference_production_pack.json
+
+      - name: One free ZeroGPU candidate from NEW CGI Ember reference — never a full episode
+        if: github.event_name == 'pull_request' && github.event.action == 'opened' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113'
+        timeout-minutes: 30
+        continue-on-error: true
+        env:
+          NIGHTFALL_LTX25_ONE_SHOT: YES
+          HF_TOKEN: ''
+          AGNES_API_KEY: ''
+          KAGGLE_API_TOKEN: ''
+          YOUTUBE_REFRESH_TOKEN: ''
+          YOUTUBE_CLIENT_ID: ''
+          YOUTUBE_CLIENT_SECRET: ''
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCOUNT_ID: ''
+          TIKTOK_ACCESS_TOKEN: ''
+          GH_TOKEN: ''
+        run: |
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+          python -m pip install 'gradio_client>=1.10,<3'
+          python -m pilot.e01_new_cinematic_ref --mode trial
+
+      - name: Archive new-reference E01 trial status and 14-scene plan
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-new-cinematic-source-status
+          path: |
+            output/e01_cinematic_source_trial/new_ember_trial_report.json
+            output/e01_new_reference_production_pack.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Archive new-reference unapproved moving video if generated
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-new-ember-cgi-motion-unapproved
+          path: output/e01_cinematic_source_trial/new_ember_one_shot_unapproved.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # Full-E01 evidence is an independent 14-scene, 150-second real-production attempt.
+      # Exactly one synchronization commit with the marker activates it;
+      # PR updates, reruns, pushes and the daily schedule cannot invoke it.
+      - name: Build actual 150-second E01 shot and Kokoro voice plan (offline)
+        if: github.event_name == 'pull_request' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113'
+        run: python -m pilot.e01_full_run --mode plan
+
+      - name: Attempt ALL 14 unique E01 animated shots with original locked Kokoro voices
+        if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113' && github.run_attempt == 1
+        timeout-minutes: 180
+        continue-on-error: true
+        env:
+          NIGHTFALL_E01_FULL_REAL: YES
+          HF_TOKEN: ''
+          AGNES_API_KEY: ''
+          KAGGLE_API_TOKEN: ''
+          YOUTUBE_REFRESH_TOKEN: ''
+          YOUTUBE_CLIENT_ID: ''
+          YOUTUBE_CLIENT_SECRET: ''
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCOUNT_ID: ''
+          TIKTOK_ACCESS_TOKEN: ''
+          GH_TOKEN: ''
+        run: |
+          # A pull_request checkout usually points at a synthetic merge commit.
+          # Fetch and inspect the immutable SHA of the PR's actual head.
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.head.sha }}"
+          if [ "$(git show -s --format=%s "${{ github.event.pull_request.head.sha }}")" != '[nightfall-E01-150s-run-once]' ]; then
+            echo "Full 150s GPU test not authorized on this head commit"
+            exit 0
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg espeak-ng
+          python -m pip install -r requirements.txt
+          python -m pilot.e01_full_run --mode render
+
+      - name: Check official YouTube Meta and TikTok account identities (never upload)
+        if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113' && github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        env:
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.head.sha }}"
+          if [ "$(git show -s --format=%s "${{ github.event.pull_request.head.sha }}")" != '[nightfall-E01-150s-run-once]' ]; then
+            echo "Official read-only platform test not authorized on this head commit"
+            exit 0
+          fi
+          python -m pip install 'requests>=2.31,<3'
+          python -m pilot.official_platform_preflight
+
+      - name: Archive 150-second E01 actual production and verified account evidence
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-full-150-second-real-attempt-report
+          path: |
+            output/e01_full_real_attempt/full_e01_evidence.json
+            output/e01_full_real_attempt/platform_identity_report.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Archive genuinely generated E01 scene clips and locked neural audio
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-actual-motion-audio-progress
+          path: |
+            output/e01_full_real_attempt/scene_*_generated.mp4
+            output/e01_full_real_attempt/scene_*_voiced.mp4
+            output/e01_full_real_attempt/voice_*.wav
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Archive actual full film ONLY if 120s duration technical acceptance passed
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-real-120to180s-unapproved-film
+          path: output/e01_full_real_attempt/S01_the_last_little_fox_E01_full_unapproved.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+
       # Read-only API metadata only. No billable generation, account changes or posting.
       # Manual only; never called from schedule, push, or pull request.
       - name: Agnes engine probe — GET models only, NO video generation
@@ -343,6 +484,38 @@ jobs:
           path: output/*_full.mp4
           if-no-files-found: ignore
           retention-days: 7
+
+      # A green technical CI check must never be mistaken for a full E01 film.
+      # Fail the ONE authorized production evidence run if the real 150s movie
+      # is absent, but only after its partial WAV/MP4 and JSON are archived.
+      - name: Assert 150s actual production result — reject partial success
+        if: always() && github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.head_ref == 'pilot/e01-cinematic-source-first-real-render-20261113' && github.run_attempt == 1
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.head.sha }}"
+          if [ "$(git show -s --format=%s "${{ github.event.pull_request.head.sha }}")" != '[nightfall-E01-150s-run-once]' ]; then
+            exit 0
+          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("output/e01_full_real_attempt/full_e01_evidence.json")
+          if not p.exists():
+              raise SystemExit("E01_FULL_PROOF_FAILED: no actual production report")
+          r = json.loads(p.read_text())
+          if (not r.get("film_created") or
+              not r.get("technical_acceptance_passed") or
+              r.get("distinct_scenes_generated") != 14 or
+              r.get("unique_motion_shots_generated") != 36 or
+              r.get("real_kokoro_audio_files") != 14):
+              raise SystemExit(
+                  "E01_FULL_PROOF_FAILED: scenes=%s/14, real shots=%s/36, "
+                  "Kokoro lines=%s/14; blocker=%s" %
+                  (r.get("distinct_scenes_generated"),
+                   r.get("unique_motion_shots_generated"),
+                   r.get("real_kokoro_audio_files"),
+                   r.get("failure_type", "unknown")))
+          print("E01_TECHNICAL_MP4_COMPLETE_BUT_HUMAN_LIPSYNC_QA_STILL_REQUIRED")
+          PY
 
       - name: Automated cast and voice directions
         if: always()
