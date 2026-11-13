@@ -1,7 +1,8 @@
 """Nightfall E01: resumable one-shot-at-a-time on ONE registered free HF account.
 
-A single manual run may generate at most ONE genuinely fresh LTX motion shot.
-No account rotation, no billable inference, no public uploads, no fake loops.
+The one-shot API does one fresh LTX call. An explicitly approved batch may
+continue shot-by-shot while actual Free quota is enough. No account rotation,
+no billable inference, no public uploads, no fake loops.
 GitHub Actions cache + artifacts keep verified MP4/WAV checkpoints between runs.
 """
 import argparse
@@ -207,10 +208,12 @@ def _record_attempt(state):
     _save(state)
 
 
-def resume_one_shot(*, client_factory=None, hf_api_factory=None):
-    """No more than 1 fresh inference per explicit GitHub workflow execution."""
+def resume_one_shot(*, client_factory=None, hf_api_factory=None,
+                    allow_same_run_retry=False):
+    """One fresh inference; an authorized loop may invoke it repeatedly."""
     event = os.getenv("GITHUB_EVENT_NAME")
     if not (event == "workflow_dispatch" or
+            (event == "push" and os.getenv("NIGHTFALL_OWNER_START_NOW") == "YES") or
             (event == "schedule" and
              os.getenv("NIGHTFALL_FREE_DAILY_ENABLED") == "YES")):
         raise RuntimeError("Not the authorized manual/daily free one-shot operation")
@@ -229,13 +232,18 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
             _save(state)
         return status()
     scene, number, seconds = target
-    # The 10:17 Cairo backup schedule must never burn a second free GPU quota
-    # if the primary 10:00 run has already attempted this same day.
+    # Keep the backup schedule from starting a second free GPU session.
+    # A batch may proceed only inside the SAME authenticated Actions run ID.
     if event == "schedule":
         today = cairo_run_day()
         if state.get("last_scheduled_attempt_day") == today:
-            return status()
-        state["last_scheduled_attempt_day"] = today
+            if not (allow_same_run_retry and os.getenv("GITHUB_RUN_ID")
+                    and state.get("last_scheduled_attempt_run_id") ==
+                    os.getenv("GITHUB_RUN_ID")):
+                return status()
+        else:
+            state["last_scheduled_attempt_day"] = today
+            state["last_scheduled_attempt_run_id"] = os.getenv("GITHUB_RUN_ID", "")
         _record_attempt(state)
     # Observed 5s xlarge request failed at 194s on unauthenticated tier;
     # conservative budget check errs toward waiting, not paying.
@@ -298,14 +306,16 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
 def assemble_unapproved():
     """CPU-only assembly: all 36 verified moving shots required before any output."""
     event = os.getenv("GITHUB_EVENT_NAME")
-    if event not in ("workflow_dispatch", "schedule"):
-        raise RuntimeError("Assembly is allowed only in manual or scheduled workflow")
+    if event not in ("workflow_dispatch", "schedule", "push"):
+        raise RuntimeError("Assembly is allowed only in authorized workflow")
     if (os.getenv("GITHUB_REF") != "refs/heads/main"
             or os.getenv("NIGHTFALL_FREE_ASSEMBLE") != "YES"
             or os.getenv("GITHUB_RUN_ATTEMPT") != "1"):
         raise RuntimeError("Assembly requires authorized main-branch first-attempt workflow")
     if event == "schedule" and os.getenv("NIGHTFALL_FREE_DAILY_ENABLED") != "YES":
         raise RuntimeError("Scheduled assembly must be the authorized free daily run")
+    if event == "push" and os.getenv("NIGHTFALL_OWNER_START_NOW") != "YES":
+        raise RuntimeError("Push assembly requires explicit owner start marker")
     cast, plan = film.scene_plan()
     state = load_state(plan)
     if next_unfinished(state, plan) is not None:
