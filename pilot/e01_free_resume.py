@@ -238,12 +238,69 @@ def resume_one_shot(*, client_factory=None, hf_api_factory=None):
         raise
 
 
+def assemble_unapproved():
+    """CPU-only assembly: all 36 verified moving shots required before any output."""
+    if (os.getenv("GITHUB_EVENT_NAME") != "workflow_dispatch"
+            or os.getenv("GITHUB_REF") != "refs/heads/main"
+            or os.getenv("NIGHTFALL_FREE_ASSEMBLE") != "YES"):
+        raise RuntimeError("Unapproved assembly is manual main-branch only")
+    cast, plan = film.scene_plan()
+    state = load_state(plan)
+    if next_unfinished(state, plan) is not None:
+        raise RuntimeError("Cannot assemble incomplete E01: all 36 real motion clips required")
+    film.OUT = OUT
+    records = {(x["scene"], x["part"]): x for x in state["completed"]}
+    voiced = []
+    voice_records = {x["scene"]: x for x in state["voices"]}
+    for spec in plan["scenes"]:
+        number = spec["scene_no"]
+        parts = [OUT / records[(number, part)]["file"]
+                 for part in range(1, len(spec["subshot_seconds"]) + 1)]
+        joined, actual = film.combine_unique_subshots(number, parts)
+        if number in voice_records:
+            wav = OUT / voice_records[number]["file"]
+            audio_seconds = film.duration(wav)
+        else:
+            wav, audio_seconds = film.create_voice(spec, cast)
+            voice_records[number] = {"scene": number, "file": wav.name,
+                                     "sha256": sha256(wav)}
+            state["voices"] = list(voice_records.values())
+            _save(state)
+        if actual < audio_seconds - 0.05:
+            raise RuntimeError("Kokoro dialogue is longer than natural AI motion; no slowdown")
+        voiced.append(film.join_scene(joined, wav, number, actual))
+    listing = OUT / "e01_real_scenes.txt"
+    listing.write_text("".join("file '" + str(x.resolve()) + "'\\n" for x in voiced))
+    film_path = OUT / "S01_the_last_little_fox_E01_full_unapproved.mp4"
+    film.safe_ffmpeg("-f", "concat", "-safe", "0", "-i", listing,
+                     "-c", "copy", "-movflags", "+faststart", film_path)
+    metrics = check_media(film_path, mode="full")
+    state["technical_full_mp4"] = True
+    state["full_duration_seconds"] = metrics["duration_seconds"]
+    state["status"] = "TECHNICAL_MP4_ONLY_AWAITING_TRUE_LIPSYNC_AND_VISUAL_QA"
+    # Critically, audio-on-video does not certify animal mouth/viseme sync.
+    state["human_cinematic_approved"] = False
+    state["true_lipsync_verified"] = False
+    state["published_anywhere"] = False
+    _save(state)
+    return {
+        "status": state["status"],
+        "duration_seconds": metrics["duration_seconds"],
+        "video_file": film_path.name,
+        "all_36_actual_shots_required": True,
+        "public_publishing": False,
+        "true_lipsync_verified": False,
+    }
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=("status", "one-shot"), required=True)
+    p.add_argument("--mode", choices=("status", "one-shot", "assemble"), required=True)
     args = p.parse_args()
     if args.mode == "status":
         result = status()
+    elif args.mode == "assemble":
+        result = assemble_unapproved()
     else:
         result = resume_one_shot()
     print(json.dumps(result, ensure_ascii=False, indent=2))
