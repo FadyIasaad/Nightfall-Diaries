@@ -129,3 +129,8 @@ Official references:
 - https://huggingface.co/spaces/Lightricks/LTX-2.5
 - https://developers.google.com/youtube/v3/docs/channels/list
 - https://developers.tiktok.com/docs/en/tiktok-api-v2-get-user-info
+
+
+## 2026-11-13: Single authorized full production and account-auth attempt
+
+All **101 offline tests** and the account-check safety tests passed in [CI #43336896632](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/43336896632). This commit is a **one-time authorized full-length generation attempt** using the real head SHA (not GitHub's synthetic PR merge commit), followed by read-only official platform-account checks. A green workflow is never proof of film completion: read the exported evidence JSON. Never repeat inference on a rerun or activate public uploads.
