@@ -93,8 +93,8 @@ class TelegramCompletionTests(unittest.TestCase):
         self.assertEqual(repeated["messages_sent"], 0)
         self.assertEqual(len(sent), 2)
         self.assertIn("تأكيد نشرها على المنصات الأربع", sent[1])
-        self.assertTrue(all(name in sent[1] for name in telegram.TARGETS
-                            if name in ("YouTube", "Facebook", "Instagram", "TikTok")))
+        self.assertTrue(all(name in sent[1] for name in
+                            ("YouTube", "Facebook", "Instagram", "TikTok")))
 
     def test_three_public_posts_can_not_trigger_four_platform_success(self):
         three = receipts(telegram.TARGETS[:3])
