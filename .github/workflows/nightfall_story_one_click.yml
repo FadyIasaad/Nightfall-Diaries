@@ -146,26 +146,9 @@ jobs:
           python -m pip install -r requirements.txt
           python -m pilot.e01_free_resume --mode assemble
 
-      # Owner explicitly requested automatic upload on completion, but quality
-      # is still unverified; a PRIVATE review copy is the maximum safe action.
-      - name: Stage a fully assembled E01 as YouTube PRIVATE, never public
-        if: always() && (steps.assemble_film.outcome == 'success' || steps.assembly.outputs.assembled == 'true')
-        continue-on-error: true
-        timeout-minutes: 30
-        env:
-          NIGHTFALL_PRIVATE_YOUTUBE_STAGE: YES
-          YOUTUBE_VISIBILITY: private
-          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-          YOUTUBE_EXPECTED_CHANNEL_ID: ${{ vars.YOUTUBE_EXPECTED_CHANNEL_ID }}
-          FB_PAGE_ACCESS_TOKEN: ''
-          INSTAGRAM_ACCESS_TOKEN: ''
-          TIKTOK_ACCESS_TOKEN: ''
-        run: |
-          python -m pip install -r requirements.txt
-          python -m pilot.e01_private_youtube
-
+      # Owner has pre-authorized unattended public delivery on completion.
+      # No PRIVATE-only review detour or approval button is requested here.
+      # Full media and official-account gates remain mandatory.
       # EVENT-DRIVEN: as soon as the SAME run finishes E01 assembly,
       # check its real QA, all four official account scopes, and dispatch.
       # No publication time, no waiting until next 10 AM for posting.
@@ -194,6 +177,43 @@ jobs:
         run: |
           python -m pip install 'requests>=2.31,<3' 'google-auth>=2,<3' 'google-api-python-client>=2,<3' 'google-auth-httplib2>=0.2,<1'
           python -m pilot.e01_completion_publish --mode on-completion
+
+      # Distinguish accepted uploads from actual public availability.
+      # Poll official platforms now; later incomplete checks can be reconciled
+      # on the next eligible workflow run, without resending video.
+      - name: Verify public visibility of four uploaded posts (no new uploads)
+        if: always() && (steps.assemble_film.outcome == 'success' || steps.assembly.outputs.assembled == 'true')
+        continue-on-error: true
+        timeout-minutes: 7
+        env:
+          GH_TOKEN: ${{ github.token }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_EXPECTED_CHANNEL_ID: ${{ vars.YOUTUBE_EXPECTED_CHANNEL_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          FB_EXPECTED_PAGE_ID: ${{ vars.FB_EXPECTED_PAGE_ID }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
+          META_API_VERSION: v25.0
+        run: |
+          python -m pip install 'requests>=2.31,<3' 'google-auth>=2,<3'
+          python -m pilot.e01_verify_platforms --wait-seconds 120
+
+      # One-time Telegram alerts: first for actual film completion with precise
+      # platform states, then only when ALL FOUR are officially confirmed public.
+      - name: Notify owner on Telegram — real E01 completion and verified platforms
+        if: always() && (steps.assemble_film.outcome == 'success' || steps.assembly.outputs.assembled == 'true')
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python -m pip install 'requests>=2.31,<3'
+          python -m pilot.e01_telegram_notify --mode completion
 
       - name: Archive complete technical MP4 only after genuine shot assembly
         if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
@@ -241,7 +261,8 @@ jobs:
             echo "- **Story:** $STORY_SERIES"
             echo "- **Selected next episode (automatic):** $SELECTED_EPISODE"
             echo "- **Story renderer:** $STORY_STATUS"
-            echo "- **Public posting:** immediately on full approval only; otherwise blocked"
+            echo "- **Public posting:** automatically upon real complete film + official eligibility, no approval button"
+            echo "- **Telegram:** E01 completion + verified four-platform public results; secrets required"
             echo "- **Publishing schedule:** NONE — the four-platform step runs on completion"
             echo "- **Free GPU quota checks:** 10:00/10:17 Cairo (rendering only, not posting)"
           } >> "$GITHUB_STEP_SUMMARY"

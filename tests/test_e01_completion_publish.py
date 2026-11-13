@@ -74,16 +74,54 @@ class ReleaseSafetyTests(unittest.TestCase):
 
     def test_no_platform_upload_if_one_account_missing_or_unaudited(self):
         missing = credentials()
+        for item in missing.values():
+            item["official_identity_verified"] = False
         missing["tiktok"]["credentials_configured"] = False
         missing["tiktok"]["missing_names"] = ["TIKTOK_APP_AUDITED"]
         with patch.dict(os.environ, environment(), clear=True):
             with patch.object(p, "film_gate", return_value=approved_film()):
                 with patch.object(p, "token_preflight", return_value=missing):
                     read = Mock(side_effect=AssertionError("No remote upload"))
-                    result = p.release_once(receipt_read=read)
-        self.assertEqual(result["status"],
-                         "BLOCKED_MISSING_PLATFORM_CREDENTIALS_OR_TIKTOK_AUDIT")
+                    # No identity proof for any destination: fail closed.
+                    with patch.object(p, "_read_only_platform_probe",
+                                      side_effect=lambda items: items):
+                        result = p.release_once(receipt_read=read)
+        self.assertEqual(result["status"], "BLOCKED_NO_AUTHORIZED_DESTINATIONS")
         read.assert_not_called()
+
+    def test_one_missing_platform_does_not_block_three_verified_accounts(self):
+        report = credentials()
+        report["tiktok"]["credentials_configured"] = False
+        sent = {name: 0 for name in p.TARGETS}
+        saved = {}
+        def writer(obj):
+            saved.clear()
+            saved.update(copy.deepcopy(obj))
+        def reader(_):
+            return copy.deepcopy(saved), None
+        def route(name):
+            def post():
+                sent[name] += 1
+                return {"id": name + "-posted", "status": "accepted"}
+            return post
+        routes = {name: route(name) for name in p.TARGETS}
+        with patch.dict(os.environ, environment(), clear=True):
+            with patch.object(p, "film_gate", return_value=approved_film()):
+                with patch.object(p, "token_preflight", return_value=report):
+                    with patch.object(p, "_read_only_platform_probe",
+                                      side_effect=lambda x: x):
+                        with patch.object(p.resume, "load_state", return_value={}):
+                            with patch.object(p.resume.film, "scene_plan",
+                                              return_value=(None, {"scenes": []})):
+                                with patch.object(p, "sha256", return_value="a"*64):
+                                    result = p.release_once(
+                                        adapters=routes, receipt_read=reader,
+                                        receipt_write=writer)
+        self.assertEqual(result["requests_submitted"], 3)
+        self.assertEqual(sent["tiktok"], 0)
+        self.assertEqual(result["platforms"]["tiktok"]["status"],
+                         "BLOCKED_MISSING_CREDENTIALS_OR_APP_APPROVAL")
+        self.assertEqual(len(saved["destinations"]), 3)
 
     def test_authorized_completion_submits_once_per_platform_and_blocks_duplicates(self):
         state = {}

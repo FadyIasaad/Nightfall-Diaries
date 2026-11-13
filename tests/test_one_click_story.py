@@ -111,9 +111,12 @@ class OneClickStoryTests(unittest.TestCase):
         self.assertIn("python -m pilot.story_one_click --mode current", content)
         self.assertIn("python -m pilot.e01_free_resume --mode one-shot", content)
         self.assertIn("python -m pilot.e01_free_resume --mode assemble", content)
-        self.assertIn("python -m pilot.e01_private_youtube", content)
+        self.assertIn("python -m pilot.e01_completion_publish", content)
+        self.assertIn("python -m pilot.e01_verify_platforms", content)
+        self.assertIn("python -m pilot.e01_telegram_notify", content)
         self.assertIn("nightfall-free-e01-parts-", content)
-        self.assertIn("YOUTUBE_VISIBILITY: private", content)
+        self.assertIn("secrets.TELEGRAM_BOT_TOKEN", content)
+        self.assertNotIn("Stage a fully assembled E01 as YouTube PRIVATE", content)
         self.assertNotIn("NIGHTFALL_LIVE: true", content)
 
     def test_old_daily_workflow_no_longer_runs_duplicate_e01_gpu(self):

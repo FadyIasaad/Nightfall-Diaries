@@ -24,6 +24,7 @@ EPISODE = "S01_the_last_little_fox_E01"
 TARGETS = ("youtube", "facebook", "instagram", "tiktok")
 SETTINGS = ROOT / "studio/production_settings.json"
 CONFIG = ROOT / "config.json"
+OWNER_RELEASE = ROOT / "pilot/owner_release_intent.json"
 OUT = resume.OUT / "four_platform_completion_status.json"
 MOVIE = resume.OUT / youtube_preview.FULL_VIDEO
 
@@ -57,6 +58,14 @@ def film_gate():
         result["technical_mp4_passed"] = media["technical_check_passed"]
         result["duration_seconds"] = media["duration_seconds"]
     settings, cfg = _flags()
+    owner = json.loads(OWNER_RELEASE.read_text(encoding="utf-8"))
+    result["owner_auto_public_release_authorized"] = (
+        owner.get("episode") == EPISODE
+        and owner.get("owner_auto_public_release_authorized") is True
+        and owner.get("owner_approval_per_episode_required") is False
+    )
+    if not result["owner_auto_public_release_authorized"]:
+        result["blockers"].append("OWNER_AUTO_RELEASE_NOT_AUTHORIZED")
     result["real_lipsync_approved"] = (
         state.get("true_lipsync_verified") is True
         and settings.get("voice_lipsync_verified") is True)
@@ -244,12 +253,20 @@ def release_once(*, adapters=None, receipt_read=None, receipt_write=None):
     if not film["film_ready_for_public"]:
         result["status"] = "WAITING_REAL_FILM_AND_LIPSYNC_APPROVAL"
         return result
-    if not all(x["credentials_configured"] for x in result["platforms"].values()):
-        result["status"] = "BLOCKED_MISSING_PLATFORM_CREDENTIALS_OR_TIKTOK_AUDIT"
-        return result
     _read_only_platform_probe(result["platforms"])
-    if not all(x["official_identity_verified"] for x in result["platforms"].values()):
-        result["status"] = "BLOCKED_OFFICIAL_PLATFORM_IDENTITIES_NOT_VERIFIED"
+    eligible = tuple(name for name in TARGETS
+                     if result["platforms"][name]["credentials_configured"]
+                     and result["platforms"][name]["official_identity_verified"])
+    # One unavailable destination must NOT block unrelated authorized ones.
+    # Failed/missing platforms remain explicit, and the Telegram four-platform
+    # success message is withheld until all FOUR are officially public.
+    for name in TARGETS:
+        if not result["platforms"][name]["credentials_configured"]:
+            result["platforms"][name]["status"] = "BLOCKED_MISSING_CREDENTIALS_OR_APP_APPROVAL"
+        elif not result["platforms"][name]["official_identity_verified"]:
+            result["platforms"][name]["status"] = "BLOCKED_OFFICIAL_ACCOUNT_AUTH"
+    if not eligible:
+        result["status"] = "BLOCKED_NO_AUTHORIZED_DESTINATIONS"
         return result
     read = receipt_read or _read_receipts
     write = receipt_write or _save
@@ -278,6 +295,10 @@ def release_once(*, adapters=None, receipt_read=None, receipt_write=None):
                                        film["duration_seconds"]),
     }
     for name in TARGETS:
+        if name not in eligible:
+            # Do not write a media-upload receipt for a platform that was
+            # never authenticated and to which no network upload was sent.
+            continue
         previous = receipts["destinations"].get(name, {})
         if previous.get("phase") in ("initiated", "accepted", "confirmed_public", "ambiguous"):
             result["platforms"][name]["status"] = "NO_DUPLICATE_" + previous["phase"].upper()
