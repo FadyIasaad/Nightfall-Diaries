@@ -1,0 +1,50 @@
+name: Nightfall - Read-only Platform Connections
+
+# A one-time non-upload diagnostic. Normal production remains one-click.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[nightfall-platform-audit-20261113]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_EXPECTED_CHANNEL_ID: ${{ vars.YOUTUBE_EXPECTED_CHANNEL_ID }}
+      FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+      FB_EXPECTED_PAGE_ID: ${{ vars.FB_EXPECTED_PAGE_ID }}
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+      INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+      TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
+      TIKTOK_APP_AUDITED: ${{ vars.TIKTOK_APP_AUDITED }}
+      TIKTOK_CREATOR_POSTING_CONSENT: ${{ vars.TIKTOK_CREATOR_POSTING_CONSENT }}
+      META_API_VERSION: v25.0
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v5
+      - name: Use Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install read-only HTTP client
+        run: python -m pip install 'requests>=2.31,<3'
+      - name: Diagnose actual authorized accounts and TikTok creator options (NO UPLOAD)
+        run: python -m pilot.nightfall_platform_audit
+      - name: Store redacted connection report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-platform-readiness-read-only
+          path: output/platform_readiness_diagnostic.json
+          if-no-files-found: ignore
+          retention-days: 7
