@@ -53,13 +53,13 @@ def youtube_public(entry, session):
 def facebook_public(entry, session):
     # Facebook Page Video is confirmed only if the API exposes published=true
     # and a permalink for the expected Page; no made-up page URL or status.
-    if not os.getenv("FB_EXPECTED_PAGE_ID"):
-        return None
+    from pilot.facebook_page_auth import resolve_nightfall_page
+    page = resolve_nightfall_page(session=session)
     response = session.get(
         "https://graph.facebook.com/" + os.getenv("META_API_VERSION", "v25.0")
         + "/" + str(entry["id"]),
         params={"fields": "id,published,permalink_url,from",
-                "access_token": os.environ["FB_PAGE_ACCESS_TOKEN"]},
+                "access_token": page["access_token"]},
         timeout=25)
     response.raise_for_status()
     media = response.json() or {}
@@ -67,7 +67,7 @@ def facebook_public(entry, session):
     permalink = media.get("permalink_url")
     if (str(media.get("id")) != str(entry["id"])
             or media.get("published") is not True
-            or str(author.get("id")) != os.environ["FB_EXPECTED_PAGE_ID"]
+            or str(author.get("id")) != page["id"]
             or not isinstance(permalink, str)
             or not permalink.startswith("https://www.facebook.com/")):
         return None
