@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "episode": "S01_the_last_little_fox_E01",
+  "owner_auto_public_release_authorized": true,
+  "owner_approval_per_episode_required": false,
+  "trigger": "immediately_after_verified_full_episode_and_official_platform_authorization",
+  "must_not_fake_actual_cinematic_or_lipsync_verification": true,
+  "public_release_flags_are_not_auto_enabled": true,
+  "source": "owner explicit chat request 2026-11-13"
+}
