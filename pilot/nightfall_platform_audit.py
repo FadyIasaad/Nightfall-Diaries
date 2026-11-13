@@ -262,7 +262,7 @@ def main():
               "IG_META_CODE=" + str(item.get("meta_error_code") or "none"),
               "IG_META_SUBCODE=" + str(item.get("meta_error_subcode") or "none"),
               "YT_API_REASON=" + str(item.get("youtube_channels_api_reason") or "none"),
-              "FB_PAGE_NAME_MATCH=" + str(item.get("exact_page_name_matches", "not_checked"))
+              "FB_PAGE_NAME_MATCH=" + str(item.get("exact_page_name_matches", "not_checked")))
         lines += ["- **" + name.title() + ":** identity=" + item["identity_status"]
                   + "; configuration_ready=" + str(item["account_configuration_ready"])
                   + "; missing=" + (", ".join(item["missing_configuration_names"]) or "none")]
