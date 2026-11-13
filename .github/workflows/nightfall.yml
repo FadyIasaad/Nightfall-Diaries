@@ -175,8 +175,11 @@ jobs:
           TIKTOK_ACCESS_TOKEN: ''
           GH_TOKEN: ''
         run: |
-          if [ "$(git log -1 --pretty=%s)" != '[nightfall-E01-150s-run-once]' ]; then
-            echo "Full 150s GPU test not authorized on this commit"
+          # A pull_request checkout usually points at a synthetic merge commit.
+          # Fetch and inspect the immutable SHA of the PR's actual head.
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.head.sha }}"
+          if [ "$(git show -s --format=%s "${{ github.event.pull_request.head.sha }}")" != '[nightfall-E01-150s-run-once]' ]; then
+            echo "Full 150s GPU test not authorized on this head commit"
             exit 0
           fi
           sudo apt-get update -qq
@@ -196,8 +199,9 @@ jobs:
           INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
           TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
         run: |
-          if [ "$(git log -1 --pretty=%s)" != '[nightfall-E01-150s-run-once]' ]; then
-            echo "Official read-only platform test not authorized on this commit"
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.head.sha }}"
+          if [ "$(git show -s --format=%s "${{ github.event.pull_request.head.sha }}")" != '[nightfall-E01-150s-run-once]' ]; then
+            echo "Official read-only platform test not authorized on this head commit"
             exit 0
           fi
           python -m pip install 'requests>=2.31,<3'
