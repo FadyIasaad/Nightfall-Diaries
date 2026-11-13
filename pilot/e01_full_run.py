@@ -133,9 +133,19 @@ def authorized_run():
         ev = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
         if ev.get("action") != "synchronize":
             return False
+        # pull_request checks out a synthetic MERGE COMMIT, not the PR head.
+        # Compare the actual PR head commit's subject, never HEAD's subject.
+        pr = ev.get("pull_request") or {}
+        head = (pr.get("head") or {}).get("sha", "")
+        source_repo = ((pr.get("head") or {}).get("repo") or {}).get("full_name")
+        if source_repo != "FadyIasaad/Nightfall-Diaries":
+            return False
+        if not isinstance(head, str) or len(head) != 40 or any(c not in "0123456789abcdef" for c in head):
+            return False
+        # SHA fetched in the workflow preflight; FETCH_HEAD is detached and safe.
         result = subprocess.run(
-            ["git", "log", "-1", "--format=%s"], check=True,
-            capture_output=True, text=True, timeout=15
+            ["git", "show", "-s", "--format=%s", head],
+            check=True, capture_output=True, text=True, timeout=15
         )
         return result.stdout.strip() == TRIGGER_MARKER
     except (OSError, KeyError, ValueError, subprocess.SubprocessError):
