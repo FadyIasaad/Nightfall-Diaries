@@ -74,6 +74,8 @@ class ReleaseSafetyTests(unittest.TestCase):
 
     def test_no_platform_upload_if_one_account_missing_or_unaudited(self):
         missing = credentials()
+        for item in missing.values():
+            item["official_identity_verified"] = False
         missing["tiktok"]["credentials_configured"] = False
         missing["tiktok"]["missing_names"] = ["TIKTOK_APP_AUDITED"]
         with patch.dict(os.environ, environment(), clear=True):
