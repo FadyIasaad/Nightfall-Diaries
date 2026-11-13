@@ -52,15 +52,17 @@ def _youtube_matches_expected():
 def _facebook_matches_expected():
     import requests
     expected = os.getenv("FB_EXPECTED_PAGE_ID")
-    if not expected:
-        return {"expected_account_configured": False, "expected_account_matches": False}
     page = requests.get(
         GRAPH + "/me",
-        params={"fields": "id", "access_token": os.environ["FB_PAGE_ACCESS_TOKEN"]},
+        params={"fields": "id,name", "access_token": os.environ["FB_PAGE_ACCESS_TOKEN"]},
         timeout=25)
     page.raise_for_status()
-    return {"expected_account_configured": True,
-            "expected_account_matches": str(page.json().get("id")) == expected}
+    who = page.json()
+    return {"expected_account_configured": bool(expected),
+            "expected_account_matches": (
+                str(who.get("id")) == expected if expected else
+                bool(who.get("id")) and who.get("name") == "Nightfall Diaries"),
+            "exact_page_name_matches": who.get("name") == "Nightfall Diaries"}
 
 
 def _tiktok_public_options():
@@ -221,6 +223,10 @@ def audit():
                     record["creator_info_check_error"] = error
                 else:
                     record.update(details)
+        if name == "facebook" and record.get("exact_page_name_matches") is True:
+            record["missing_configuration_names"] = [
+                x for x in record["missing_configuration_names"]
+                if x != "FB_EXPECTED_PAGE_ID"]
         record["account_configuration_ready"] = (
             not record["missing_configuration_names"]
             and record["identity_verified"]
@@ -255,7 +261,8 @@ def main():
               "IG_LOGIN_HTTP=" + str(item.get("instagram_login_graph_http_status") or "none"),
               "IG_META_CODE=" + str(item.get("meta_error_code") or "none"),
               "IG_META_SUBCODE=" + str(item.get("meta_error_subcode") or "none"),
-              "YT_API_REASON=" + str(item.get("youtube_channels_api_reason") or "none"))
+              "YT_API_REASON=" + str(item.get("youtube_channels_api_reason") or "none"),
+              "FB_PAGE_NAME_MATCH=" + str(item.get("exact_page_name_matches", "not_checked"))
         lines += ["- **" + name.title() + ":** identity=" + item["identity_status"]
                   + "; configuration_ready=" + str(item["account_configuration_ready"])
                   + "; missing=" + (", ".join(item["missing_configuration_names"]) or "none")]
