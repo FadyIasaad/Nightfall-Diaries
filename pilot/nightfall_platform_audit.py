@@ -187,6 +187,23 @@ def _youtube_oauth_error():
         timeout=25)
     if resp.ok:
         access = resp.json()["access_token"]
+        scope_flags = {}
+        try:
+            info = requests.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"access_token": access}, timeout=25)
+            if info.ok:
+                scopes = set(str(info.json().get("scope") or "").split())
+                scope_flags["youtube_upload_scope_granted"] = bool(scopes.intersection({
+                    "https://www.googleapis.com/auth/youtube.upload",
+                    "https://www.googleapis.com/auth/youtube"}))
+                scope_flags["youtube_channel_read_scope_granted"] = bool(scopes.intersection({
+                    "https://www.googleapis.com/auth/youtube.readonly",
+                    "https://www.googleapis.com/auth/youtube.force-ssl",
+                    "https://www.googleapis.com/auth/youtube",
+                    "https://www.googleapis.com/auth/youtubepartner"}))
+        except Exception:
+            pass
         check = requests.get(
             "https://www.googleapis.com/youtube/v3/channels",
             headers={"Authorization": "Bearer " + access},
@@ -194,7 +211,7 @@ def _youtube_oauth_error():
             timeout=25)
         if check.ok:
             return {"oauth_refresh_succeeded": True,
-                    "youtube_channels_read_succeeded": True}
+                    "youtube_channels_read_succeeded": True, **scope_flags}
         error = (check.json() or {}).get("error") or {}
         reasons = error.get("errors") or []
         reason = reasons[0].get("reason", "") if reasons else ""
@@ -206,7 +223,7 @@ def _youtube_oauth_error():
         return {"oauth_refresh_succeeded": True,
                 "youtube_channels_read_succeeded": False,
                 "youtube_channels_http_status": check.status_code,
-                "youtube_channels_api_reason": reason}
+                "youtube_channels_api_reason": reason, **scope_flags}
     reason = (resp.json() or {}).get("error", "")
     if reason not in ("invalid_grant", "invalid_client", "unauthorized_client",
                       "invalid_scope", "access_denied", "unsupported_grant_type"):
@@ -257,14 +274,18 @@ def audit():
             elif fb_error:
                 record["instagram_fb_probe_error"] = fb_error
         if record["identity_verified"]:
-            if name in ("youtube", "facebook"):
-                details, error = _safe_call(
-                    _youtube_matches_expected if name == "youtube" else
-                    _facebook_matches_expected)
+            if name == "youtube":
+                details, error = _safe_call(_youtube_matches_expected)
                 if error:
                     record["expected_account_check_error"] = error
                 else:
                     record.update(details)
+            elif name == "facebook":
+                # The original secret is a User token; the Page resolver
+                # checks the intended Page name and derives a Page token.
+                record["expected_account_matches"] = (
+                    identity.get("expected_page_name_verified") is True)
+                record["page_auth_source"] = identity.get("page_auth_source")
             elif name == "instagram":
                 record["expected_account_matches"] = True  # GET matched INSTAGRAM_ACCOUNT_ID
                 record["account_type"] = identity.get("account_type", "unknown")
@@ -326,6 +347,9 @@ def main():
               "IG_META_CODE=" + str(item.get("meta_error_code") or "none"),
               "IG_META_SUBCODE=" + str(item.get("meta_error_subcode") or "none"),
               "YT_API_REASON=" + str(item.get("youtube_channels_api_reason") or "none"),
+              "YT_UPLOAD_SCOPE=" + str(item.get("youtube_upload_scope_granted", "unknown")),
+              "YT_CHANNEL_READ_SCOPE=" + str(item.get("youtube_channel_read_scope_granted", "unknown")),
+              "FB_RESOLVED_SOURCE=" + str(item.get("page_auth_source") or "none"),
               "FB_PAGE_NAME_MATCH=" + str(item.get("exact_page_name_matches", "not_checked")),
               "FB_PAGE_TOKEN_LIKE=" + str(item.get("page_category_field_accepted", "not_checked")),
               "FB_ACCESSIBLE_NIGHTFALL_PAGE=" + str(item.get("nightfall_page_in_user_page_list", "not_checked")),
