@@ -22,6 +22,33 @@ class ResumableFreeAccountTests(TestCase):
         self.assertFalse(state["true_lipsync_verified"])
         self.assertEqual(m.next_unfinished(state, plan)[0]["scene_no"], 1)
 
+    def test_quota_api_version_is_required_and_old_versions_fail_closed(self):
+        class OldApi:
+            def __init__(self, token):
+                self.token = token
+            def whoami(self):
+                return {"type": "user", "isPro": False}
+        with self.assertRaisesRegex(RuntimeError, "HF_HUB_VERSION_TOO_OLD"):
+            m.account_preflight("fake-token", hf_api_factory=OldApi)
+        wf = (m.ROOT / ".github/workflows/nightfall.yml").read_text()
+        self.assertIn("'huggingface_hub>=2.1.1,<3'", wf)
+        self.assertNotIn("'huggingface_hub>=0.36,<2'", wf)
+        self.assertIn("Verify registered-free ZeroGPU Python API compatibility", wf)
+        self.assertIn("get_zero_gpu_quota", wf)
+
+    def test_fine_grained_token_without_billing_read_scope_stops_safely(self):
+        class Forbidden(Exception):
+            pass
+        forbidden = Forbidden("private credentials must not appear in errors")
+        forbidden.response = SimpleNamespace(status_code=403)
+        api = MagicMock()
+        api.whoami.return_value = {"type": "user", "isPro": False}
+        api.get_zero_gpu_quota.side_effect = forbidden
+        with self.assertRaisesRegex(RuntimeError, "HF_ZERO_GPU_QUOTA_PERMISSION_REQUIRED") as result:
+            m.account_preflight("fake-secret", hf_api_factory=lambda **kw: api)
+        self.assertNotIn("private credentials", str(result.exception))
+        api.get_zero_gpu_quota.assert_called_once()
+
     def test_logged_out_and_pro_accounts_refused(self):
         self.assertRaisesRegex(RuntimeError, "HF_TOKEN_MISSING",
                                m.account_preflight, "", hf_api_factory=MagicMock())

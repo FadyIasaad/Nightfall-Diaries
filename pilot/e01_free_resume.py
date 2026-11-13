@@ -142,7 +142,29 @@ def account_preflight(token, *, hf_api_factory=None, minimum_seconds=220):
         raise RuntimeError("HF_ACCOUNT_NOT_VERIFIED_FREE: decline paid or unknown tier")
     if who.get("type") not in (None, "user"):
         raise RuntimeError("Not an individual free account")
-    q = api.get_zero_gpu_quota()
+    # Added in huggingface_hub 2.1.0; fail closed if an old library is
+    # installed instead of skipping the free quota check or using paid credits.
+    get_quota = getattr(api, "get_zero_gpu_quota", None)
+    if not callable(get_quota):
+        raise RuntimeError(
+            "HF_HUB_VERSION_TOO_OLD: huggingface_hub>=2.1.1 is required for "
+            "read-only ZeroGPU quota verification"
+        )
+    try:
+        q = get_quota()
+    except Exception as exc:
+        http_status = getattr(getattr(exc, "response", None), "status_code", None)
+        if http_status in (401, 403):
+            # Fine-grained HF tokens require Billing -> Read billing usage and
+            # payment method status; this permission is READ-ONLY.
+            raise RuntimeError(
+                "HF_ZERO_GPU_QUOTA_PERMISSION_REQUIRED: create a free-account "
+                "token with read-only Billing usage permission; no GPU call made"
+            ) from None
+        # Never include raw HTTP body, query string or token in Actions logs.
+        raise RuntimeError(
+            "HF_ZERO_GPU_QUOTA_CHECK_FAILED: " + type(exc).__name__
+        ) from None
     base, remaining = float(q.base), float(q.remaining)
     if base <= 0 or base > 300.001:
         raise RuntimeError("ZeroGPU quota does not match a known non-billed free allowance")

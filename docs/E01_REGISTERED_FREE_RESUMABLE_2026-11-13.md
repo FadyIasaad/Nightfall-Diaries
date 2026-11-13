@@ -47,3 +47,33 @@ Official quota read-only API: https://huggingface.co/docs/huggingface_hub/guides
 - Creating a farm of free accounts to evade usage limits is not implemented; it is unreliable and can result in service restrictions.
 - Genuine 3D quality, natural acting, multi-character image lock, 150s final mix and approved lip sync are **not yet demonstrated**.
 - Existing GitHub social-upload code and publishing flags are unchanged; this PR does not publish to YouTube/Facebook/Instagram/TikTok, nor does it promise a full episode today.
+
+
+## Fix — 13 Nov 2026: actual HF quota API Python version and permissions
+
+The owner's first authenticated one-shot
+[GitHub Actions #43351214405](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/43351214405)
+did NOT make a GPU inference. The real runner installed
+`huggingface_hub==1.33.0` because the workflow specified
+`huggingface_hub>=0.36,<2`. The code then failed with
+`AttributeError: 'HfApi' object has no attribute 'get_zero_gpu_quota'`.
+This method was added in the official Hugging Face Hub **2.1.0**
+release. The fix requires `huggingface_hub>=2.1.1,<3` and tests
+the actual method import in a PR-only, no-credential dependency smoke test.
+The free quota check is NEVER skipped on older installations.
+
+**Fine-grained token permission:** Hugging Face's quota API requires
+`Billing > Read billing usage and payment method status` for
+fine-grained tokens (read-only permission). A token without this
+permission may return HTTP 401/403; the code stops before any GPU request,
+prints `HF_ZERO_GPU_QUOTA_PERMISSION_REQUIRED` and does NOT fall back
+to anonymous/paid inference. It does not require permission to make
+payments or purchase credits. Do not put your token into GitHub logs,
+repo commits or chat.
+
+Once the bug-fix PR is merged, repeat the manual option
+`Resume E01 one free HF shot` on branch `main`. If the new failure is
+a permissions message, add only the specified Billing **read** permission
+to a fine-grained HF token and update the existing `HF_TOKEN` GitHub secret;
+then rerun. No new account, PR, GPU paid service, or publishing consent.
+No automatic daily inference is enabled by this fix.
