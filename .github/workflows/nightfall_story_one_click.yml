@@ -1,0 +1,205 @@
+name: Nightfall - One Click Story
+
+# ONE user-facing field: the story name. No episode ID or renderer selection.
+# Next day's run reads the story saved in studio/active_story.json.
+on:
+  workflow_dispatch:
+    inputs:
+      story:
+        description: "Story name (e.g. The Last Little Fox)"
+        type: string
+        default: "The Last Little Fox"
+        required: true
+  schedule:
+    - cron: '0 10 * * *'
+      timezone: 'Africa/Cairo'
+
+permissions:
+  contents: write
+  actions: read
+
+# Match the existing Nightfall production lock: no two GPU jobs race.
+concurrency:
+  group: nightfall-production
+  cancel-in-progress: false
+
+jobs:
+  story:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out preserved Nightfall stories and production engine
+        uses: actions/checkout@v5
+
+      - name: Use free open-source Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Choose active story by its TITLE and save it for future daily runs
+        if: github.event_name == 'workflow_dispatch'
+        id: selected
+        env:
+          STORY_NAME: ${{ inputs.story }}
+        run: |
+          python -m pilot.story_one_click --mode select --story "$STORY_NAME"
+
+      - name: Read previously chosen story for the automatic Cairo daily run
+        if: github.event_name == 'schedule'
+        id: scheduled
+        run: python -m pilot.story_one_click --mode current
+
+      - name: Explain story and next supported episode without inventing content
+        env:
+          STORY_STATUS: ${{ steps.selected.outputs.status || steps.scheduled.outputs.status }}
+          SELECTED_EPISODE: ${{ steps.selected.outputs.episode || steps.scheduled.outputs.episode }}
+          STORY_SERIES: ${{ steps.selected.outputs.series || steps.scheduled.outputs.series }}
+        run: |
+          echo "Selected original series: $STORY_SERIES"
+          echo "Next not-fully-published original episode: $SELECTED_EPISODE"
+          echo "Rendering capability: $STORY_STATUS"
+          if [ "$STORY_STATUS" = "BLOCKED_UNPREPARED_EPISODE_NO_GPU_NO_UPLOAD" ]; then
+            echo "::warning::Story is selected, but its next episode does not yet have a verified cinematic production path. No GPU or publishing will be attempted."
+          fi
+
+      # Currently only The Last Little Fox E01 has real SHA-verified MP4
+      # checkpoints and a tested, non-billed image-to-video integration.
+      - name: Restore actual E01 MP4 checkpoints from previous days
+        if: steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true'
+        id: resume_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: output/e01_resumable
+          key: nightfall-free-e01-parts-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            nightfall-free-e01-parts-
+
+      - name: Recover authentic cumulative E01 checkpoint if cache expired
+        if: steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true'
+        run: |
+          if [ -f output/e01_resumable/progress.json ]; then
+            echo "E01 checkpoint restored from GitHub Actions cache"
+          else
+            RUN_ID=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=nightfall-e01-cumulative-real-shots&per_page=100" \
+              --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | last | .workflow_run.id // empty')
+            if [ -n "$RUN_ID" ]; then
+              mkdir -p output/e01_resumable
+              gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
+                --name nightfall-e01-cumulative-real-shots --dir output/e01_resumable
+              echo "Restored the latest genuine E01 moving-shot backup"
+            else
+              echo "No checkpoint found: start only when prior media is absent"
+            fi
+          fi
+
+      - name: Continue the next genuine motion shot on ONE free HF account
+        if: steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true'
+        id: one_shot
+        continue-on-error: true
+        timeout-minutes: 45
+        env:
+          NIGHTFALL_FREE_RESUME: YES
+          NIGHTFALL_FREE_DAILY_ENABLED: YES
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          YOUTUBE_REFRESH_TOKEN: ''
+          YOUTUBE_CLIENT_ID: ''
+          YOUTUBE_CLIENT_SECRET: ''
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCOUNT_ID: ''
+          TIKTOK_ACCESS_TOKEN: ''
+        run: |
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+          python -m pip install 'gradio_client>=2.7.2,<3' 'huggingface_hub>=2.1.1,<3'
+          python -m pip check
+          python -m pilot.e01_free_resume --mode one-shot
+
+      - name: Detect all 36 original E01 shots before technical assembly
+        if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+        id: assembly
+        run: python -m pilot.e01_free_resume --mode assembly-gate
+
+      - name: Assemble 150-second original E01 with 14 Kokoro voices automatically
+        if: always() && steps.assembly.outputs.ready == 'true'
+        id: assemble_film
+        continue-on-error: true
+        timeout-minutes: 75
+        env:
+          NIGHTFALL_FREE_ASSEMBLE: YES
+          NIGHTFALL_FREE_DAILY_ENABLED: YES
+          HF_TOKEN: ''
+          YOUTUBE_REFRESH_TOKEN: ''
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          TIKTOK_ACCESS_TOKEN: ''
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg espeak-ng
+          python -m pip install -r requirements.txt
+          python -m pilot.e01_free_resume --mode assemble
+
+      # Owner explicitly requested automatic upload on completion, but quality
+      # is still unverified; a PRIVATE review copy is the maximum safe action.
+      - name: Stage a fully assembled E01 as YouTube PRIVATE, never public
+        if: always() && (steps.assemble_film.outcome == 'success' || steps.assembly.outputs.assembled == 'true')
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          NIGHTFALL_PRIVATE_YOUTUBE_STAGE: YES
+          YOUTUBE_VISIBILITY: private
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_EXPECTED_CHANNEL_ID: ${{ vars.YOUTUBE_EXPECTED_CHANNEL_ID }}
+          FB_PAGE_ACCESS_TOKEN: ''
+          INSTAGRAM_ACCESS_TOKEN: ''
+          TIKTOK_ACCESS_TOKEN: ''
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pilot.e01_private_youtube
+
+      - name: Archive complete technical MP4 only after genuine shot assembly
+        if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-full-real-film-awaiting-lipsync-review
+          path: output/e01_resumable/S01_the_last_little_fox_E01_full_unapproved.mp4
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Preserve cumulative SHA-checked E01 progress for tomorrow
+        if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true') && steps.resume_cache.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: output/e01_resumable
+          key: nightfall-free-e01-parts-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Save E01 cumulative MP4 and voice artifacts for recovery
+        if: always() && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-cumulative-real-shots
+          path: output/e01_resumable/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Explicitly report one-click status
+        if: always()
+        env:
+          STORY_STATUS: ${{ steps.selected.outputs.status || steps.scheduled.outputs.status }}
+          STORY_SERIES: ${{ steps.selected.outputs.series || steps.scheduled.outputs.series }}
+          SELECTED_EPISODE: ${{ steps.selected.outputs.episode || steps.scheduled.outputs.episode }}
+        run: |
+          {
+            echo "## Nightfall — one-click story progress"
+            echo
+            echo "- **Story:** $STORY_SERIES"
+            echo "- **Selected next episode (automatic):** $SELECTED_EPISODE"
+            echo "- **Story renderer:** $STORY_STATUS"
+            echo "- **Public posting:** OFF (lip-sync/graphics/platform checks unverified)"
+            echo "- **Daily continuation:** automatic 10:00 Africa/Cairo"
+          } >> "$GITHUB_STEP_SUMMARY"
