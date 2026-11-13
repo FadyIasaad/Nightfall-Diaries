@@ -24,6 +24,10 @@ class FullEpisodeRealProofTests(unittest.TestCase):
         scene_ids = [i["scene_no"] for i in report["scenes"]]
         self.assertEqual(scene_ids, list(range(1, 15)))
         self.assertEqual(sum(s["target_seconds"] for s in report["scenes"]), 150)
+        self.assertEqual(sum(len(s["subshot_seconds"]) for s in report["scenes"]), 36)
+        self.assertEqual(report["requested_distinct_ai_shots"], 36)
+        self.assertTrue(all(2 <= n <= 5 for s in report["scenes"] for n in s["subshot_seconds"]))
+        self.assertTrue(all(sum(s["subshot_seconds"]) == s["target_seconds"] for s in report["scenes"]))
         self.assertEqual(len(set(s["ai_motion_prompt"] for s in report["scenes"])), 14)
         self.assertEqual([s["target_seconds"] for s in report["scenes"]],
                          [13, 11, 11, 12, 10, 10, 10, 11, 11, 8, 10, 12, 10, 11])
@@ -83,7 +87,8 @@ class FullEpisodeRealProofTests(unittest.TestCase):
         self.assertIn("for scene in report[\"scenes\"]:", source)
         self.assertIn("client.predict(", source)
         self.assertIn("real_kokoro_audio_files", source)
-        self.assertIn("scene_shorter", source.replace("Generated unique shot shorter", "scene_shorter"))
+        self.assertIn("Unique AI sub-shot shorter than requested", source)
+        self.assertIn("last_actual_frame(", source)
         self.assertNotIn("filter_complex loop", source)
         self.assertNotIn("image2", source)
         self.assertNotIn("publish_youtube", source)
@@ -101,16 +106,16 @@ class FullEpisodeRealProofTests(unittest.TestCase):
                 with patch.object(film, "OUT", Path(tmp)):
                     with patch("pilot.e01_full_run.ffprobe", return_value={
                         "streams": [{"codec_type": "video", "width": 576, "height": 1024}],
-                        "format": {"duration": 13.1},
+                        "format": {"duration": 5.04},
                     }):
-                        path, seconds = film.generate_scene(client, one)
-            self.assertEqual(seconds, 13.1)
+                        path, seconds = film.generate_shot(client, one, 1, 5, film.ROOT / one["reference_file"])
+            self.assertEqual(seconds, 5.04)
             self.assertTrue(path.is_file())
             self.assertEqual(client.predict.call_count, 1)
             args = client.predict.call_args
             self.assertEqual(args.kwargs["api_name"], "/run")
-            self.assertEqual(args.args[4], one["target_seconds"])
-            self.assertEqual(args.args[0], one["ai_motion_prompt"])
+            self.assertEqual(args.args[4], 5)
+            self.assertIn(one["ai_motion_prompt"], args.args[0])
 
 
 class PlatformIdentitySafetyTests(unittest.TestCase):
