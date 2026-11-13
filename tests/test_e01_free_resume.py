@@ -11,6 +11,26 @@ from pilot import e01_free_resume as m
 
 
 class ResumableFreeAccountTests(TestCase):
+    def test_actual_e01_progress_summary_never_mentions_e02_test_fixture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = Path(tmp) / "job-summary.md"
+            report = {
+                "shots_completed": 1, "shots_total": 36,
+                "real_motion_seconds": 5.04,
+                "next": {"scene": 1, "part": 2, "seconds": 5},
+                "state": "PARTIAL_REAL_MOTION_UNAPPROVED",
+            }
+            with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": str(summary)}):
+                m.write_job_summary(report, "one-shot")
+            text = summary.read_text(encoding="utf-8")
+            self.assertIn("S01_the_last_little_fox_E01", text)
+            self.assertIn("1/36", text)
+            self.assertIn("5.04/150", text)
+            self.assertIn("Scene 1, part 2", text)
+            self.assertIn("Public upload:** Not attempted", text)
+            self.assertNotIn("E02", text)
+            self.assertNotIn("PAUSED_FREE_QUOTA", text)
+
     def test_has_exactly_36_unique_parts_adding_to_150_seconds(self):
         _cast, plan = m.film.scene_plan()
         state = m.create_state(plan)
