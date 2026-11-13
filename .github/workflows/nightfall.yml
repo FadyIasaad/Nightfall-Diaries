@@ -494,7 +494,7 @@ jobs:
         run: python -m studio.check
 
       - name: Restore previous free-cloud animation checkpoints
-        if: github.event_name == 'schedule' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
+        if: (github.event_name == 'schedule' && vars.NIGHTFALL_LEGACY_QUEUE_ENABLED == 'true') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
         uses: actions/cache/restore@v4
         with:
           path: output/checkpoints
@@ -504,15 +504,15 @@ jobs:
 
       - name: Detect pending episode and free-quota reset time
         id: pending_scan
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' && vars.NIGHTFALL_LEGACY_QUEUE_ENABLED == 'true'
         run: python -m studio.pending --detect
 
       - name: Daily standby when nothing is pending (no publication)
-        if: github.event_name == 'schedule' && env.NIGHTFALL_LIVE != 'true' && steps.pending_scan.outputs.has_pending != 'true' && github.event.schedule == '0 10 * * *'
+        if: github.event_name == 'schedule' && vars.NIGHTFALL_LEGACY_QUEUE_ENABLED == 'true' && env.NIGHTFALL_LIVE != 'true' && steps.pending_scan.outputs.has_pending != 'true' && github.event.schedule == '0 10 * * *'
         run: python -m studio.run_free --action scheduled
 
       - name: Install free rendering and neural voice dependencies
-        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && ((env.NIGHTFALL_LIVE == 'true' && github.event.schedule == '0 10 * * *') || steps.pending_scan.outputs.has_pending == 'true')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && vars.NIGHTFALL_LEGACY_QUEUE_ENABLED == 'true' && ((env.NIGHTFALL_LIVE == 'true' && github.event.schedule == '0 10 * * *') || steps.pending_scan.outputs.has_pending == 'true')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Audition character voices' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish'))
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg espeak-ng
@@ -524,7 +524,7 @@ jobs:
 
       - name: Run one-button production (publishing blocked until proven)
         timeout-minutes: 100
-        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && ((env.NIGHTFALL_LIVE == 'true' && github.event.schedule == '0 10 * * *') || steps.pending_scan.outputs.has_pending == 'true')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[nightfall-first-motion-proof]')) || (github.event_name == 'schedule' && vars.NIGHTFALL_LEGACY_QUEUE_ENABLED == 'true' && ((env.NIGHTFALL_LIVE == 'true' && github.event.schedule == '0 10 * * *') || steps.pending_scan.outputs.has_pending == 'true')) || (github.event_name == 'workflow_dispatch' && (inputs.action == 'Render quality proof' || inputs.action == 'Generate full episode' || inputs.action == 'Generate another episode' || inputs.action == 'Generate + Publish' || inputs.action == 'Retry missing platforms'))
         env:
           REQUESTED_ACTION: ${{ inputs.action }}
           REQUESTED_EPISODE: ${{ inputs.episode }}
