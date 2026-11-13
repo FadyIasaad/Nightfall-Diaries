@@ -8,7 +8,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import requests
 
 OUT = Path("output/e01_full_real_attempt/platform_identity_report.json")
 GRAPH = "https://graph.facebook.com/v25.0"
@@ -29,7 +28,10 @@ def redacted_id(value):
     return "***" + value[-4:]
 
 
-def official_get(url, *, token, params=None, session=requests):
+def official_get(url, *, token, params=None, session=None):
+    if session is None:
+        import requests
+        session = requests
     response = session.get(
         url, headers={"Authorization": "Bearer " + token},
         params=params, timeout=25,
@@ -38,7 +40,10 @@ def official_get(url, *, token, params=None, session=requests):
     return response.json()
 
 
-def credential_probe(platform, session=requests):
+def credential_probe(platform, session=None):
+    if session is None:
+        import requests
+        session = requests
     if platform == "youtube":
         keys = ("YOUTUBE_REFRESH_TOKEN", "YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET")
     elif platform == "facebook":
@@ -108,13 +113,14 @@ def credential_probe(platform, session=requests):
             out["account_id_redacted"] = redacted_id(uid)
         out["status"] = "IDENTITY_GET_OK_UPLOAD_SCOPE_UNVERIFIED"
         out["read_only_identity_verified"] = True
-    except requests.exceptions.HTTPError as exc:
-        out["status"] = "BLOCKED_AUTH_OR_SCOPE_HTTP"
-        out["http_status"] = exc.response.status_code if exc.response is not None else None
-    except (requests.exceptions.RequestException, ValueError) as exc:
-        out["status"] = "BLOCKED_READ_ONLY_PROBE"
+    except Exception as exc:
+        # Avoid any raw exception/response string: it can contain URL credentials.
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        out["status"] = ("BLOCKED_AUTH_OR_SCOPE_HTTP" if status
+                         else "BLOCKED_READ_ONLY_PROBE")
+        if status:
+            out["http_status"] = status
         out["failure_type"] = type(exc).__name__
-        # No raw response or exception text is preserved (they can carry secrets).
     return out
 
 
