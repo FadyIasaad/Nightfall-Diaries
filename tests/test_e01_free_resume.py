@@ -66,7 +66,7 @@ class ResumableFreeAccountTests(TestCase):
                                       "GITHUB_RUN_ATTEMPT": "1",
                                       "HF_TOKEN": "fake"}, clear=True):
             client = MagicMock()
-            with self.assertRaisesRegex(RuntimeError, "manually approved"):
+            with self.assertRaisesRegex(RuntimeError, "authorized manual/daily"):
                 m.resume_one_shot(client_factory=client)
             client.assert_not_called()
 
