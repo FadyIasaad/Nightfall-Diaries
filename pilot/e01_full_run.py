@@ -29,7 +29,8 @@ OUT = ROOT / "output/e01_full_real_attempt"
 REPORT = OUT / "full_e01_evidence.json"
 TARGET_SECONDS = 150
 TOTAL_SCENES = 14
-MAX_GENERATIONS = 14
+MAX_GENERATIONS = 36
+MAX_SHOT_SECONDS = 5
 
 def save(report):
     OUT.mkdir(parents=True, exist_ok=True)
@@ -49,6 +50,24 @@ def allocate_scene_seconds(scenes, target=TARGET_SECONDS):
     if sum(durations) != target or min(durations) < 7 or max(durations) > 15:
         raise ValueError("Full episode shot allocation out of range")
     return durations
+
+def split_into_real_shots(seconds):
+    """Model accepts 2–5s clips; 1s remainder becomes 4+2, never a freeze."""
+    if not isinstance(seconds, int) or not 7 <= seconds <= 15:
+        raise ValueError("Invalid original scene duration")
+    parts = [5] * (seconds // MAX_SHOT_SECONDS)
+    remainder = seconds % MAX_SHOT_SECONDS
+    if remainder == 1:
+        if not parts:
+            raise ValueError("Cannot generate a 1-second shot")
+        parts[-1] = 4
+        parts.append(2)
+    elif remainder:
+        parts.append(remainder)
+    if sum(parts) != seconds or not all(2 <= n <= 5 for n in parts):
+        raise AssertionError("Illegal real-shot duration split")
+    return parts
+
 
 def scene_plan():
     if validate_stories() != 22:
@@ -77,7 +96,8 @@ def scene_plan():
             "visual_lead": lead, "reference_file": str(path.relative_to(ROOT)),
             "reference_sha256": sha256(path), "script_text": s["text"],
             "direction": s["direction"], "ai_motion_prompt": prompt,
-            "target_seconds": budget, "status": "NOT_GENERATED",
+            "target_seconds": budget, "subshot_seconds": split_into_real_shots(budget),
+            "subshots_completed": [], "status": "NOT_GENERATED",
             "voice_engine": cast[s["character_id"]]["voice"]["engine"],
             "voice_id": cast[s["character_id"]]["voice"]["voice_id"],
             "cinematic_source": lead == "s01_ember",
@@ -87,7 +107,8 @@ def scene_plan():
         "original_episodes_verified": 22, "source_scene_count": TOTAL_SCENES,
         "distinct_scenes_generated": 0, "video_seconds_generated": 0,
         "target_seconds": TARGET_SECONDS, "min_final_seconds": 120,
-        "max_final_seconds": 180, "requested_distinct_ai_shots": TOTAL_SCENES,
+        "max_final_seconds": 180, "requested_distinct_ai_shots": sum(len(x["subshot_seconds"]) for x in planned),
+        "unique_motion_shots_generated": 0,
         "requested_seconds_sum": sum(budgets),
         "real_kokoro_audio_files": 0, "voices_verified": False,
         "true_lip_sync_verified": False, "film_created": False,
@@ -151,17 +172,28 @@ def authorized_run():
     except (OSError, KeyError, ValueError, subprocess.SubprocessError):
         return False
 
-def generate_scene(client, scene):
-    """An actual new independent I2V inference for each original scene."""
+def generate_shot(client, scene, part_number, part_seconds, input_image):
+    """Every sub-shot calls a NEW image-to-video inference, never reuses one."""
     from gradio_client import handle_file
-    image = ROOT / scene["reference_file"]
+    total_parts = len(scene["subshot_seconds"])
+    beat = ("begin the directed action" if part_number == 1 else
+            "continue the original body movement from this exact final frame" if part_number < total_parts else
+            "finish the action with a clear emotional reaction")
+    prompt = (
+        scene["ai_motion_prompt"] +
+        f" Unique continuous shot segment {part_number}/{total_parts}: {beat}. "
+        "Do not reset the character's position or repeat any previous motion. "
+        "Maintain cinematic 3D fur, natural paw locomotion, stable scarf and one gold star. "
+        "No text, slideshows or looped animation."
+    )
     result = client.predict(
-        scene["ai_motion_prompt"], handle_file(str(image)),
-        1024, 576, float(scene["target_seconds"]), 41 + scene["scene_no"],
+        prompt, handle_file(str(input_image)),
+        1024, 576, float(part_seconds),
+        4100 + scene["scene_no"] * 10 + part_number,
         "diffusion", False, False, False, api_name=API
     )
     if not isinstance(result, (list, tuple)) or not result:
-        raise RuntimeError("ZeroGPU returned no generated scene media")
+        raise RuntimeError("ZeroGPU returned no fresh generated sub-shot")
     value = result[0]
     if isinstance(value, dict):
         value = value.get("video") or value.get("path") or value.get("name")
@@ -169,15 +201,43 @@ def generate_scene(client, scene):
         raise RuntimeError("ZeroGPU output did not contain a video path")
     source = Path(value)
     if not source.is_file() or source.suffix.lower() != ".mp4":
-        raise RuntimeError("No real MP4 returned from free generation")
-    dest = OUT / f"scene_{scene['scene_no']:02d}_generated.mp4"
+        raise RuntimeError("No actual motion MP4 returned by free LTX")
+    dest = OUT / f"scene_{scene['scene_no']:02d}_part_{part_number:02d}_generated.mp4"
     shutil.copyfile(source, dest)
-    meta = ffprobe(dest)
-    v = next((s for s in meta.get("streams", []) if s.get("codec_type") == "video"), None)
-    seconds = float(meta.get("format", {}).get("duration") or 0)
-    if not v or seconds < scene["target_seconds"] - 1.0:
-        raise RuntimeError("Generated unique shot shorter than requested; cannot fake by looping")
+    metadata = ffprobe(dest)
+    v = next((t for t in metadata.get("streams", [])
+              if t.get("codec_type") == "video"), None)
+    seconds = float(metadata.get("format", {}).get("duration") or 0)
+    if not v or seconds < part_seconds - 1.0:
+        raise RuntimeError("Unique AI sub-shot shorter than requested; refuses looping")
     return dest, seconds
+
+
+def last_actual_frame(clip, scene_no, part_number):
+    result = OUT / f"scene_{scene_no:02d}_part_{part_number:02d}_lastframe.png"
+    safe_ffmpeg("-sseof", "-0.08", "-i", clip, "-frames:v", "1", result)
+    if not result.is_file() or result.stat().st_size < 1000:
+        raise RuntimeError("Could not preserve the actual final-frame continuity")
+    return result
+
+
+def combine_unique_subshots(scene_no, clips):
+    if len(clips) < 2:
+        raise RuntimeError("An E01 scene must contain multiple genuine AI sub-shots")
+    normalized = []
+    for i, clip in enumerate(clips, 1):
+        p = OUT / f"scene_{scene_no:02d}_part_{i:02d}_norm.mp4"
+        safe_ffmpeg("-i", clip, "-vf",
+                    "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=24,format=yuv420p",
+                    "-an", "-c:v", "libx264", "-crf", "22", p)
+        normalized.append(p)
+    playlist = OUT / f"scene_{scene_no:02d}_subshots.txt"
+    playlist.write_text("".join("file '" + str(p.resolve()) + "'\\n" for p in normalized))
+    scene_video = OUT / f"scene_{scene_no:02d}_genuine_motion.mp4"
+    safe_ffmpeg("-f", "concat", "-safe", "0", "-i", playlist,
+                "-c", "copy", "-movflags", "+faststart", scene_video)
+    return scene_video, duration(scene_video)
+
 
 def create_voice(scene, cast):
     """Kokoro voices are synthesized from original speaker/text, no robotic fallback."""
@@ -214,7 +274,7 @@ def render_all(cast, report, factory=None):
                   .get(API, {}).get("parameters", []))
         if len(params) != 10:
             raise RuntimeError("Official free LTX-2.5 API changed; cannot submit paid fallback")
-        report["status"] = "RENDERING_14_DISTINCT_AI_SCENES_AND_KOKORO"
+        report["status"] = "RENDERING_36_UNIQUE_2_TO_5_SECOND_AI_SHOTS_AND_14_KOKORO_LINES"
         save(report)
         assembled = []
         for scene in report["scenes"]:
@@ -224,14 +284,31 @@ def render_all(cast, report, factory=None):
             scene["voice_seconds"] = round(audio_seconds, 3)
             scene["status"] = "VOICE_READY_VIDEO_PENDING"
             save(report)
-            raw, generated_seconds = generate_scene(client, scene)
-            voiced = join_scene(raw, wav, scene["scene_no"], generated_seconds)
+            parts = []
+            input_image = ROOT / scene["reference_file"]
+            for part_number, part_seconds in enumerate(scene["subshot_seconds"], 1):
+                # Every part needs a separate authentic ZeroGPU prediction.
+                raw, seconds = generate_shot(client, scene, part_number, part_seconds, input_image)
+                parts.append(raw)
+                report["unique_motion_shots_generated"] += 1
+                scene["subshots_completed"].append({
+                    "part": part_number, "requested_seconds": part_seconds,
+                    "generated_seconds": round(seconds, 3), "file": raw.name
+                })
+                report["video_seconds_generated"] += seconds
+                scene["status"] = "PARTIAL_DISTINCT_MOTION_NOT_FULL_SCENE"
+                save(report)
+                if part_number < len(scene["subshot_seconds"]):
+                    input_image = last_actual_frame(raw, scene["scene_no"], part_number)
+            combined, generated_seconds = combine_unique_subshots(scene["scene_no"], parts)
+            if generated_seconds < audio_seconds - 0.05:
+                raise RuntimeError("Original Kokoro dialogue does not fit genuine motion duration")
+            voiced = join_scene(combined, wav, scene["scene_no"], generated_seconds)
             scene["status"] = "ACTUAL_AI_MOTION_WITH_KOKORO_AUDIO"
             scene["generated_seconds"] = round(generated_seconds, 3)
             scene["mp4"] = voiced.name
             assembled.append(voiced)
             report["distinct_scenes_generated"] += 1
-            report["video_seconds_generated"] += generated_seconds
             save(report)
         # Only original, distinct scene MP4s are used. No replay or hold frames.
         listing = OUT / "all_actual_scenes.txt"
@@ -274,6 +351,7 @@ def main():
     status = render_all(cast, report) if args.mode == "render" else 0
     print("E01_FULL_RESULT", report["status"])
     print("REAL_MOTION_SCENES", report["distinct_scenes_generated"], "/14")
+    print("FRESH_MODEL_INFERENCES", report["unique_motion_shots_generated"], "/", MAX_GENERATIONS)
     print("GENERATED_REAL_VIDEO_SECONDS", round(report["video_seconds_generated"], 2))
     print("RELEASE_GATE", "BLOCKED_NO_LIPSYNC_OR_HUMAN_QA")
     print("PAID_APIS_OR_PUBLICATION", False)
