@@ -341,6 +341,29 @@ def assemble_unapproved():
     }
 
 
+def assembly_gate():
+    """Read-only determination; never turn planned shots into actual media."""
+    _, plan = film.scene_plan()
+    state = load_state(plan)
+    all_shots_present = next_unfinished(state, plan) is None
+    ready = all_shots_present and not state.get("technical_full_mp4", False)
+    result = {
+        "episode": film.EPISODE,
+        "all_36_genuine_shots_verified": all_shots_present,
+        "ready": ready,
+        "already_assembled": bool(state.get("technical_full_mp4")),
+        "shots_completed": len(state["completed"]),
+        "movie_will_not_be_published": True,
+    }
+    output = os.getenv("GITHUB_OUTPUT")
+    if output:
+        with open(output, "a", encoding="utf-8") as handle:
+            handle.write("ready=" + ("true" if ready else "false") + "\n")
+            handle.write("assembled=" + (
+                "true" if state.get("technical_full_mp4") else "false") + "\n")
+    return result
+
+
 def write_job_summary(result, mode):
     """Report only the real E01 operation, never test fixtures or old queues."""
     target = os.getenv("GITHUB_STEP_SUMMARY")
@@ -382,12 +405,14 @@ def write_job_summary(result, mode):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=("status", "one-shot", "assemble"), required=True)
+    p.add_argument("--mode", choices=("status", "one-shot", "assemble", "assembly-gate"), required=True)
     args = p.parse_args()
     if args.mode == "status":
         result = status()
     elif args.mode == "assemble":
         result = assemble_unapproved()
+    elif args.mode == "assembly-gate":
+        result = assembly_gate()
     else:
         result = resume_one_shot()
     print(json.dumps(result, ensure_ascii=False, indent=2))
