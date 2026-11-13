@@ -274,7 +274,7 @@ def assemble_unapproved():
             raise RuntimeError("Kokoro dialogue is longer than natural AI motion; no slowdown")
         voiced.append(film.join_scene(joined, wav, number, actual))
     listing = OUT / "e01_real_scenes.txt"
-    listing.write_text("".join("file '" + str(x.resolve()) + "'\\n" for x in voiced))
+    listing.write_text("".join("file '" + str(x.resolve()) + "'\n" for x in voiced))
     film_path = OUT / "S01_the_last_little_fox_E01_full_unapproved.mp4"
     film.safe_ffmpeg("-f", "concat", "-safe", "0", "-i", listing,
                      "-c", "copy", "-movflags", "+faststart", film_path)
