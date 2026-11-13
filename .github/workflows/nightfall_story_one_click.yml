@@ -152,12 +152,13 @@ jobs:
       # Users must not be left without an explanation when ZeroGPU quota
       # blocks a new clip. One verified morning report per Cairo date, only
       # for scheduled runs; suppress it if a successful clip notice was sent.
-      - name: Telegram — daily E01 health when no new clip was produced
-        if: always() && github.event_name == 'schedule' && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
+      - name: Telegram — report scheduled or owner NOW run even when no clip finished
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'push') && (steps.selected.outputs.eligible == 'true' || steps.scheduled.outputs.eligible == 'true')
         continue-on-error: true
         timeout-minutes: 3
         env:
           GH_TOKEN: ${{ github.token }}
+          NIGHTFALL_OWNER_START_NOW: ${{ github.event_name == 'push' && 'YES' || 'NO' }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
