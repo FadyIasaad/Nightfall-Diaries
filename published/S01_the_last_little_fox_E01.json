@@ -1,0 +1,12 @@
+{
+  "telegram_notifications": {
+    "real_shots": {
+      "scene_01_part_03": {
+        "phase": "initiated",
+        "sha256": "07b934dab9ca60d77c1399af495d26b1d39225e43ace6df111ccb202cff7a8c3",
+        "run_id": "43439850156",
+        "shot_index": 3
+      }
+    }
+  }
+}
