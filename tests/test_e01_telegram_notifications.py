@@ -185,7 +185,7 @@ class OfficialPublicVerificationTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/nightfall_story_one_click.yml").read_text()
         pos_publish = workflow.index("python -m pilot.e01_completion_publish")
         pos_verify = workflow.index("python -m pilot.e01_verify_platforms")
-        pos_telegram = workflow.index("python -m pilot.e01_telegram_notify")
+        pos_telegram = workflow.index("python -m pilot.e01_telegram_notify --mode completion")
         self.assertLess(pos_publish, pos_verify)
         self.assertLess(pos_verify, pos_telegram)
         self.assertIn("secrets.TELEGRAM_BOT_TOKEN", workflow)
