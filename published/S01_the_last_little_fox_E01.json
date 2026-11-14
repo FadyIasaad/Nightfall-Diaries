@@ -25,9 +25,10 @@
     },
     "daily_health": {
       "2026-11-14": {
-        "phase": "initiated",
+        "phase": "sent",
         "run_id": "43608952302",
-        "shots_completed": 6
+        "shots_completed": 6,
+        "telegram_message_id": 8
       }
     }
   }
