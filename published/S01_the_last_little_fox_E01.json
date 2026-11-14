@@ -7,6 +7,12 @@
         "run_id": "43439850156",
         "shot_index": 3,
         "telegram_message_id": 5
+      },
+      "scene_02_part_02": {
+        "phase": "initiated",
+        "sha256": "bb7fe1b15199f42d75893f87474a181f1e1159ed1c0c23fd56fb1b9bcf08e630",
+        "run_id": "43607663362",
+        "shot_index": 5
       }
     }
   }
