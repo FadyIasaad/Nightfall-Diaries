@@ -1,0 +1,24 @@
+name: Nightfall - Original Ember Art Reference QA Export
+on:
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_art_qa_export_now.txt']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  approved-art-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v5
+      - name: Source evidence without any model inference
+        run: |
+          sha256sum assets/cinematic_refs/ember_approved_candidate_2026-11-13.webp
+          file assets/cinematic_refs/ember_approved_candidate_2026-11-13.webp
+      - uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-original-ember-locked-art-qa
+          path: assets/cinematic_refs/ember_approved_candidate_2026-11-13.webp
+          retention-days: 7
+          if-no-files-found: error
