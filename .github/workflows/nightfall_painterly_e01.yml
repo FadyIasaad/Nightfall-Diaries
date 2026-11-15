@@ -1,0 +1,146 @@
+name: Nightfall - Painterly Reference Ember Animated E01 (2.5D Review)
+
+# A real, independently moving 2D character film on GitHub's CPU runner.
+# 14 original scenes / 14 existing Kokoro WAV / 216 seconds. ZERO paid AI.
+# A backup animation style, not a fake LTX/Agnes animation. Public posting OFF.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "sample (first 12s+ with characters) or full (216s film)"
+        required: true
+        type: choice
+        options: [sample, full]
+        default: sample
+  push:
+    branches: [main]
+    paths:
+      - '.github/nightfall_25d_start_now.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: nightfall-painterly-25d-e01
+  cancel-in-progress: false
+
+jobs:
+  original-animated-film:
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    env:
+      GH_TOKEN: ${{ github.token }}
+      HF_TOKEN: ''
+      AGNES_API_KEY: ''
+      EVERYPIXEL_CLIENT_SECRET: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      CPU_FILM_MODE: ${{ github.event_name == 'push' && 'sample' || inputs.mode }}
+    steps:
+      - name: Checkout original 22 canonical stories, character IDs and voice locks
+        uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install free offline art renderer and FFmpeg (no inference API)
+        run: |
+          python -m pip install --disable-pip-version-check 'Pillow>=11,<13'
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Verify original locked Ember art and independently animated 2.5D pieces
+        run: python -m unittest tests.test_painterly_reference_actor -v
+      - name: Recover SHA-verified CPU animated scene checkpoints
+        uses: actions/cache/restore@v4
+        with:
+          path: output/cpu_painterly_e01/
+          key: nightfall-painterly-e01-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            nightfall-painterly-e01-
+      - name: Restore 14 genuine original Kokoro WAV files from prior GitHub run
+        run: |
+          if [ -f output/agnes_e01/voice_manifest.json ]; then
+            echo "Already recovered original Kokoro voice evidence"
+          else
+            RUN_ID=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=nightfall-agnes-e01-cumulative&per_page=100" \
+              --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | last | .workflow_run.id // empty')
+            if [ -z "$RUN_ID" ]; then
+              echo "::error::No real original Kokoro source. Never invent synthetic placeholder audio."
+              exit 1
+            fi
+            mkdir -p output/agnes_e01
+            gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
+              --name nightfall-agnes-e01-cumulative --dir output/agnes_e01
+          fi
+      - name: Verify original screenplay and animate real body/face/eyes/limbs
+        id: animate
+        env:
+          MODE: ${{ env.CPU_FILM_MODE }}
+        run: python -m pilot.e01_painterly_film --mode "$MODE"
+      - name: Verify playable H264/AAC, quality evidence and non-publishing
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          p = pathlib.Path("output/cpu_painterly_e01/progress.json")
+          state = json.loads(p.read_text(encoding="utf-8"))
+          mode = os.environ["CPU_FILM_MODE"]
+          if state["public_posting_attempted"] or state["genuine_ai_video_generated"]:
+              raise RuntimeError("Unapproved public posting or false AI-generation claim")
+          if mode == "full":
+              if len(state["complete_scenes"]) != 14 or state["verified_duration_seconds"] < 180:
+                  raise RuntimeError("Incomplete genuine CPU-rendered film; not 3+ minutes")
+              path = pathlib.Path("output/cpu_painterly_e01") / state["full_video"]
+          else:
+              path = pathlib.Path(state["sample_output"])
+          data = json.loads(subprocess.run(["ffprobe","-v","error","-of","json",
+              "-show_entries","format=duration:stream=codec_name,codec_type,width,height",
+              str(path)], capture_output=True,text=True,check=True).stdout)
+          v = next(s for s in data["streams"] if s["codec_type"] == "video")
+          a = next(s for s in data["streams"] if s["codec_type"] == "audio")
+          print("ANIMATED_OUTPUT_REAL:", path,
+                "seconds", data["format"]["duration"],
+                "resolution", v["width"], "x", v["height"],
+                "video", v["codec_name"], "audio", a["codec_name"])
+          PY
+      - name: Save real review and complete output into downloadable artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-painterly-e01-reference-art-review-unapproved
+          path: |
+            output/cpu_painterly_e01/progress.json
+            output/cpu_painterly_e01/*frame.png
+            output/cpu_painterly_e01/review_scene_*.mp4
+            output/cpu_painterly_e01/Nightfall_S01_E01_painterly_Ember_25D_UNAPPROVED.mp4
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+      - name: Persist all genuine animated scenes for next automatic checkpoint
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: output/cpu_painterly_e01/
+          key: nightfall-painterly-e01-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Report exact animated seconds — no fake cinematic AI or platform posting
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib, os
+          p = pathlib.Path("output/cpu_painterly_e01/progress.json")
+          if p.is_file():
+              j = json.loads(p.read_text(encoding="utf-8"))
+              msg = f"Style: original articulated 2D animation; completed scene renders: {len(j.get('complete_scenes', []))}/14; status: {j.get('status')}; public uploads: NONE"
+              print(msg)
+              summary = os.getenv("GITHUB_STEP_SUMMARY")
+              if summary:
+                  with open(summary, "a", encoding="utf-8") as s:
+                      s.write("\n## Nightfall E01 — Zero-cost 2D animated fallback\n\n" + msg + "\n")
+          else:
+              print("::error::No genuine CPU animation progress was saved.")
+          PY
