@@ -164,3 +164,32 @@ jobs:
           print("REAL_NEW_SHOTS:", n, "REAL_SECONDS:", actual,
                 "FILM_ASSEMBLED:", bool(s.get("full_mp4_verified")))
           PY
+      - name: Fail honestly if Agnes was blocked or the real video request failed
+        if: always()
+        env:
+          RENDER_OUTCOME: ${{ steps.production.outcome }}
+          RENDER_MODE: ${{ inputs.mode }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          path = "output/agnes_e01/progress.json"
+          state = json.load(open(path, encoding="utf-8")) if os.path.isfile(path) else {}
+          status = state.get("status", "NO_DURABLE_E01_PROGRESS")
+          outcome = os.environ.get("RENDER_OUTCOME", "")
+          mode = os.environ.get("RENDER_MODE", "")
+          event = os.environ.get("EVENT_NAME", "")
+          failed = outcome == "failure"
+          if status in ("AMBIGUOUS_POST_DO_NOT_RETRY", "SUBMISSION_UNCERTAIN_DO_NOT_AUTORETRY",
+                        "PAUSED_AGNES_QUEUE_FULL_NOT_ADMITTED", "PROVIDER_TASK_FAILED_REVIEW_REQUIRED",
+                        "COMPLETED_BUT_MEDIA_URL_MISSING_REVIEW_REQUIRED"):
+              failed = True
+          # The 4-hour throttled schedule is informative; no new model request
+          # is attempted before the cooldown, and no false completed claim.
+          if mode == "produce" and outcome != "success":
+              failed = True
+          print("E01_REAL_RENDER_OUTCOME:", outcome, "E01_REAL_STATUS:", status)
+          if failed:
+              print("::error::Agnes video did not complete. Real footage preserved; no published episode.")
+              sys.exit(1)
+          PY

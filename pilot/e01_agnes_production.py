@@ -6,7 +6,7 @@ An accepted task is polled by ID on future runs; uncertain submissions are
 blocked rather than secretly resubmitted.
 """
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -59,6 +59,7 @@ def new_state(plan):
         "character_lipsync_verified": False, "cinematic_acting_approved": False,
         "public_publish_attempted": False, "billable_fallback_used": False,
         "requests_submitted": 0, "last_completed_utc": None,
+        "queue_rejections": 0, "next_allowed_submit_utc": None,
     }
 
 
@@ -121,10 +122,38 @@ def read_response(req, timeout=45):
         return value
 
 
+def confirmed_queue_rejection(error):
+    """Only Agnes's explicit 503 video_queue_full + null task permits a new attempt.
+
+    Generic HTTP 503, gateway resets, timeouts and malformed errors remain
+    AMBIGUOUS, even when no video_id reached the client. Never log the body.
+    """
+    if getattr(error, "code", None) != 503:
+        return False
+    try:
+        body = error.read(4097)
+        if len(body) > 4096:
+            return False
+        doc = json.loads(body)
+    except (ValueError, UnicodeError, OSError, TypeError):
+        return False
+    return (
+        isinstance(doc, dict)
+        and str(doc.get("code", "")).strip().casefold().replace(" ", "_")
+            in {"video_queue_full", "video_query_full"}
+        and doc.get("data") is None
+        and not doc.get("video_id")
+        and not doc.get("task_id")
+    )
+
+
 def request_shot(shot, state, key):
     # Never revisit an already accepted/uncertain task, even before billing GET.
     if shot["index"] != len(state["completed"]) + 1 or state["pending"]:
         raise RuntimeError("NEVER_SUBMIT_DUPLICATE_OR_OUT_OF_ORDER_SHOT")
+    not_before = state.get("next_allowed_submit_utc")
+    if not_before and datetime.now(timezone.utc) < datetime.fromisoformat(not_before):
+        raise RuntimeError("AGNES_QUEUE_FULL_COOLDOWN_ACTIVE_NO_POST")
     check_no_charge(key)
     payload = {
         "model": MODEL, "prompt": shot["prompt"], "mode": "reference",
@@ -144,14 +173,33 @@ def request_shot(shot, state, key):
                "Content-Type": "application/json", "Accept": "application/json"}
     req = Request(CREATE_URL, data=json.dumps(payload).encode("utf-8"),
                   headers=headers, method="POST")
-    result = read_response(req, timeout=90)  # exactly one POST, no fallback
+    try:
+        result = read_response(req, timeout=90)  # exactly one POST, no fallback
+    except HTTPError as exc:
+        if confirmed_queue_rejection(exc):
+            # Official Agnes response explicitly says the request was rejected
+            # before task admission; no video_id exists and no quota charged.
+            # Resume at a future scheduled run, never hammer the free queue.
+            state["pending"] = None
+            state["queue_rejections"] = int(state.get("queue_rejections", 0)) + 1
+            state["next_allowed_submit_utc"] = (
+                datetime.now(timezone.utc) + timedelta(hours=4)
+            ).isoformat()
+            state["status"] = "PAUSED_AGNES_QUEUE_FULL_NOT_ADMITTED"
+            atomic_json(STATE, state)
+            print("AGNES_FLASH_QUEUE_FULL_EXPLICIT_NO_TASK_RETRY_AFTER_COOLDOWN")
+            return False
+        # Generic 503 may have had an ambiguous outcome. Do not release lock.
+        raise
     video_id = result.get("video_id")
     if not isinstance(video_id, str) or not video_id or len(video_id) > 150:
         raise RuntimeError("AMBIGUOUS_PROVIDER_ACCEPTANCE_NO_RESUBMIT")
     state["pending"]["video_id"] = video_id
     state["pending"]["status"] = "ACCEPTED_POLL_BY_ID"
     state["status"] = "POLLING_EXISTING_VIDEO_TASK"
+    state["next_allowed_submit_utc"] = None
     atomic_json(STATE, state)
+    return True
 
 
 def download_clip(url, dest):
@@ -279,7 +327,14 @@ def render(max_new):
                 atomic_json(STATE, state)
                 break
         else:
-            request_shot(plan["shots"][len(state["completed"])], state, key)
+            if state.get("next_allowed_submit_utc"):
+                if datetime.now(timezone.utc) < datetime.fromisoformat(
+                        state["next_allowed_submit_utc"]):
+                    state["status"] = "PAUSED_AGNES_QUEUE_FULL_COOLDOWN"
+                    atomic_json(STATE, state)
+                    break
+            if request_shot(plan["shots"][len(state["completed"])], state, key) is False:
+                break
         if not poll(state, key):
             break
         new += 1
@@ -291,6 +346,8 @@ def render(max_new):
         "status": state["status"], "completed": len(state["completed"]),
         "expected": len(plan["shots"]), "new_this_run": new,
         "actual_seconds": round(sum(x["seconds"] for x in state["completed"]), 2),
+        "next_allowed_submit_utc": state.get("next_allowed_submit_utc"),
+        "queue_rejections": state.get("queue_rejections", 0),
         "public_publish_attempted": False,
     }))
     return state
