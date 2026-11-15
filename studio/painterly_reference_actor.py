@@ -36,8 +36,12 @@ def approved_layers():
     if not EMBEDDED_IMAGE.is_file() or sha256(EMBEDDED_IMAGE) != LOCKED_SHA:
         raise RuntimeError("APPROVED_EMBER_REFERENCE_MISSING_OR_MODIFIED")
     original = Image.open(EMBEDDED_IMAGE).convert("RGBA")
+    # The official 3D-rendered file is locked by SHA, not by source pixel size.
+    # Render all puppet geometry in 640x640 normalized artwork coordinates.
+    if original.width != original.height or original.width < 256:
+        raise RuntimeError("APPROVED_EMBER_REFERENCE_NOT_A_SQUARE_RENDER")
     if original.size != (640, 640):
-        raise RuntimeError("APPROVED_EMBER_REFERENCE_SIZE_CHANGED")
+        original = original.resize((640, 640), _L)
     # Independently rigged matte pieces from the SAME original painterly art.
     head = _poly_mask([
         (185,74),(204,60),(225,73),(245,110),(271,124),
