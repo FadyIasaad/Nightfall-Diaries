@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 def check_media(path, mode="full"):
-    if mode not in ("proof", "full"):
+    if mode not in ("proof", "full", "cinematic_episode"):
         raise ValueError("Unknown rendering mode")
     p = Path(path)
     if not p.is_file() or p.stat().st_size < 10_000:
@@ -20,7 +20,7 @@ def check_media(path, mode="full"):
     v = next((s for s in streams if s.get("codec_type") == "video"), None)
     a = next((s for s in streams if s.get("codec_type") == "audio"), None)
     seconds = float(info.get("format", {}).get("duration") or 0)
-    lower, upper = (15, 30) if mode == "proof" else (120, 180)
+    lower, upper = ((15, 30) if mode == "proof" else (180, 360) if mode == "cinematic_episode" else (120, 180))
     if not lower <= seconds <= upper:
         raise RuntimeError(f"INVALID_DURATION: {seconds:.1f}s; {mode} requires {lower}-{upper}s")
     if not v or v.get("codec_name") != "h264":
