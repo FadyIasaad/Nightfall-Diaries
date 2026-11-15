@@ -38,10 +38,12 @@ def approved_layers():
     original = Image.open(EMBEDDED_IMAGE).convert("RGBA")
     # The official 3D-rendered file is locked by SHA, not by source pixel size.
     # Render all puppet geometry in 640x640 normalized artwork coordinates.
-    if original.width != original.height or original.width < 256:
-        raise RuntimeError("APPROVED_EMBER_REFERENCE_NOT_A_SQUARE_RENDER")
-    if original.size != (640, 640):
-        original = original.resize((640, 640), _L)
+    # Original approved WebP is 512x640 portrait (VP8 dimensions).
+    # Normalize the locked original to 640x640 painting/mask coordinates.
+    # Keep original unchanged on disk and reject unexpected identities/shapes.
+    if not (original.width == 512 and original.height == 640):
+        raise RuntimeError("APPROVED_EMBER_REFERENCE_DIMENSIONS_CHANGED")
+    original = original.resize((640, 640), _L)
     # Independently rigged matte pieces from the SAME original painterly art.
     head = _poly_mask([
         (185,74),(204,60),(225,73),(245,110),(271,124),
