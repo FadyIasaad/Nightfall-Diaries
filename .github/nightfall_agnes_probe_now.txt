@@ -1,0 +1,1 @@
+Owner request 2026-11-15: after Lightning signup closed, check the existing Agnes free Flash API account and published $0 promotion by GET only. No generation or publishing.
