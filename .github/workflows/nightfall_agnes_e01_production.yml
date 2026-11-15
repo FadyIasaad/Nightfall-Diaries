@@ -136,7 +136,7 @@ jobs:
         with:
           path: output/agnes_e01
           key: nightfall-agnes-e01-progress-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: True state: generated motion versus prepared blueprint
+      - name: Report real generated motion versus prepared blueprint
         if: always()
         run: |
           python - <<'PY'
