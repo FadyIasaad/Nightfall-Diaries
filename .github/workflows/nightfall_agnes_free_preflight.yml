@@ -1,0 +1,50 @@
+name: Nightfall - Existing Agnes Free Video Read-Only Preflight
+
+# Verify the existing API key, official current promotional price and exact model.
+# No video generation or paid call; never writes any project state or posts.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/nightfall_agnes_probe_now.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightfall-production
+  cancel-in-progress: false
+
+jobs:
+  read-only-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+      HF_TOKEN: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Confirm official price for exact Flash model (public GET)
+        continue-on-error: true
+        run: python -m studio.agnes_cost_gate --output output/agnes_cost_gate.json
+      - name: Check existing Agnes key and Flash catalog (authenticated GET)
+        continue-on-error: true
+        run: python -m studio.agnes_probe --output output/agnes_engine_probe.json
+      - name: Save safe evidence for deciding whether free one-shot test is allowed
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-agnes-existing-account-free-preflight
+          path: |
+            output/agnes_cost_gate.json
+            output/agnes_engine_probe.json
+          if-no-files-found: error
+          retention-days: 7
