@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "model": "agnes-video-2.5-flash",
-  "key_type_verified": false,
-  "owner_confirmed_default_free_trial": false,
-  "owner_confirmed_no_agent_plan_or_billable_key": false,
-  "owner_authorized_zero_charge_generation": false,
-  "last_verified": null,
-  "notes": "Do not flip this from a green /v1/models check or a public $0 promotion. Verify the actual key type in Agnes console. No billing method alone is insufficient evidence. Never use paid fallback."
+  "key_type_verified": true,
+  "owner_confirmed_default_free_trial": true,
+  "owner_confirmed_no_agent_plan_or_billable_key": true,
+  "owner_authorized_zero_charge_generation": true,
+  "last_verified": "2026-11-15",
+  "notes": "Owner verified personal API key under API Keys, not Enterprise Keys. Start limited test production for E01."
 }
