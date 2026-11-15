@@ -1,0 +1,58 @@
+name: Nightfall - One-Time Free Kaggle GPU Availability Probe
+
+# Probes a legitimate account's free Kaggle GPU access once.
+# Does NOT create any video, change story state, or publish anything.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/nightfall_gpu_probe_now.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightfall-production
+  cancel-in-progress: false
+
+jobs:
+  check-kaggle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+      KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+      HF_TOKEN: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Verify configured account with read-only Kaggle API
+        run: |
+          if [ -z "$KAGGLE_API_TOKEN" ] || [ -z "$KAGGLE_USERNAME" ]; then
+            echo "::error::Missing existing KAGGLE_API_TOKEN or KAGGLE_USERNAME"
+            exit 1
+          fi
+          python -m pip install 'kaggle>=1.7,<2' 'six>=1.16,<2'
+          kaggle kernels list --mine --page-size 1 >/dev/null
+      - name: Run exactly one legitimate free T4 availability CUDA probe
+        timeout-minutes: 38
+        run: python -m studio.kaggle_bridge --mode gpu_probe
+      - name: Preserve honest Kaggle GPU availability evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-kaggle-free-gpu-availability-20261115
+          path: |
+            output/kaggle_dispatch/kaggle_dispatch.json
+            output/kaggle_dispatch/kaggle_diagnostic.json
+            output/kaggle_dispatch/kaggle_worker_logs.txt
+            output/kaggle_dispatch/kaggle_results/nightfall_kaggle_report.json
+          if-no-files-found: ignore
+          retention-days: 7
