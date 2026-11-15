@@ -1,0 +1,161 @@
+name: Nightfall - Agnes E01 Full Cinematic Episode
+
+# One real 216s / 18-shot original film, starting from zero.
+# Ordinary pushes only run a SAFE preparatory path (no inference or billing).
+# Public posting is never enabled by this workflow until separate QA/release.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "prepare, voices, produce, or assemble existing real clips"
+        required: true
+        type: choice
+        default: prepare
+        options: [prepare, voices, produce, assemble]
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_agnes_e01_prepare_now.txt']
+  schedule:
+    # Multiple chances to resume provider tasks without 24h of waiting.
+    - cron: '7 2,6,10,14,18,22 * * *'
+      timezone: 'Africa/Cairo'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: nightfall-production
+  cancel-in-progress: false
+
+jobs:
+  original-e01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 195
+    env:
+      GH_TOKEN: ${{ github.token }}
+      AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - name: Check out locked 22-episode story archive
+        uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Restore SHA-verified E01 Agnes MP4 and progress from Actions cache
+        uses: actions/cache/restore@v4
+        with:
+          path: output/agnes_e01
+          key: nightfall-agnes-e01-progress-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            nightfall-agnes-e01-progress-
+      - name: Recover cumulative MP4, accepted task ID and all Kokoro voices
+        run: |
+          if [ -f output/agnes_e01/progress.json ]; then
+            echo "Reusing recovered checkpoint; next Python step verifies every SHA-256."
+          else
+            RUN_ID=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=nightfall-agnes-e01-cumulative&per_page=100" \
+              --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | last | .workflow_run.id // empty')
+            if [ -n "$RUN_ID" ]; then
+              mkdir -p output/agnes_e01
+              gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
+                --name nightfall-agnes-e01-cumulative --dir output/agnes_e01
+            else
+              echo "No earlier Agnes footage available; only NEW Agnes film uses this directory."
+            fi
+          fi
+      - name: Prepare 18 unique original cinematic shots, 216 seconds
+        run: python -m pilot.e01_agnes_production --mode prepare
+      - name: Verify owner-authorized DEFAULT free key type before ANY video POST
+        id: billing
+        run: |
+          python - <<'PY'
+          import json, os
+          p = json.load(open("studio/agnes_billing_authorization.json", encoding="utf-8"))
+          fields = ("key_type_verified", "owner_confirmed_default_free_trial",
+                    "owner_confirmed_no_agent_plan_or_billable_key",
+                    "owner_authorized_zero_charge_generation")
+          ready = all(p.get(k) is True for k in fields)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write("ready=" + str(ready).lower() + "\n")
+          print("ACCOUNT_SPECIFIC_ZERO_SPEND_AUTHORIZATION:", "CONFIRMED" if ready else "BLOCKED")
+          if not ready:
+              print("::notice::No billable video request will be attempted; Agnes API key exists but key type is not verified.")
+          PY
+      - name: Resume up to 3 fresh Agnes Flash shots; poll prior task ID first
+        id: production
+        if: (github.event_name == 'schedule' || inputs.mode == 'produce') && steps.billing.outputs.ready == 'true'
+        timeout-minutes: 105
+        continue-on-error: true
+        run: python -m pilot.e01_agnes_production --mode render --max-new-shots 3
+      - name: Install free Kokoro neural speech dependencies (CPU only)
+        if: github.event_name == 'push' || inputs.mode == 'voices' || inputs.mode == 'produce' || inputs.mode == 'assemble' || steps.production.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python -m pip install --disable-pip-version-check 'kokoro==0.9.4' 'soundfile>=0.12,<1' 'numpy<3'
+      - name: Generate the 14 original locked Kokoro voices, no user PC
+        if: github.event_name == 'push' || inputs.mode == 'voices' || inputs.mode == 'produce' || inputs.mode == 'assemble' || steps.production.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 45
+        run: python -m pilot.e01_agnes_assemble --mode voices
+      - name: Assemble authentic MP4 with Kokoro WAV only if 18 real clips exist
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'push' || inputs.mode == 'produce' || inputs.mode == 'assemble')
+        continue-on-error: true
+        timeout-minutes: 80
+        run: |
+          python - <<'PY'
+          import json, os
+          p = "output/agnes_e01/progress.json"
+          if os.path.isfile(p):
+              st = json.load(open(p, encoding="utf-8"))
+              if len(st.get("completed", [])) == 18 and st.get("pending") is None:
+                  open("output/agnes_e01/ready_for_assembly", "w").close()
+          PY
+          if [ -f output/agnes_e01/ready_for_assembly ]; then
+            python -m pilot.e01_agnes_assemble --mode assemble
+          else
+            echo "Assembly pending: not yet 18 genuine Agnes MP4s."
+          fi
+      - name: Preserve ALL genuine clips, accepted task IDs, and voices for next session
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-agnes-e01-cumulative
+          path: output/agnes_e01/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Refresh durable cache for automatic subsequent tasks
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: output/agnes_e01
+          key: nightfall-agnes-e01-progress-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Report real generated motion versus prepared blueprint
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          path = "output/agnes_e01/progress.json"
+          s = json.load(open(path, encoding="utf-8")) if os.path.isfile(path) else {}
+          plan_file = "output/agnes_e01/shot_plan.json"
+          p = json.load(open(plan_file, encoding="utf-8")) if os.path.isfile(plan_file) else {}
+          n = len(s.get("completed", []))
+          actual = round(sum(float(x.get("seconds", 0)) for x in s.get("completed", [])), 2)
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as f:
+                  f.write("\n## Nightfall E01 — authentic Agnes production\n\n")
+                  f.write(f"- **Real MP4s produced:** {n}/{len(p.get('shots', []))}\n")
+                  f.write(f"- **Actual motion:** {actual} sec / {p.get('target_seconds', 0)} sec target\n")
+                  f.write(f"- **Accepted remote video ID:** {bool((s.get('pending') or {}).get('video_id'))}\n")
+                  f.write(f"- **Technically complete movie:** {bool(s.get('full_mp4_verified'))}\n")
+                  f.write("- **True character lip sync / public social posting:** NOT APPROVED / NOT ATTEMPTED\n")
+          print("REAL_NEW_SHOTS:", n, "REAL_SECONDS:", actual,
+                "FILM_ASSEMBLED:", bool(s.get("full_mp4_verified")))
+          PY
