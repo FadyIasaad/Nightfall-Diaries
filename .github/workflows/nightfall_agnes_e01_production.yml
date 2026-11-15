@@ -69,6 +69,13 @@ jobs:
               echo "No earlier Agnes footage available; only NEW Agnes film uses this directory."
             fi
           fi
+      - name: Install ffmpeg and ffprobe for real media timing and quality gates
+        run: |
+          if ! command -v ffprobe >/dev/null 2>&1 || ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+          ffprobe -version | head -1
       - name: Prepare 18 unique original cinematic shots, 216 seconds
         run: python -m pilot.e01_agnes_production --mode prepare
       - name: Verify owner-authorized DEFAULT free key type before ANY video POST
@@ -89,18 +96,16 @@ jobs:
           PY
       - name: Resume up to 3 fresh Agnes Flash shots; poll prior task ID first
         id: production
-        if: (github.event_name == 'schedule' || inputs.mode == 'produce') && steps.billing.outputs.ready == 'true'
+        if: (github.event_name == 'schedule' || github.event_name == 'push' || inputs.mode == 'produce') && steps.billing.outputs.ready == 'true'
         timeout-minutes: 105
         continue-on-error: true
         run: python -m pilot.e01_agnes_production --mode render --max-new-shots 3
       - name: Install free Kokoro neural speech dependencies (CPU only)
         if: github.event_name == 'push' || inputs.mode == 'voices' || inputs.mode == 'produce' || inputs.mode == 'assemble' || steps.production.outcome == 'success'
-        continue-on-error: true
         run: |
           python -m pip install --disable-pip-version-check 'kokoro==0.9.4' 'soundfile>=0.12,<1' 'numpy<3'
       - name: Generate the 14 original locked Kokoro voices, no user PC
         if: github.event_name == 'push' || inputs.mode == 'voices' || inputs.mode == 'produce' || inputs.mode == 'assemble' || steps.production.outcome == 'success'
-        continue-on-error: true
         timeout-minutes: 45
         run: python -m pilot.e01_agnes_assemble --mode voices
       - name: Assemble authentic MP4 with Kokoro WAV only if 18 real clips exist
