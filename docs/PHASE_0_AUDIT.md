@@ -165,3 +165,5 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `pilot/e01_painterly_film.py` — **KEEP**. Separate premium-art renderer with isolated checkpoints and output, existing Kokoro story audio, and zero public posting.
 - `.github/workflows/nightfall_painterly_e01.yml` — **KEEP**. One-click free CPU preview/full 216-second render, SHA-verified official art, separate archive, simple visual testing; no publication.
 - `tests/test_painterly_reference_actor.py` — **KEEP**. Source-reference hash/art layer isolation and real per-frame motion tests; skipped in legacy runner without Pillow, run explicitly after Pillow install in premium workflow.
+
+- `studio/painterly_reference_actor_v2.py` — **KEEP**. Correct exact original 512x640 approved Ember WebP and SHA; offline OpenCV GrabCut foreground/trailer matte preserves complete muzzle and individual hairs, independently animated source-textured head, torso, tail, paws and scarf. Separate v2 checkpoint avoids overwriting v1 output. Real 2.5D art, not new generative CGI. No paid API.

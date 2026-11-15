@@ -49,7 +49,7 @@ jobs:
           python-version: '3.11'
       - name: Install free offline art renderer and FFmpeg (no inference API)
         run: |
-          python -m pip install --disable-pip-version-check 'Pillow>=11,<13'
+          python -m pip install --disable-pip-version-check 'Pillow>=11,<13' 'numpy>=1.26,<3' 'opencv-python-headless>=4.9,<5'
           if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
             sudo apt-get update -qq
             sudo apt-get install -y ffmpeg
@@ -59,10 +59,10 @@ jobs:
       - name: Recover SHA-verified CPU animated scene checkpoints
         uses: actions/cache/restore@v4
         with:
-          path: output/cpu_painterly_e01/
-          key: nightfall-painterly-e01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/cpu_painterly_e01_v2/
+          key: nightfall-painterly-e01-v2-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            nightfall-painterly-e01-
+            nightfall-painterly-e01-v2-
       - name: Restore 14 genuine original Kokoro WAV files from prior GitHub run
         run: |
           if [ -f output/agnes_e01/voice_manifest.json ]; then
@@ -87,7 +87,7 @@ jobs:
         run: |
           python - <<'PY'
           import json, os, pathlib, subprocess
-          p = pathlib.Path("output/cpu_painterly_e01/progress.json")
+          p = pathlib.Path("output/cpu_painterly_e01_v2/progress.json")
           state = json.loads(p.read_text(encoding="utf-8"))
           mode = os.environ["CPU_FILM_MODE"]
           if state["public_posting_attempted"] or state["genuine_ai_video_generated"]:
@@ -95,7 +95,7 @@ jobs:
           if mode == "full":
               if len(state["complete_scenes"]) != 14 or state["verified_duration_seconds"] < 180:
                   raise RuntimeError("Incomplete genuine CPU-rendered film; not 3+ minutes")
-              path = pathlib.Path("output/cpu_painterly_e01") / state["full_video"]
+              path = pathlib.Path("output/cpu_painterly_e01_v2") / state["full_video"]
           else:
               path = pathlib.Path(state["sample_output"])
           data = json.loads(subprocess.run(["ffprobe","-v","error","-of","json",
@@ -112,12 +112,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: nightfall-painterly-e01-reference-art-review-unapproved
+          name: nightfall-painterly-e01-v2-reference-art-review-unapproved
           path: |
-            output/cpu_painterly_e01/progress.json
-            output/cpu_painterly_e01/*frame.png
-            output/cpu_painterly_e01/review_scene_*.mp4
-            output/cpu_painterly_e01/Nightfall_S01_E01_painterly_Ember_25D_UNAPPROVED.mp4
+            output/cpu_painterly_e01_v2/progress.json
+            output/cpu_painterly_e01_v2/*frame.png
+            output/cpu_painterly_e01_v2/review_scene_*.mp4
+            output/cpu_painterly_e01_v2/Nightfall_S01_E01_painterly_Ember_25D_v2_UNAPPROVED.mp4
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
@@ -125,14 +125,14 @@ jobs:
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: output/cpu_painterly_e01/
-          key: nightfall-painterly-e01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/cpu_painterly_e01_v2/
+          key: nightfall-painterly-e01-v2-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Report exact animated seconds — no fake cinematic AI or platform posting
         if: always()
         run: |
           python - <<'PY'
           import json, pathlib, os
-          p = pathlib.Path("output/cpu_painterly_e01/progress.json")
+          p = pathlib.Path("output/cpu_painterly_e01_v2/progress.json")
           if p.is_file():
               j = json.loads(p.read_text(encoding="utf-8"))
               msg = f"Style: original articulated 2D animation; completed scene renders: {len(j.get('complete_scenes', []))}/14; status: {j.get('status')}; public uploads: NONE"

@@ -7,13 +7,13 @@ import argparse
 from pathlib import Path
 
 from pilot import e01_cpu_film as film
-from studio import painterly_reference_actor as premium
+from studio import painterly_reference_actor_v2 as premium
 
 
 def configure():
-    film.OUT = film.ROOT / "output/cpu_painterly_e01"
+    film.OUT = film.ROOT / "output/cpu_painterly_e01_v2"
     film.STATUS = film.OUT / "progress.json"
-    film.FILM = film.OUT / "Nightfall_S01_E01_painterly_Ember_25D_UNAPPROVED.mp4"
+    film.FILM = film.OUT / "Nightfall_S01_E01_painterly_Ember_25D_v2_UNAPPROVED.mp4"
     film.SCHEMA = premium.SCHEMA
     film.render_frame = premium.render_frame
 
