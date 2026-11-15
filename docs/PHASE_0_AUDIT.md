@@ -143,3 +143,12 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 ## 13 November 2026 addendum — later owner-selected story state
 
 - `studio/active_story.json` — **KEEP (non-secret active-story selector)**. This small JSON file is written by the owner-authorized GitHub Actions `Nightfall - One Click Story` workflow. It stores which of the two original story series was selected and enables future daily runs to resume from that story. It stores no credentials, episode MP4 footage, or permission to release unfinished video. This is a post-Phase-0 addition; the historic Phase-0 evidence and other file decisions above are unchanged.
+
+## Follow-up decision — 2026-11-15: Agnes E01 key-type authorization
+
+- `studio/agnes_billing_authorization.json`: **KEEP**. A conservative, NON-SECRET billing safety lock for the owner's pre-existing Agnes key. All flags are initially `false`. A valid authenticated `GET /v1/models` or publicly advertised trial price does **not** prove account-specific `default` key eligibility. Never enable a billable inference call until the owner verifies the actual type and a real no-charge profile.
+- `pilot/e01_agnes_full_episode_plan.py`: **KEEP**. Original screenplay and visual-lock constrained fresh 216-second Agnes Flash cinematic plan, without modifying the original 22 stories.
+- `pilot/e01_agnes_production.py`: **KEEP**. Real video generation job submission, task polling and SHA-verified recovery; never retries uncertain `POST` outcomes.
+- `pilot/e01_agnes_assemble.py`: **KEEP**. CPU Kokoro voices, FFmpeg real MP4 assembly and duration QA; cannot pretend static slides are animated output.
+- `.github/workflows/nightfall_agnes_e01_production.yml`: **KEEP**. One-click and scheduled cloud-only E01 production with exact fee gate and no public upload.
+- `.github/workflows/nightfall_story_one_click.yml`: **RETAIN DISABLED**. Legacy HF motion pilot; existing six original clips stay archived, but are NOT part of the new film.
