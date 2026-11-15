@@ -10,6 +10,7 @@ No API tokens, no GPUs, no card, no media scraping, no paid provider.
 Public posting remains gated until actual film review and official platforms.
 """
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import math
@@ -18,6 +19,9 @@ from pathlib import Path
 import struct
 import subprocess
 import wave
+from urllib.error import URLError, HTTPError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from pilot import e01_agnes_full_episode_plan as timeline
 from pilot import e01_full_run as canon
@@ -205,6 +209,61 @@ def record(status):
     temp.replace(STATUS)
 
 
+
+def telegram_notice(state, key, content):
+    """One verified completion event, never an imagined scene or public post.
+
+    Writes the remote attempt receipt BEFORE POST so a timeout cannot spam
+    Telegram on an automatic daily rerun. Telegram is best effort, not film QA.
+    """
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat = os.getenv("TELEGRAM_CHAT_ID", "")
+    if not token or not chat:
+        return "NO_TELEGRAM_KEYS"
+    notices = state.setdefault("telegram_notice_receipts", {})
+    if key in notices:
+        return "ALREADY_ATTEMPTED_NO_DUPLICATE"
+    notices[key] = {
+        "phase": "attempted",
+        "utc": datetime.now(timezone.utc).isoformat(),
+        "run_id": os.getenv("GITHUB_RUN_ID", ""),
+    }
+    record(state)
+    post = Request(
+        "https://api.telegram.org/bot" + token + "/sendMessage",
+        data=urlencode({"chat_id": chat, "text": content}).encode("utf-8"),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    try:
+        with urlopen(post, timeout=12) as response:
+            reply = json.loads(response.read(4096))
+        if reply.get("ok") is not True:
+            raise RuntimeError("TELEGRAM_DID_NOT_CONFIRM")
+        notices[key]["phase"] = "sent"
+        notices[key]["message_id"] = (reply.get("result") or {}).get("message_id")
+    except (HTTPError, URLError, TimeoutError, ValueError, RuntimeError, OSError) as exc:
+        notices[key]["phase"] = "uncertain"
+        notices[key]["failure_type"] = type(exc).__name__
+    record(state)
+    return notices[key]["phase"]
+
+
+def film_notice(state):
+    link = ("https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/"
+            + os.getenv("GITHUB_RUN_ID", ""))
+    msg = (
+        "🎬 Nightfall Diaries — تم إنتاج النسخة المتحركة كاملة\n"
+        "The Last Little Fox — E01\n"
+        "✅ 14/14 مشهد متحرك 2D\n"
+        "⏱️ 3 دقائق و36 ثانية | Kokoro | 720p\n"
+        "⚠️ الجودة قيد مراجعة المالك، ولم تُنشر على أي منصة.\n"
+        + (link if os.getenv("GITHUB_RUN_ID", "").isdigit() else "")
+    )
+    return telegram_notice(state, "film:sha256:" + state.get("full_video_sha256", ""),
+                           msg)
+
+
 def draw(sample=True):
     old, plan, voices, budgets = load_inputs()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -227,6 +286,13 @@ def draw(sample=True):
             "genuine_ai_video_generated": False,
         }
         record(state)
+    # A finished hash-verified MP4 is never needlessly re-rendered each day.
+    if (not sample and state.get("status") == "COMPLETE_ORIGINAL_2D_ANIMATED_FILM_UNAPPROVED"
+            and FILM.is_file() and sha256(FILM) == state.get("full_video_sha256")
+            and len(state.get("complete_scenes", [])) == 14):
+        print("CPU_FULL_FILM_ALREADY_PRODUCED_SHA_VERIFIED_NO_DUPLICATE")
+        film_notice(state)
+        return state
     max_scene = 1 if sample else 14
     for index in range(1, max_scene + 1):
         duration = (min(budgets[index], max(12, math.ceil(seconds(voices[index]))))
@@ -257,6 +323,15 @@ def draw(sample=True):
             })
             state["status"] = "CPU_CHARACTER_ANIMATION_IN_PROGRESS"
         record(state)
+        if not sample:
+            total = round(sum(x["seconds"] for x in state["complete_scenes"]), 2)
+            telegram_notice(
+                state,
+                "scene:" + str(index) + ":sha256:" + sha256(dest),
+                "🎞️ Nightfall Diaries — تم إنتاج مشهد 2D متحرك حقيقي\n"
+                + f"المشهد {index}/14 | إجمالي وقت المشاهد: {total} ثانية\n"
+                + "الصوت: Kokoro | لم تُنشر الحلقة بعد.",
+            )
         print("CPU_ANIMATED_SCENE", index, "/", max_scene, "seconds", duration, flush=True)
     if sample:
         print("CPU_ANIMATED_SAMPLE", json.dumps({
@@ -284,6 +359,7 @@ def draw(sample=True):
     state["verified_duration_seconds"] = media["duration_seconds"]
     state["public_posting_attempted"] = False
     record(state)
+    film_notice(state)
     print("CPU_FULL_ANIMATED_FILM", json.dumps({
         "seconds": media["duration_seconds"], "sha256": state["full_video_sha256"],
         "shots": 14, "audio_verified": True, "public_upload": False,
