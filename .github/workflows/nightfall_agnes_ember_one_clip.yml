@@ -1,0 +1,76 @@
+name: Nightfall - Agnes Ember One Clip Trial (Unpublished)
+
+# Runs just ONE optional Agnes Flash 5-second image-to-video proof.
+# Preparation never creates a video or charges anything.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "prepare = no generation; run = one video after free-account confirmation"
+        required: true
+        type: choice
+        options: [prepare, run]
+        default: prepare
+      account_confirmation:
+        description: "Only for run: verify DEFAULT free trial, NO Agent Plan, NO charge"
+        required: false
+        type: choice
+        options:
+          - NOT_VERIFIED
+          - DEFAULT_FREE_TRIAL_NO_AGENT_PLAN_NO_CHARGES
+        default: NOT_VERIFIED
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_agnes_ember_prepare_now.txt']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightfall-agnes-ember-proof
+  cancel-in-progress: false
+
+jobs:
+  one-clip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+      AGNES_OWNER_CONFIRMS_DEFAULT_FREE_TRIAL: ${{ inputs.account_confirmation }}
+      GITHUB_EVENT_NAME: ${{ github.event_name }}
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Ensure exactly one model and owner-verified free plan
+        if: inputs.mode == 'run'
+        run: |
+          if [ "$AGNES_OWNER_CONFIRMS_DEFAULT_FREE_TRIAL" != "DEFAULT_FREE_TRIAL_NO_AGENT_PLAN_NO_CHARGES" ]; then
+            echo "::error::User must verify DEFAULT trial; Agent Plan bills even on promotional Flash."
+            exit 1
+          fi
+          if [ "${{ vars.AGNES_DEFAULT_TRIAL_VERIFIED }}" != "YES" ]; then
+            echo "::error::Account-specific billing not independently verified; no video request sent."
+            exit 1
+          fi
+      - name: Prepare Ember reference and locked, unpublished model request
+        if: github.event_name == 'push' || inputs.mode == 'prepare'
+        run: python -m pilot.agnes_ember_flash_proof --mode prepare
+      - name: Run ONE 5-second Agnes Flash reference video, never publish
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'run'
+        run: python -m pilot.agnes_ember_flash_proof --mode run
+      - name: Preserve one true result or safe blocker reason
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-ember-agnes-flash-5s-oneclip-unapproved
+          path: |
+            output/agnes_ember_one_clip/status.json
+            output/agnes_ember_one_clip/ember_agnes_flash_5sec_UNAPPROVED.mp4
+          if-no-files-found: ignore
+          retention-days: 14
