@@ -1,9 +1,11 @@
 """Offline tests of real Agnes submission, no billed default, and no duplicates."""
 import hashlib
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.error import HTTPError
 from unittest.mock import Mock, patch
 
 from pilot import e01_agnes_production as production
@@ -106,6 +108,66 @@ class TestAgnesZeroCostAndResume(unittest.TestCase):
         with patch.object(production, "read_response", side_effect=AssertionError("Second POST")):
             with self.assertRaisesRegex(RuntimeError, "NEVER_SUBMIT_DUPLICATE"):
                 production.request_shot(self.fake_plan["shots"][0], restored, "dummy")
+
+    def test_explicit_agnes_503_queue_full_is_proven_unadmitted(self):
+        state = production.new_state(self.fake_plan)
+        provider = HTTPError(production.CREATE_URL, 503, "Service Unavailable", {},
+                             io.BytesIO(json.dumps({
+                                 "code": "video_queue_full",
+                                 "message": "video queue is full, please retry later",
+                                 "data": None
+                             }).encode("utf-8")))
+        with patch.object(production, "check_no_charge", return_value=True), \
+             patch.object(production, "read_response", side_effect=provider):
+            result = production.request_shot(
+                self.fake_plan["shots"][0], state, "dummy-secret")
+        self.assertIs(result, False)
+        self.assertIsNone(state["pending"])
+        self.assertEqual(state["status"], "PAUSED_AGNES_QUEUE_FULL_NOT_ADMITTED")
+        self.assertEqual(state["queue_rejections"], 1)
+        self.assertEqual(state["requests_submitted"], 1)
+        self.assertTrue(state["next_allowed_submit_utc"])
+        restored = production.load(self.fake_plan)
+        self.assertEqual(restored["status"], "PAUSED_AGNES_QUEUE_FULL_NOT_ADMITTED")
+        with patch.object(production, "check_no_charge",
+                          side_effect=AssertionError("No premature request")):
+            with self.assertRaisesRegex(RuntimeError, "COOLDOWN_ACTIVE_NO_POST"):
+                production.request_shot(self.fake_plan["shots"][0], restored, "dummy")
+
+    def test_generic_503_is_ambiguous_and_never_autoresubmitted(self):
+        state = production.new_state(self.fake_plan)
+        provider = HTTPError(production.CREATE_URL, 503, "Unavailable", {},
+                             io.BytesIO(b"upstream failure without task admission proof"))
+        with patch.object(production, "check_no_charge", return_value=True), \
+             patch.object(production, "read_response", side_effect=provider):
+            with self.assertRaises(HTTPError):
+                production.request_shot(self.fake_plan["shots"][0], state, "dummy")
+        restored = production.load(self.fake_plan)
+        self.assertEqual(restored["pending"]["status"], "SUBMISSION_UNCERTAIN")
+        self.assertIsNone(restored["pending"]["video_id"])
+        self.assertEqual(restored["requests_submitted"], 1)
+        with patch.object(production, "check_no_charge",
+                          side_effect=AssertionError("No new request")):
+            with self.assertRaisesRegex(RuntimeError, "NEVER_SUBMIT_DUPLICATE"):
+                production.request_shot(self.fake_plan["shots"][0], restored, "dummy")
+
+    def test_unknown_503_code_or_claimed_task_keeps_locked_state(self):
+        for response in (
+            {"code": "generic_failure", "data": None},
+            {"code": "video_queue_full", "data": {"video_id": "created"}},
+            {"code": "video_queue_full", "data": None, "video_id": "created"},
+            {"code": "video_queue_full", "data": None, "task_id": "created"},
+        ):
+            error = HTTPError(production.CREATE_URL, 503, "nope", {},
+                              io.BytesIO(json.dumps(response).encode()))
+            self.assertFalse(production.confirmed_queue_rejection(error))
+
+    def test_official_video_query_full_alias_is_classified(self):
+        err = HTTPError(production.CREATE_URL, 503, "queue full", {},
+                        io.BytesIO(json.dumps({
+                            "code": "Video Query Full", "data": None
+                        }).encode()))
+        self.assertTrue(production.confirmed_queue_rejection(err))
 
     def test_completed_video_requires_real_file_matching_checksum(self):
         state = production.new_state(self.fake_plan)
