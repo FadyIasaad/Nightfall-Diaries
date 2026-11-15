@@ -31,9 +31,10 @@
         "telegram_message_id": 8
       },
       "2026-11-15": {
-        "phase": "initiated",
+        "phase": "sent",
         "run_id": "43730853654",
-        "shots_completed": 6
+        "shots_completed": 6,
+        "telegram_message_id": 9
       }
     }
   }
