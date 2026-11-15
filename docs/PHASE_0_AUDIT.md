@@ -152,3 +152,9 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `pilot/e01_agnes_assemble.py`: **KEEP**. CPU Kokoro voices, FFmpeg real MP4 assembly and duration QA; cannot pretend static slides are animated output.
 - `.github/workflows/nightfall_agnes_e01_production.yml`: **KEEP**. One-click and scheduled cloud-only E01 production with exact fee gate and no public upload.
 - `.github/workflows/nightfall_story_one_click.yml`: **RETAIN DISABLED**. Legacy HF motion pilot; existing six original clips stay archived, but are NOT part of the new film.
+
+## 15 November 2026: Completely free illustrated animation fallback
+
+- `studio/cpu_motion_engine.py` — **KEEP**. An original illustrated 2D acting-character CPU renderer for fox, tortoise, foliage, fire, feather, captions, dynamic eyes, head/ears, tail, body and legs. No AI photo slideshow, no GPU or external images. Stylized 2D rather than 3D; owner visual approval remains outstanding.
+- `pilot/e01_cpu_film.py` — **KEEP (unapproved output)**. Uses the canon 14-scene E01 and SHA-verified existing 14 Kokoro WAVs to create a 216-second moving 2D film and review sample; no paid API, no user PC, no public uploads.
+- `.github/workflows/nightfall_cpu_animated_e01.yml` — **KEEP**, review sample or full film on free GitHub CPU, with artifacts and cache. Only publish once platform and visual QA are separately verified; no final-posting flags automatically enabled.
