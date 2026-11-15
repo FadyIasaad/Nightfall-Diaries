@@ -126,6 +126,10 @@ jobs:
           else
             echo "Assembly pending: not yet 18 genuine Agnes MP4s."
           fi
+      - name: Evaluate optional LTX 2.3 quality fallback without provider calls
+        if: always()
+        continue-on-error: true
+        run: python -m pilot.e01_ltx23_backup_candidate --output output/agnes_e01/ltx23_backup_candidate.json
       - name: Preserve ALL genuine clips, accepted task IDs, and voices for next session
         if: always()
         uses: actions/upload-artifact@v6
