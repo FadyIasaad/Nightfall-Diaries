@@ -39,11 +39,19 @@ def voices():
     from studio.neural_audio import render_kokoro
     cast = locked_cast(original.SERIES)
     records = []
+    previous = None
+    if VOICE_MANIFEST.is_file():
+        previous = json.loads(VOICE_MANIFEST.read_text(encoding="utf-8"))
+    trusted = {}
+    if previous and previous.get("plan_sha256") == plan["plan_sha256"]:
+        trusted = {v["scene"]: v for v in previous.get("records", [])}
     for scene in old["scenes"]:
         no = scene["scene_no"]
         ref = cast[scene["speaker"]]
         out = run.OUT / f"voice_{no:02d}.wav"
-        if not out.is_file():
+        known = trusted.get(no, {})
+        if (not out.is_file() or known.get("sha256") != sha256(out)
+                or known.get("voice_id") != scene["voice_id"]):
             render_kokoro(scene["script_text"], ref, out)
         length = duration(out)
         if not 0.5 <= length <= 40:
