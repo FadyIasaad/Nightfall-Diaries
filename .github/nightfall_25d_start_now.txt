@@ -1,3 +1,5 @@
 Owner asks improved drawing quality. Render original 3D-textured Ember 2.5D articulated first-scene review with original Kokoro from E01, no paid API, no social publication. 2026-11-15.
 
 Retest original art after pixel normalization fix; still SHA locked, no paid API/no posting. 2026-11-15.
+
+Render quality comparison using exact checked 512x640 portrait and approved masks; no publishing. 2026-11-15 20:38Z.
