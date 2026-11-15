@@ -1,4 +1,4 @@
-name: Nightfall - One Click Story
+name: Nightfall - Archived HF One Click (disabled)
 
 # ONE user-facing field: the story name. No episode ID or renderer selection.
 # Next day's run reads the story saved in studio/active_story.json.
@@ -36,6 +36,8 @@ concurrency:
 
 jobs:
   story:
+    # Superseded by Nightfall Agnes E01; do not continue the discarded HF film.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 200
     env:
