@@ -158,3 +158,10 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `studio/cpu_motion_engine.py` — **KEEP**. An original illustrated 2D acting-character CPU renderer for fox, tortoise, foliage, fire, feather, captions, dynamic eyes, head/ears, tail, body and legs. No AI photo slideshow, no GPU or external images. Stylized 2D rather than 3D; owner visual approval remains outstanding.
 - `pilot/e01_cpu_film.py` — **KEEP (unapproved output)**. Uses the canon 14-scene E01 and SHA-verified existing 14 Kokoro WAVs to create a 216-second moving 2D film and review sample; no paid API, no user PC, no public uploads.
 - `.github/workflows/nightfall_cpu_animated_e01.yml` — **KEEP**, review sample or full film on free GitHub CPU, with artifacts and cache. Only publish once platform and visual QA are separately verified; no final-posting flags automatically enabled.
+
+## 2026-11-15: Approved Ember painterly 2.5D art upgrade
+
+- `studio/painterly_reference_actor.py` — **KEEP**. Uses ORIGINAL SHA-locked real painterly Ember reference (fur, eye highlights, original exactly one gold scarf star) as animated individual head, tail, two paw, body and scarf layers; new textured fantasy forest and richer Moss tortoise. 2.5D puppetry, not generative 3D or still-image slideshow; lipsync is energy-based, NOT phoneme-accurate. No paid AI, inference or user PC.
+- `pilot/e01_painterly_film.py` — **KEEP**. Separate premium-art renderer with isolated checkpoints and output, existing Kokoro story audio, and zero public posting.
+- `.github/workflows/nightfall_painterly_e01.yml` — **KEEP**. One-click free CPU preview/full 216-second render, SHA-verified official art, separate archive, simple visual testing; no publication.
+- `tests/test_painterly_reference_actor.py` — **KEEP**. Source-reference hash/art layer isolation and real per-frame motion tests; skipped in legacy runner without Pillow, run explicitly after Pillow install in premium workflow.
