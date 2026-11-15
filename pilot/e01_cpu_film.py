@@ -181,7 +181,7 @@ def encode_frames(path, scene, duration, wav, meta):
 
 def voiced_scene(raw, voice, scene, duration, dest):
     ambience = OUT / f"ambient_{scene:02d}.wav"
-    if not ambience.is_file():
+    if not ambience.is_file() or abs(seconds(ambience) - duration) > 0.1:
         original_ambience(ambience, duration, scene)
     run_cmd([
         "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
@@ -229,7 +229,8 @@ def draw(sample=True):
         record(state)
     max_scene = 1 if sample else 14
     for index in range(1, max_scene + 1):
-        duration = min(12, budgets[index]) if sample else budgets[index]
+        duration = (min(budgets[index], max(12, math.ceil(seconds(voices[index]))))
+                    if sample else budgets[index])
         scene = old["scenes"][index - 1]
         dest = OUT / (f"review_scene_{index:02d}.mp4"
                       if sample else f"scene_{index:02d}_animated.mp4")
