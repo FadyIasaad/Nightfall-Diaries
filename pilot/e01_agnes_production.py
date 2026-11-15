@@ -122,6 +122,9 @@ def read_response(req, timeout=45):
 
 
 def request_shot(shot, state, key):
+    # Never revisit an already accepted/uncertain task, even before billing GET.
+    if shot["index"] != len(state["completed"]) + 1 or state["pending"]:
+        raise RuntimeError("NEVER_SUBMIT_DUPLICATE_OR_OUT_OF_ORDER_SHOT")
     check_no_charge(key)
     payload = {
         "model": MODEL, "prompt": shot["prompt"], "mode": "reference",
