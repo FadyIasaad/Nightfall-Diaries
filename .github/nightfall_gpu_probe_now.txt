@@ -1,0 +1,2 @@
+Owner-requested one-time check of a truly free GPU alternative on 2026-11-15.
+Only CUDA availability, zero video generation, no paid APIs, no uploads.
