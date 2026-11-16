@@ -1,8 +1,16 @@
 """Offline receipt and safety tests for exact owner-approved painterly E01 upload."""
 import base64
 import json
+import sys
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
+
+# Baseline offline CI does not install requests. The actual upload workflow
+# installs the genuine library; unit tests must never perform HTTP calls.
+try:
+    import requests  # noqa: F401
+except ModuleNotFoundError:
+    sys.modules["requests"] = MagicMock()
 
 from pilot import e01_painterly_upload_once as release
 
