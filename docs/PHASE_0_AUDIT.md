@@ -167,3 +167,10 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `tests/test_painterly_reference_actor.py` — **KEEP**. Source-reference hash/art layer isolation and real per-frame motion tests; skipped in legacy runner without Pillow, run explicitly after Pillow install in premium workflow.
 
 - `studio/painterly_reference_actor_v2.py` — **KEEP**. Correct exact original 512x640 approved Ember WebP and SHA; offline OpenCV GrabCut foreground/trailer matte preserves complete muzzle and individual hairs, independently animated source-textured head, torso, tail, paws and scarf. Separate v2 checkpoint avoids overwriting v1 output. Real 2.5D art, not new generative CGI. No paid API.
+
+## 2026-11-16: Owner-approved real E01 illustrated upload — isolated 2.5D receipts
+
+- `pilot/e01_painterly_upload_once.py` — **KEEP**. Posts only the exact SHA-verified completed 216-second approved illustrated 2.5D MP4 after platform-specific exact-identity GET, one public FB Page video and one IG Reel; GitHub state receipt is committed BEFORE each irreversible upload POST. YouTube blocked until verified channel ID/scope; TikTok blocked until token/creator approval. Never claims public visibility merely on accepted processing.
+- `.github/workflows/nightfall_painterly_e01_publish.yml` — **KEEP**. One-time, user-authorized event only; restores actual finished artifact run 43958454693, 24fps/48k AAC transcode for IG, checks SHA, hosts review video on GitHub Release to allow Meta fetching, initiates only verified destinations, preserves redacted account-by-account status. Does NOT activate recurring upload.
+- `tests/test_e01_painterly_upload_once.py` — **KEEP**. Offline regression test of explicit approval, safe receipts and never marking missing platforms as published.
+- Note: User explicitly authorized publication of the completed painterly E01 on 2026-11-16. 2.5D illustrated puppetry and amplitude-based mouth movement are accurately described; no false photorealistic CGI/lip-sync claims.
