@@ -190,3 +190,10 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `pilot/e01_director_v3.py` — **KEEP**. New isolated film output and digest for 14-scene / 180-second review, no reuse of visually inferior V2 checkpoints.
 - `.github/workflows/nightfall_e01_director_v3.yml` — **KEEP**. Distinct no-publication cloud CPU renderer, new scene artwork and real original Kokoro voices, saves proof and MP4.
 - `tests/test_e01_director_v3.py` — **KEEP**. Visual regression of full tortoise, real motion, shaded texture and feather not blocking Ember face.
+
+## 2026-11-16: E01 V4 shell transparency corrective review
+
+- `studio/e01_v3_painterly_moss.py` — **KEEP**. Preserve modeled shell RGBA opacity under artistic scute plate details; an actual exported V3 visual review found large transparent windows revealing the background. Preserve canonical shell growth and one small right-front crack.
+- `pilot/e01_director_v4.py` — **KEEP**. Separate isolated 180-second V4 masterpiece REVIEW with exact 14 Kokoro WAV original voice identities and unchanged canonical story, no public posts.
+- `.github/workflows/nightfall_e01_director_v4.yml` — **KEEP**. Free cloud CPU render with proper tests of Moss opacity; 14 scene photos and final MP4 accessible as unapproved workflow artifact.
+- `tests/test_e01_v4_shell_opaque.py` — **KEEP**. Regression test to prevent most shell alpha interior from becoming transparent after scute painting.

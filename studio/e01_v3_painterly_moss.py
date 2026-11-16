@@ -86,10 +86,12 @@ def parts():
        [(287,171),(316,180),(312,205),(282,221),(270,214)]
     ]
     for j,p in enumerate(scutes):
-        sd.polygon(p,fill=(118,141,82,30))
-        sd.line(p+[p[0]],fill=(30,65,45,160),width=3,joint="curve")
+        # Drawing translucent fill directly onto an RGBA shell REPLACES
+        # alpha, cutting large transparent holes. Keep original modeled
+        # textured shell fully opaque, paint only opaque scute etching.
+        sd.line(p+[p[0]],fill=(35,68,47,255),width=3,joint="curve")
         sd.line([(a[0]+2,a[1]-3) for a in p[:3]],
-                fill=(189,173,108,92),width=2,joint="curve")
+                fill=(175,166,101,255),width=2,joint="curve")
     # Growth spiral remains on the shell but is delicate and confined.
     for n in range(10,200,2):
         a=n*.078

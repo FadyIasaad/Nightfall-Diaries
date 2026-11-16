@@ -1,0 +1,105 @@
+name: Nightfall E01 V4 - Clean Moss Shell Final Review (Unpublished)
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        required: true
+        options: [sample, full]
+        default: sample
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_e01_v4_render_now.txt']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: nightfall-e01-director-cut-v4
+  cancel-in-progress: false
+jobs:
+  art-directed-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    env:
+      GH_TOKEN: ${{ github.token }}
+      MODE: ${{ github.event_name == 'push' && 'full' || inputs.mode }}
+      AGNES_API_KEY: ''
+      HF_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install free CPU art libraries and FFmpeg
+        run: |
+          python -m pip install --disable-pip-version-check 'Pillow>=11,<13' 'numpy>=1.26,<3' 'opencv-python-headless>=4.9,<5'
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+      - name: Test canonical story sets and detailed Moss art
+        run: python -m unittest tests.test_e01_director_v2 tests.test_e01_director_v3 tests.test_e01_v4_shell_opaque -v
+      - name: Retrieve SHA-locked 14 original Kokoro WAVs
+        run: |
+          mkdir -p output/agnes_e01
+          gh run download 43752679246 --repo "$GITHUB_REPOSITORY" --name nightfall-agnes-e01-cumulative --dir output/agnes_e01
+          test -s output/agnes_e01/voice_manifest.json
+          test "$(find output/agnes_e01 -maxdepth 1 -name 'voice_*.wav' | wc -l)" -eq 14
+      - name: Recover previous unique original V2 scenes when available
+        uses: actions/cache/restore@v4
+        with:
+          path: output/nightfall_e01_director_v4
+          key: nightfall-e01-director-v4-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            nightfall-e01-director-v4-
+      - name: Render actual moving characters and matching forest, fire, cliff, feather environments
+        run: python -m pilot.e01_director_v4 --mode "$MODE"
+      - name: Technical media and nonpublishing verification
+        run: |
+          python - <<'PY'
+          import json,os,pathlib,subprocess
+          p=pathlib.Path("output/nightfall_e01_director_v4")
+          s=json.loads((p/"progress.json").read_text())
+          assert s["public_posts_created"] is False
+          if os.environ["MODE"]=="full":
+              assert s["status"]=="COMPLETE_V2_REVIEW_UNPUBLISHED" and len(s["completed"])==14
+              file=p/"Nightfall_S01_E01_V4_Clean_180s_FINAL_REVIEW.mp4"
+          else:
+              assert s["status"]=="SAMPLE_REVIEW_NO_UPLOAD"
+              file=p/"scene_01_v2.mp4"
+          cmd=["ffprobe","-v","error","-of","json","-show_entries","format=duration:stream=codec_type,codec_name,width,height",str(file)]
+          meta=json.loads(subprocess.run(cmd,capture_output=True,text=True,check=True).stdout)
+          video=next(x for x in meta["streams"] if x["codec_type"]=="video")
+          audio=next(x for x in meta["streams"] if x["codec_type"]=="audio")
+          assert video["codec_name"]=="h264" and audio["codec_name"]=="aac"
+          print("REAL_E01_V2_MP4_VERIFIED",file,meta["format"]["duration"])
+          PY
+      - name: Upload original V2 review and scene proof, never public social posts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-v4-clean-moss-final-review-unpublished
+          path: |
+            output/nightfall_e01_director_v4/progress.json
+            output/nightfall_e01_director_v4/quality_report.json
+            output/nightfall_e01_director_v4/scene_*_still.png
+            output/nightfall_e01_director_v4/scene_01_v2.mp4
+            output/nightfall_e01_director_v4/Nightfall_S01_E01_V4_Clean_180s_FINAL_REVIEW.mp4
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Save exact V2 scene checkpoints so retries never start over
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: output/nightfall_e01_director_v4
+          key: nightfall-e01-director-v4-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Report truthful completed seconds, no auto publication
+        if: always()
+        run: |
+          if [ -f output/nightfall_e01_director_v4/progress.json ]; then
+            python -c 'import json; r=json.load(open("output/nightfall_e01_director_v4/progress.json")); print("REAL_E01_V2_SCENES",len(r["completed"]),"/14",r["status"],"PUBLIC_POSTS",r["public_posts_created"])'
+          fi
