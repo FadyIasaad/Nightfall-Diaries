@@ -256,12 +256,15 @@ def frame(scene,t,mouth,voice_sec,words,speaker,visible,direction):
         cx=272 if dual else 185
         cy=488 if dual else 504
         if scene==11:cy=474
-        draw_moss(canvas,cx,cy,t,mouth if speaker=="s01_moss" else .09,scale=(.55 if dual else 1.0))
+        from studio.e01_v3_painterly_moss import draw_moss as detailed_moss
+        detailed_moss(canvas,cx,cy,t,mouth if speaker=="s01_moss" else .09,scale=(.55 if dual else 1.0))
     d=ImageDraw.Draw(canvas,"RGBA")
     if scene in (3,4,5,12,13,14):
-        xx=269+23*math.sin(t*.7+scene)
-        yy=235+31*math.sin(t*1.2)
-        for rad,a in ((38,14),(25,21),(11,57)):
+        # Keep the blue feather AWAY from Ember's face, as a story object.
+        # Source E01 requires a luminous feather, not an opaque blue eye patch.
+        xx=(326 if scene in (3,4,5) else 312)+10*math.sin(t*.7+scene)
+        yy=(342 if scene in (3,4,5,13) else 302)+15*math.sin(t*1.2)
+        for rad,a in ((33,9),(20,13),(8,39)):
             _ellipse(d,(xx-rad,yy-rad,xx+rad,yy+rad),(59,205,243,a))
         d.polygon([(xx-9,yy+16),(xx+2,yy-22),(xx+10,yy-28),(xx+9,yy+8)],
                   fill=(158,239,248,225))
