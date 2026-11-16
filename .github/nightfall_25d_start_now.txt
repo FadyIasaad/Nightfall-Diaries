@@ -5,3 +5,5 @@ Retest original art after pixel normalization fix; still SHA locked, no paid API
 Render quality comparison using exact checked 512x640 portrait and approved masks; no publishing. 2026-11-15 20:38Z.
 
 Clean-matte v2 sample: original 512x640 Ember OpenCV foreground silhouette and 14 real Kokoro voices; first 12 seconds only, private. 2026-11-15 20:50Z.
+
+2026-11-16: regenerate ALL 14 E01 story scenes with approved clean-matte Ember + ground shadow, Kokoro voice. One full review MP4, no public release or paid providers.
