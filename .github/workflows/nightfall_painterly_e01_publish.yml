@@ -1,0 +1,119 @@
+name: Nightfall - Owner Approved E01 Upload to Verified Meta Accounts
+
+# Exact completed 216-second approved 2.5D E01, one-time upload.
+# No scheduled posts. No YouTube while channel ownership is unverified.
+# No TikTok without token + audited app + creator consent.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_owner_approved_publish_e01_now.txt']
+  workflow_dispatch:
+    inputs:
+      user_approved:
+        description: "Explicit approval to publish illustrated E01 publicly"
+        type: choice
+        options: [NO, YES]
+        default: NO
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: nightfall-e01-painterly-verified-meta-publishing
+  cancel-in-progress: false
+jobs:
+  verified-meta-release:
+    if: github.event_name == 'push' || inputs.user_approved == 'YES'
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+      OWNER_AUTHORIZED_E01_PUBLIC_UPLOAD: YES
+      FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+      FB_EXPECTED_PAGE_ID: ${{ vars.FB_EXPECTED_PAGE_ID }}
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+      INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+      META_API_VERSION: v25.0
+      YOUTUBE_REFRESH_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install only required free media and HTTP tools
+        run: |
+          python -m pip install --disable-pip-version-check 'requests>=2.31,<3'
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+      - name: Retrieve ONLY successfully rendered painterly E01 review artifact
+        run: |
+          mkdir -p output/painterly_release/artifact
+          gh run download 43958454693 --repo "$GITHUB_REPOSITORY" \
+            --name nightfall-painterly-e01-v2-reference-art-review-unapproved \
+            --dir output/painterly_release/artifact
+          ls -lh output/painterly_release/artifact/
+      - name: Verify actual original SHA-256, normalize to 24 FPS and 48kHz audio for Reels
+        run: |
+          set -euo pipefail
+          SRC=output/painterly_release/artifact/Nightfall_S01_E01_painterly_Ember_25D_v2_UNAPPROVED.mp4
+          ORIGINAL=output/painterly_release/original_original_approved_E01.mp4
+          DEST=output/painterly_release/Nightfall_S01_E01_Painterly_2p5D_216s_PUBLIC.mp4
+          test -s "$SRC"
+          mv "$SRC" "$ORIGINAL"
+          echo "6a41bf8978e84c3df1c76b355b8b92e32796836ade92dc24e484d86b2472c1da  $ORIGINAL" | sha256sum -c -
+          ffmpeg -hide_banner -nostdin -loglevel error -y -i "$ORIGINAL" \
+            -vf 'fps=24,scale=720:1280:flags=lanczos,format=yuv420p' \
+            -c:v libx264 -preset veryfast -crf 20 \
+            -c:a aac -ar 48000 -b:a 160k \
+            -movflags +faststart "$DEST"
+          ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name,width,height,r_frame_rate,sample_rate \
+            -of json "$DEST"
+      - name: Upload owner-approved original movie to public GitHub release for IG hosting
+        id: host
+        run: |
+          set -euo pipefail
+          TAG=nightfall-e01-painterly-2p5d-20261116
+          FILE=output/painterly_release/Nightfall_S01_E01_Painterly_2p5D_216s_PUBLIC.mp4
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists; verifying exact video asset filename."
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+              --jq '.assets[].name' | grep -Fx "$(basename "$FILE")"
+          else
+            gh release create "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" \
+              --title "Nightfall Diaries — The Last Little Fox E01 (illustrated 2.5D)" \
+              --notes "The approved original 216-second illustrated 2.5D Nightfall Diaries drama, Ember and Moss. Original Kokoro voices. Not photorealistic 3D; no paid video models." \
+              --latest=false
+          fi
+      - name: Publicly upload to exact verified Nightfall FB Page and IG business profile
+        id: upload
+        run: python -m pilot.e01_painterly_upload_once
+      - name: Preserve redacted per-platform publishing result
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-painterly-real-platform-upload-status
+          path: output/painterly_release/social_upload_result.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Report actual platform states, never claim unverified public visibility
+        if: always()
+        run: |
+          if [ -f output/painterly_release/social_upload_result.json ]; then
+            python - <<'PY'
+          import json,os
+          p=json.load(open("output/painterly_release/social_upload_result.json", encoding="utf-8"))
+          lines=["## Nightfall E01 — actual social delivery\n"]
+          for name in ("facebook","instagram","youtube","tiktok"):
+              row=p.get(name,{})
+              lines.append(f"- **{name.title()}**: {row.get('phase','UNKNOWN')}"+(
+                  "; link: "+row["url"] if row.get("url") else ""))
+          lines.append("Only an accepted video ID is not yet proof of public visibility.")
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f:
+              f.write("\n".join(lines)+"\n")
+          print("\n".join(lines))
+          PY
+          else
+            echo "::error::No actual platform result: inspect first failing step."
+          fi
