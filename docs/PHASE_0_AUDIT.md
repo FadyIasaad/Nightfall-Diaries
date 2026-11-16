@@ -182,3 +182,11 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `.github/workflows/nightfall_e01_director_v2.yml` — **KEEP**. One-click/owner-triggered free GitHub CPU film renderer; no social posting, originals and public v1 unchanged; media checks and review artifact.
 - `tests/test_e01_director_v2.py` — **KEEP**. Visual per-scene sets and more detailed Moss, voice-driven timeline and Foley QA.
 - Limits: painterly illustrated 2.5D, not true 3D CGI; mouth is amplitude-based, not phoneme-perfect. Art still needs actual rendered video review.
+
+## 2026-11-16: E01 V3 visual correction after actual 180-second V2 playback
+
+- `studio/e01_v3_painterly_moss.py` — **KEEP**. New CPU 2.5D tortoise painted gradients/textures, anatomically shaped face, elderly eyelids/eyes, naturally shaped scutes and delicate shell spiral, front-right signature crack, animated legs/face and contact shadows; replaces the overly flat ring-shell art in full V3.
+- `studio/e01_v2_art_direction.py` — **KEEP**. V3 uses the same 14 canonical screenplay sets; adjusts luminous blue feather outside Ember face and uses detailed Moss component. Existing release/video files remain immutable.
+- `pilot/e01_director_v3.py` — **KEEP**. New isolated film output and digest for 14-scene / 180-second review, no reuse of visually inferior V2 checkpoints.
+- `.github/workflows/nightfall_e01_director_v3.yml` — **KEEP**. Distinct no-publication cloud CPU renderer, new scene artwork and real original Kokoro voices, saves proof and MP4.
+- `tests/test_e01_director_v3.py` — **KEEP**. Visual regression of full tortoise, real motion, shaded texture and feather not blocking Ember face.
