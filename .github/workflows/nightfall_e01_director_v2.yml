@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 210
     env:
-      GH_TOKEN: \${{ github.token }}
-      MODE: \${{ github.event_name == 'push' && 'full' || inputs.mode }}
+      GH_TOKEN: ${{ github.token }}
+      MODE: ${{ github.event_name == 'push' && 'full' || inputs.mode }}
       AGNES_API_KEY: ''
       HF_TOKEN: ''
       FB_PAGE_ACCESS_TOKEN: ''
@@ -52,7 +52,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: output/nightfall_e01_director_v2
-          key: nightfall-e01-director-v2-\${{ github.run_id }}-\${{ github.run_attempt }}
+          key: nightfall-e01-director-v2-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             nightfall-e01-director-v2-
       - name: Render actual moving characters and matching forest, fire, cliff, feather environments
@@ -96,7 +96,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: output/nightfall_e01_director_v2
-          key: nightfall-e01-director-v2-\${{ github.run_id }}-\${{ github.run_attempt }}
+          key: nightfall-e01-director-v2-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Report truthful completed seconds, no auto publication
         if: always()
         run: |
