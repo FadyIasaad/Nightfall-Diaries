@@ -47,6 +47,7 @@ class RealV2ArtTests(unittest.TestCase):
         self.assertEqual(a.size,(360,640))
         self.assertGreater(len(set(a.resize((20,35)).getdata())),100)
 
+@unittest.skipUnless(HAS_PIL and HAS_CV2,"Dedicated V2 workflow installs art dependencies")
 class DirectorCutTimingTests(unittest.TestCase):
     def test_180_seconds_exactly_and_14_live_shots(self):
         from pilot.e01_director_v2 import frame_budget
