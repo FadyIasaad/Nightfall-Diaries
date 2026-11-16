@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "film_source_sha256": "6a41bf8978e84c3df1c76b355b8b92e32796836ade92dc24e484d86b2472c1da",
+  "format": "illustrated_2_5d_not_cinematic_3d",
+  "public_upload_requested_by_owner": true,
+  "facebook": {
+    "phase": "not_attempted"
+  },
+  "instagram": {
+    "phase": "not_attempted"
+  },
+  "youtube": {
+    "phase": "blocked_expected_channel_unverified"
+  },
+  "tiktok": {
+    "phase": "blocked_no_api_token_or_creator_consent"
+  },
+  "technical_mp4": {
+    "duration": 216.08,
+    "width": 720,
+    "height": 1280,
+    "fps": 24.0
+  },
+  "public_github_asset": "https://github.com/FadyIasaad/Nightfall-Diaries/releases/download/nightfall-e01-painterly-2p5d-20261116/Nightfall_S01_E01_Painterly_2p5D_216s_PUBLIC.mp4"
+}
