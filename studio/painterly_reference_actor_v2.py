@@ -191,6 +191,17 @@ def render_frame(scene,t,mouth,voice_seconds,text,speaker,visible,direction):
         x=(-17 if dual else 5)+int(math.sin(t*.7)*5)
         y=(104 if dual else 48)+int(math.sin(t*(4.7 if act=="run" else 1.5))*
                                     (5 if act=="run" else 2))
+        # Ground-contact shade follows the actual character location, not
+        # the background. It is painted UNDER the puppet's paws.
+        contact = Image.new("RGBA",(W,H))
+        shadow = ImageDraw.Draw(contact,"RGBA")
+        floor_y = min(H-120, y + int(640*scale*0.83))
+        foot_cx = x + int(242*scale)
+        spread = 79 if not dual else 55
+        shadow.ellipse((foot_cx-spread, floor_y-12, foot_cx+spread,
+                        floor_y+17), fill=(1,10,17,105))
+        contact = contact.filter(ImageFilter.GaussianBlur(11))
+        canvas.alpha_composite(contact)
         canvas.alpha_composite(art,(x,y))
     if "s01_moss" in visible:
         _moss(canvas,260 if "s01_ember" in visible else 166,
