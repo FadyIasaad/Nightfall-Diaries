@@ -40,7 +40,7 @@ jobs:
       TIKTOK_ACCESS_TOKEN: ''
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      CPU_FILM_MODE: ${{ github.event_name == 'push' && 'sample' || inputs.mode }}
+      CPU_FILM_MODE: ${{ github.event_name == 'push' && 'full' || inputs.mode }}
     steps:
       - name: Checkout original 22 canonical stories, character IDs and voice locks
         uses: actions/checkout@v5
