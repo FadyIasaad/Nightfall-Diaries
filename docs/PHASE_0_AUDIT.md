@@ -174,3 +174,11 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `.github/workflows/nightfall_painterly_e01_publish.yml` — **KEEP**. One-time, user-authorized event only; restores actual finished artifact run 43958454693, 24fps/48k AAC transcode for IG, checks SHA, hosts review video on GitHub Release to allow Meta fetching, initiates only verified destinations, preserves redacted account-by-account status. Does NOT activate recurring upload.
 - `tests/test_e01_painterly_upload_once.py` — **KEEP**. Offline regression test of explicit approval, safe receipts and never marking missing platforms as published.
 - Note: User explicitly authorized publication of the completed painterly E01 on 2026-11-16. 2.5D illustrated puppetry and amplitude-based mouth movement are accurately described; no false photorealistic CGI/lip-sync claims.
+
+## 2026-11-16: Original Episode 1 Director Cut V2 — NOT published
+
+- `studio/e01_v2_art_direction.py` — **KEEP**. Canonical E01 burning grove, smoking clearing, glowing feather, cracked ledge, ravine, rescue, blue corridor, and mystery environments, with detailed original 2.5D Moss shell/skin/eyes instead of flat vector icon. Ember remains SHA-approved art.
+- `pilot/e01_director_v2.py` — **KEEP**. Original 14 SHA-verified Kokoro WAV files total ~97.5 seconds; 180-second motion-driven story edit, continuous scene-specific original audio, genuine character movement, and resumable checkpoints.
+- `.github/workflows/nightfall_e01_director_v2.yml` — **KEEP**. One-click/owner-triggered free GitHub CPU film renderer; no social posting, originals and public v1 unchanged; media checks and review artifact.
+- `tests/test_e01_director_v2.py` — **KEEP**. Visual per-scene sets and more detailed Moss, voice-driven timeline and Foley QA.
+- Limits: painterly illustrated 2.5D, not true 3D CGI; mouth is amplitude-based, not phoneme-perfect. Art still needs actual rendered video review.
