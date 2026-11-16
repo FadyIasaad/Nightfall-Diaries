@@ -94,7 +94,7 @@ def sound_bed(scene,frames,dest):
             sparks=(seed.randint(-1550,1550) if (n%(rate//4)<140) else 0)*.16
             water=(100*math.sin(2*math.pi*176*t)) if scene in (8,9,10,11) else 0
             glow=130*math.sin(2*math.pi*196*t)*math.sin(t*1.3)**2 if blue else 0
-            value=int(max(-32760,min(32760,wind+drone+hiss+sparks+water+glow)))
+            value=int(max(-32760,min(32760,4.2*(wind+drone+hiss+sparks+water+glow))))
             data.extend(struct.pack("<h",value))
             if len(data)>=48000:
                 f.writeframesraw(data);data.clear()
