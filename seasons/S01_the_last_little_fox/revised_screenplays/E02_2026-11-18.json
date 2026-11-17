@@ -1,0 +1,546 @@
+{
+  "schema": "nightfall-rewrite-v1",
+  "episode_id": "S01_the_last_little_fox_E02",
+  "title": "Nobody Believed the Fox",
+  "source_original": "seasons/S01_the_last_little_fox/scripts/E02.json",
+  "revision": "2026-11-18",
+  "status": "REWRITTEN_SCREENPLAY_NOT_RENDERED",
+  "target_duration_seconds": 180,
+  "scenes": [
+    {
+      "scene_no": 1,
+      "seconds": 12,
+      "voice_id": "bf_emma",
+      "character_id": "s01_narrator",
+      "script_text": "At sunrise, the ruined warning tower rang once. The bell had melted in the fire.",
+      "beat": "BELL_BEFORE_BLAME",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Cold open: ash falls inside the scorched bell tower. A metal chime echoes; Ember looks up from below. Show a distinct bell-less tower, no title screen.",
+      "camera": "wide-to-insert",
+      "location": "burned village dawn",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 2,
+      "seconds": 12,
+      "voice_id": "bf_emma",
+      "character_id": "s01_narrator",
+      "script_text": "The council remembered only one thing: the little fox had been running toward the flames. They called that proof.",
+      "beat": "ASH_AND_ACCUSATION",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Silent villagers part to expose Ember; an elder council silhouette points at the soot on his paws; sunlight catches suspicious faces.",
+      "camera": "low-medium-to-reaction",
+      "location": "council clearing",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 3,
+      "seconds": 12,
+      "voice_id": "am_puck",
+      "character_id": "s01_ember",
+      "script_text": "I was there because someone was screaming. I ran toward the fire, not away from it.",
+      "beat": "THE_OLD_DEFENSE",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Ember steps toward the assembled crowd, visible trembling paws, then stands his ground. Forest fires flicker in the distance.",
+      "camera": "medium-push",
+      "location": "council clearing",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 4,
+      "seconds": 12,
+      "voice_id": "bf_emma",
+      "character_id": "s01_narrator",
+      "script_text": "He raised the feather. Its cold blue light touched the council's faces. No one stepped forward.",
+      "beat": "THE_FEATHER",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Cinematic macro on luminous feather brushing Ember's paw, colored blue reflection moves on faces; not a static icon or caption graphic.",
+      "camera": "insert-and-reaction",
+      "location": "council clearing",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 5,
+      "seconds": 12,
+      "voice_id": "bf_emma",
+      "character_id": "s01_narrator",
+      "script_text": "They closed the gate. His scarf caught on a splinter, and for one breath Ember thought he might never pull free.",
+      "beat": "THE_VERDICT",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Heavy wooden gate closes in shallow focus, teal scarf snags; Ember twists free with the single gold star still embroidered on scarf.",
+      "camera": "tracking-close",
+      "location": "wooden village gate",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 6,
+      "seconds": 12,
+      "voice_id": "bf_emma",
+      "character_id": "s01_narrator",
+      "script_text": "Behind the barricade, a burned beam collapsed. Beneath it lay a wooden whistle that a small animal had lost.",
+      "beat": "ONE_MORE_CRASH",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Beam gives way with ash blast, a child's carved whistle catches light, endangered under embers. Ember hears a distant distressed cry.",
+      "camera": "insert-action",
+      "location": "fallen timber beside gate",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 7,
+      "seconds": 12,
+      "voice_id": "am_puck",
+      "character_id": "s01_ember",
+      "script_text": "They can hate me later. Someone is still waiting for this.",
+      "beat": "CHOICE_NOT_REWARD",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Ember vaults under falling ash, pulls whistle from embers, escaping as wood crashes into where he stood; credible full-body run/landing.",
+      "camera": "fast-tracking",
+      "location": "fallen timber beside gate",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 8,
+      "seconds": 12,
+      "voice_id": "bf_emma",
+      "character_id": "s01_narrator",
+      "script_text": "He pushed the whistle through the gate to its owner. The village kept the gift—and sent the fox away.",
+      "beat": "EXILED_ANYWAY",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Whistle rolls under gate toward tiny offscreen paws; gate is locked again in his face. Hold expression only while scarf and ash move, then cut on action.",
+      "camera": "ground-level-to-medium",
+      "location": "village gate exterior",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 9,
+      "seconds": 12,
+      "voice_id": "bm_george",
+      "character_id": "s01_moss",
+      "script_text": "Ember. I tried to speak. I wish I had tried harder.",
+      "beat": "MOSS_WAITING",
+      "visible": [
+        "s01_moss",
+        "s01_ember"
+      ],
+      "filmic_action": "Moss approaches in living mist with realistic grounded tortoise walking; weathered olive shell spiral and front-right crack, no glasses. Ember refuses eye contact.",
+      "camera": "two-character-arc",
+      "location": "ancient oak",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 10,
+      "seconds": 12,
+      "voice_id": "am_puck",
+      "character_id": "s01_ember",
+      "script_text": "You were there. You knew I didn't start it. Why did you let them choose me?",
+      "beat": "A_HARD_QUESTION",
+      "visible": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "filmic_action": "Close-up on Ember turning, hurt rather than shouting. Moss lowers his gaze and takes a measured step backward; visible emotional acting.",
+      "camera": "intimate-over-shoulder",
+      "location": "ancient oak",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 11,
+      "seconds": 12,
+      "voice_id": "bm_george",
+      "character_id": "s01_moss",
+      "script_text": "I was afraid of what they'd ask me next. I am sorry. But I can help you find the truth.",
+      "beat": "THE_UNSAID_TRUTH",
+      "visible": [
+        "s01_moss"
+      ],
+      "filmic_action": "Moss looks toward the distant dam river while a far-off sound interrupts him. Imply concealed history; do not reveal his role yet.",
+      "camera": "tortoise-close-to-forest",
+      "location": "old oak and distant river",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 12,
+      "seconds": 12,
+      "voice_id": "bf_emma",
+      "character_id": "s01_narrator",
+      "script_text": "Beyond the last oak came a chime—three notes too steady to be the wind.",
+      "beat": "BELL_IN_NO_WIND",
+      "visible": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "filmic_action": "Camera glides between detailed trunks and wet branches. A breeze dies but the metal sound persists. Ember's fur stands up.",
+      "camera": "forest-glide",
+      "location": "ancient forest trail",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 13,
+      "seconds": 12,
+      "voice_id": "am_puck",
+      "character_id": "s01_ember",
+      "script_text": "The feather is moving again. Whoever left it wants us to follow.",
+      "beat": "THE_FOLLOWING_FEATHER",
+      "visible": [
+        "s01_ember"
+      ],
+      "filmic_action": "Blue feather floats low over mossy ground and drifting fog, realistic blue bounce-light and particle movement; Ember follows into forest.",
+      "camera": "lateral-tracking",
+      "location": "dense ancient forest",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 14,
+      "seconds": 12,
+      "voice_id": "bf_emma",
+      "character_id": "s01_narrator",
+      "script_text": "A silent shape crossed the canopy. The feather stopped spinning. Then the trees seemed to whisper his name.",
+      "beat": "WINGED_SHADOW",
+      "visible": [
+        "s01_ember",
+        "s01_luma"
+      ],
+      "filmic_action": "Natural owlish shadow passes over Ember; a blue-gray winged barn owl with ivory heart-shaped face and silver-speckled wings lands on a high branch.",
+      "camera": "upward-reveal",
+      "location": "ancient forest canopy",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    },
+    {
+      "scene_no": 15,
+      "seconds": 12,
+      "voice_id": "af_heart",
+      "character_id": "s01_luma",
+      "script_text": "Ember. I heard your name whispered before the first spark. We need to talk—before they find you.",
+      "beat": "SOMEONE_KNEW",
+      "visible": [
+        "s01_luma",
+        "s01_ember"
+      ],
+      "filmic_action": "Owl Luma turns golden eyes toward Ember; the branch creaks, distant alarm note echoes, wind stirs feathers. Cut on Ember's shocked look, no black-frame padding.",
+      "camera": "owl-close-to-fox-reaction",
+      "location": "ancient forest canopy",
+      "clip_plan": [
+        {
+          "clip": 1,
+          "seconds": 4,
+          "focus": "introduce motivated action",
+          "must_move": true
+        },
+        {
+          "clip": 2,
+          "seconds": 4,
+          "focus": "physical/emotional escalation",
+          "must_move": true
+        },
+        {
+          "clip": 3,
+          "seconds": 4,
+          "focus": "reaction or motivated reveal",
+          "must_move": true
+        }
+      ]
+    }
+  ],
+  "production_rules": {
+    "spoken_scenes_require_verified_audio_driven_lipsync": true,
+    "dialogue_boxes_prohibited": true,
+    "static_panzoom_fallback_prohibited": true,
+    "only_in_world_subtitles_if_required": true,
+    "no_dead_gaps": true,
+    "sha_locked_identity_required": true,
+    "zero_charge": true,
+    "public_upload_allowed": false,
+    "shot_count": 45,
+    "all_shots_must_show_real_movement": true
+  },
+  "continuity": {
+    "council_exiles_ember": true,
+    "ember_not_fire_starter": true,
+    "moss_hides_failure_to_repair_alarm": true,
+    "luma_knows_ember_by_name": true,
+    "fire_caused_by_faulty_signal_lantern_not_revealed_until_E11": true
+  },
+  "notes": "All original cast/series arc remain preserved. A rendered episode requires forty-five unique four-second model shots (or equivalent scene coverage), accurate locked Kokoro audio, editing and visual approval. There is no proven $0 capacity for this today."
+}
