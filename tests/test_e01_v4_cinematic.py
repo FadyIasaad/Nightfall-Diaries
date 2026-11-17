@@ -29,6 +29,18 @@ class V4ArtTests(unittest.TestCase):
         self.assertEqual(first.size,(360,640))
         self.assertGreater(max(ImageStat.Stat(ImageChops.difference(first,second)).mean),.25)
 
+    def test_premium_moss_reference_is_SHA_locked_and_actuated(self):
+        from studio.e01_v4_moss import parts, sprite, SOURCE_SHA256
+        from PIL import ImageChops, ImageStat
+        p=parts()
+        self.assertEqual(p["original"].size,(288,201))
+        self.assertEqual(len(SOURCE_SHA256),64)
+        self.assertTrue(p["original"].getchannel("A").getbbox())
+        self.assertGreater(max(ImageStat.Stat(p["original"]).stddev),20)
+        a=sprite(.1,.1)
+        b=sprite(.9,.9)
+        self.assertGreater(max(ImageStat.Stat(ImageChops.difference(a,b)).mean),.1)
+
     def test_moss_dual_shot_has_textured_visible_actor(self):
         from studio.e01_v4_art_direction import frame
         from PIL import ImageStat
