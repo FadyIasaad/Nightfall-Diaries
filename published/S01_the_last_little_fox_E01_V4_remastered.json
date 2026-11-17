@@ -9,7 +9,7 @@
     "url": "https://www.facebook.com/1166220615930399"
   },
   "instagram": {
-    "phase": "container_accepted",
+    "phase": "publish_initiated_no_auto_retry",
     "container_id": "17968609554016325"
   },
   "youtube": {
