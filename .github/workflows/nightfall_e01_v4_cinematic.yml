@@ -1,0 +1,132 @@
+name: Nightfall E01 V4 Cinematic Art - Review (No Publishing)
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [sample, full]
+        default: sample
+        required: true
+  pull_request:
+    paths:
+      - 'studio/e01_v4_art_direction.py'
+      - 'studio/e01_v4_moss.py'
+      - 'assets/v4/moss_generated_candidate.webp.b64'
+      - 'pilot/e01_v4_cinematic.py'
+      - 'tests/test_e01_v4_cinematic.py'
+      - '.github/workflows/nightfall_e01_v4_cinematic.yml'
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_e01_v4_cinematic_start.txt']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: nightfall-e01-v4-cinematic
+  cancel-in-progress: false
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    env:
+      GH_TOKEN: ${{ github.token }}
+      MODE: ${{ github.event_name == 'push' && 'full' || (github.event_name == 'pull_request' && 'sample' || inputs.mode) }}
+      HF_TOKEN: ''
+      AGNES_API_KEY: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install free CPU libraries and FFmpeg
+        run: |
+          python -m pip install --disable-pip-version-check 'Pillow>=11,<13' 'numpy>=1.26,<3' 'opencv-python-headless>=4.9,<5'
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+      - name: Test V4 art without paid services
+        run: python -m unittest tests.test_e01_director_v2 tests.test_e01_director_v3 tests.test_e01_v4_cinematic tests.test_e01_visual_review -v
+      - name: Recover 14 original Kokoro voice WAVs
+        run: |
+          mkdir -p output/agnes_e01
+          RUN_ID=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=nightfall-agnes-e01-cumulative&per_page=100" \
+            --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | last | .workflow_run.id // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No original 14 Kokoro WAV artifact. No placeholder audio." >&2
+            exit 1
+          fi
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name nightfall-agnes-e01-cumulative --dir output/agnes_e01
+          test -s output/agnes_e01/voice_manifest.json
+          test "$(find output/agnes_e01 -maxdepth 1 -name 'voice_*.wav' | wc -l)" -eq 14
+      - name: Restore isolated V4 checkpoint
+        if: env.MODE == 'full'
+        uses: actions/cache/restore@v4
+        with:
+          path: output/nightfall_e01_v4_cinematic
+          key: nightfall-e01-v4-cinematic-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            nightfall-e01-v4-cinematic-
+      - name: Render new V4 theatrical scene treatment
+        run: python -m pilot.e01_v4_cinematic --mode "$MODE"
+      - name: Full review storyboard and technical visual QA
+        if: env.MODE == 'full'
+        run: python -m studio.e01_visual_review --folder output/nightfall_e01_v4_cinematic
+      - name: Verify playable original MP4 and no public posting
+        run: |
+          python - <<'PY'
+          import json,os,pathlib,subprocess
+          p=pathlib.Path("output/nightfall_e01_v4_cinematic")
+          s=json.loads((p/"progress.json").read_text())
+          r=json.loads((p/"v4_review.json").read_text())
+          assert s["public_posts_created"] is False and r["public_uploads"] is False
+          assert r["human_art_approval_pending"] is True
+          if os.environ["MODE"]=="full":
+              assert s["status"]=="COMPLETE_V2_REVIEW_UNPUBLISHED" and len(s["completed"])==14
+              f=p/"Nightfall_S01_E01_V4_Cinematic_Painterly_180s_REVIEW.mp4"
+              required=(720,1280)
+          else:
+              assert s["status"]=="SAMPLE_REVIEW_NO_UPLOAD"
+              f=p/"scene_01_v2.mp4"
+              required=(360,640)
+          data=json.loads(subprocess.run(["ffprobe","-v","error","-of","json",
+             "-show_entries","format=duration:stream=codec_type,codec_name,width,height",str(f)],
+             check=True,capture_output=True,text=True).stdout)
+          v=next(x for x in data["streams"] if x["codec_type"]=="video")
+          a=next(x for x in data["streams"] if x["codec_type"]=="audio")
+          assert (v["width"],v["height"]) == required
+          assert v["codec_name"]=="h264" and a["codec_name"]=="aac"
+          print("V4_VERIFIED_MEDIA",f,"seconds",data["format"]["duration"])
+          PY
+      - name: Preserve 14 scenes, film, storyboard and review evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-v4-cinematic-art-unpublished
+          path: |
+            output/nightfall_e01_v4_cinematic/progress.json
+            output/nightfall_e01_v4_cinematic/quality_report.json
+            output/nightfall_e01_v4_cinematic/v4_review.json
+            output/nightfall_e01_v4_cinematic/visual_audit.json
+            output/nightfall_e01_v4_cinematic/e01_all_14_scenes_storyboard.jpg
+            output/nightfall_e01_v4_cinematic/scene_*_still.png
+            output/nightfall_e01_v4_cinematic/scene_01_v2.mp4
+            output/nightfall_e01_v4_cinematic/Nightfall_S01_E01_V4_Cinematic_Painterly_180s_REVIEW.mp4
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
+      - name: Cache only actual isolated completed scene output
+        if: always() && env.MODE == 'full'
+        uses: actions/cache/save@v4
+        with:
+          path: output/nightfall_e01_v4_cinematic
+          key: nightfall-e01-v4-cinematic-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Explicitly report unapproved visual quality
+        if: always()
+        run: |
+          echo '## Nightfall V4 — 2.5D art review, NOT public release' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Original stories and Kokoro voices unchanged; visual quality approval pending; no social posting.' >> "$GITHUB_STEP_SUMMARY"
