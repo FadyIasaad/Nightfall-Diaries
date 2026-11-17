@@ -9,7 +9,8 @@
     "url": "https://www.facebook.com/1166220615930399"
   },
   "instagram": {
-    "phase": "creation_initiated_no_auto_retry"
+    "phase": "container_accepted",
+    "container_id": "17968609554016325"
   },
   "youtube": {
     "phase": "blocked_expected_channel_unverified"
