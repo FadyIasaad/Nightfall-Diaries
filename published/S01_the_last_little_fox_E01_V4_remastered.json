@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "film_source_sha256": "8aa394e7c3a30b819b2f03721ca08d6ed3327a0ef84bd8fa237e3a9b8a6b21a5",
+  "format": "illustrated_2_5d_not_cinematic_3d",
+  "public_upload_requested_by_owner": true,
+  "facebook": {
+    "phase": "not_attempted"
+  },
+  "instagram": {
+    "phase": "not_attempted"
+  },
+  "youtube": {
+    "phase": "blocked_expected_channel_unverified"
+  },
+  "tiktok": {
+    "phase": "blocked_no_api_token_or_creator_consent"
+  },
+  "technical_mp4": {
+    "duration": 180.04,
+    "width": 720,
+    "height": 1280,
+    "fps": 24.0
+  },
+  "public_github_asset": "https://github.com/FadyIasaad/Nightfall-Diaries/releases/download/nightfall-e01-v4-painterly-remaster-20261117/Nightfall_S01_E01_V4_Remastered_180s_PUBLIC.mp4"
+}
