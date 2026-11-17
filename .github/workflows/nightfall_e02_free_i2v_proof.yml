@@ -1,6 +1,7 @@
 name: Nightfall E02 - Free REAL Image-to-Video Gate (Never Publish)
 on:
   pull_request:
+    types: [opened]
     paths:
       - 'pilot/e02_real_i2v_proof.py'
       - '.github/workflows/nightfall_e02_free_i2v_proof.yml'
