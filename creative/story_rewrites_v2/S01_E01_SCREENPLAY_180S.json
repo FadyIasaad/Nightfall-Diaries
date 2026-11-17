@@ -1,0 +1,383 @@
+{
+  "schema": "nightfall-creative-rewrite-v2",
+  "episode_id": "S01_the_last_little_fox_E01",
+  "title": "The Night the Forest Burned",
+  "subtitle": "The Bell That Never Rang",
+  "source_original": "seasons/S01_the_last_little_fox/scripts/E01.json",
+  "variant": "proposed_story_rewrite_not_current_canon",
+  "language": "en-US",
+  "target_duration_seconds": 180,
+  "aspect_ratio": "9:16",
+  "resolution_target": "720x1280",
+  "production_status": "SCRIPT_AND_SHOTLIST_READY_NOT_RENDERED",
+  "expected_shots": 20,
+  "show_text_overlays": false,
+  "allow_puppet_2_5d_fallback": false,
+  "allow_synthetic_social_ui": false,
+  "rights": "Original dramatic rewrite retaining established fictional cast and season truth",
+  "continuity": {
+    "ember": "white tip LEFT ear; amber eyes; cream muzzle and chest; turquoise scarf with exactly ONE gold star",
+    "moss": "sage/olive elderly tortoise with shell spiral, front-right small crack, NO glasses",
+    "final_season_truth": "unattended faulty signal lantern caused fire before storm; delayed warning repairs and coverup magnified damage; do not falsely claim deliberate arson"
+  },
+  "shots": [
+    {
+      "shot": 1,
+      "start_seconds": 0,
+      "end_seconds": 9,
+      "duration_seconds": 9,
+      "speaker_id": "s01_narrator",
+      "spoken_line": "The warning bell always rang before danger. Tonight, it was silent.",
+      "visible_characters": [
+        "s01_ember"
+      ],
+      "camera": "Slow aerial descent through layered living forest into old watchtower against clear twilight sky",
+      "character_action": "Rope hangs still; distant animals move along the path; an early orange flicker rises behind the ridge",
+      "sound_design": "Birds stop abruptly; a soft metal rattle from empty bell rope; first crackle",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 2,
+      "start_seconds": 9,
+      "end_seconds": 18,
+      "duration_seconds": 9,
+      "speaker_id": "s01_ember",
+      "spoken_line": "Smoke? But the storm hasn't even started.",
+      "visible_characters": [
+        "s01_ember"
+      ],
+      "camera": "Continuous low tracking shot alongside Ember, full body and paws visible, dramatic forest depth",
+      "character_action": "Ember rounds a mossy stump, stops sharply, sniffs the air, then turns toward a sudden orange glow",
+      "sound_design": "Running paws, leaves, sharp air intake, distant flame roar",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 3,
+      "start_seconds": 18,
+      "end_seconds": 27,
+      "duration_seconds": 9,
+      "speaker_id": "s01_narrator",
+      "spoken_line": "The flames raced uphill, toward the one friend who couldn't outrun them.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Fast lateral crane from Ember to a falling fir crossing the path; no cuts to blank sky",
+      "character_action": "Sparks ignite a fallen log; Ember ducks low and spots Moss blocked behind it",
+      "sound_design": "Timber splits; flame whoosh; crackling branches",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 4,
+      "start_seconds": 27,
+      "end_seconds": 36,
+      "duration_seconds": 9,
+      "speaker_id": "s01_moss",
+      "spoken_line": "Ember! Go! The bridge is gone.",
+      "visible_characters": [
+        "s01_moss",
+        "s01_ember"
+      ],
+      "camera": "Ground-level medium on Moss, ember-lit shell and terrified eyes, Ember entering foreground",
+      "character_action": "Moss braces heavy legs against a charred trunk; smoke rolls behind his shell; Ember skids to a stop",
+      "sound_design": "Rumbling fire and falling ash, strained breathing",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 5,
+      "start_seconds": 36,
+      "end_seconds": 45,
+      "duration_seconds": 9,
+      "speaker_id": "s01_ember",
+      "spoken_line": "I'm not leaving you. Help me move this.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Three-quarter two-character angle with real contact between paws, log and earth",
+      "character_action": "Ember plants forepaws beneath log; Moss pushes with foreleg; trunk lifts just enough to slip through",
+      "sound_design": "Wood creak, paws scraping bark, urgent breath",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 6,
+      "start_seconds": 45,
+      "end_seconds": 54,
+      "duration_seconds": 9,
+      "speaker_id": "s01_moss",
+      "spoken_line": "The river path. Follow the stones—don't step on the ash.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Handheld-like controlled tracking toward creek stones; both characters remain within a complete environment",
+      "character_action": "Moss guides Ember, both step from stone to stone as hot soil collapses behind them",
+      "sound_design": "Water hiss on hot ash, stones shifting",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 7,
+      "start_seconds": 54,
+      "end_seconds": 63,
+      "duration_seconds": 9,
+      "speaker_id": "s01_narrator",
+      "spoken_line": "Then the ground broke open.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Wide continuous shot revealing an actual ravine, then a fast tilt following the crumbling ledge",
+      "character_action": "Ember slides to the edge and catches a twisted root; rocks fall far below; Moss pivots into frame",
+      "sound_design": "Rock fracture, tumbling debris, distant water echo",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 8,
+      "start_seconds": 63,
+      "end_seconds": 72,
+      "duration_seconds": 9,
+      "speaker_id": "s01_moss",
+      "spoken_line": "Look at me, little fox. One paw at a time.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Low-angle two-shot, focus rack from Moss's reaching foreleg to Ember's trembling eyes",
+      "character_action": "Moss wedges shell against stone and reaches; Ember shifts grip, plants foot on ledge and climbs",
+      "sound_design": "Strained breathing, stone scraping, root snapping once",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 9,
+      "start_seconds": 72,
+      "end_seconds": 81,
+      "duration_seconds": 9,
+      "speaker_id": "s01_ember",
+      "spoken_line": "The tower should have warned everyone. Why didn't it ring?",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Tight two-character medium as both finally stand in burnt clearing",
+      "character_action": "Ember points toward the distant bell tower; Moss avoids his gaze, withdraws into shadow",
+      "sound_design": "Fire muffles; long tense soft drone begins",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 10,
+      "start_seconds": 81,
+      "end_seconds": 90,
+      "duration_seconds": 9,
+      "speaker_id": "s01_moss",
+      "spoken_line": "I heard the bell was failing. I thought we had time.",
+      "visible_characters": [
+        "s01_moss",
+        "s01_ember"
+      ],
+      "camera": "Slow deliberate approach on Moss's face; firelight reflects in wet half-lidded eyes",
+      "character_action": "Moss lowers head in shame; the tiny shell crack catches the light; Ember's tail stops moving",
+      "sound_design": "Low metallic tremor; fire far away",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 11,
+      "start_seconds": 90,
+      "end_seconds": 99,
+      "duration_seconds": 9,
+      "speaker_id": "s01_ember",
+      "spoken_line": "You knew? We could have warned them.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Over-Moss-shoulder on Ember with deep layered damaged forest behind, no floating close-up cutout",
+      "character_action": "Ember backs away two steps, scarf swings, expression moves from anger to hurt",
+      "sound_design": "Short silence in music only while wind and fire continue; visible emotional reaction",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 12,
+      "start_seconds": 99,
+      "end_seconds": 108,
+      "duration_seconds": 9,
+      "speaker_id": "s01_narrator",
+      "spoken_line": "Something blue was shining beneath the ashes.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Move down to actual ground and burnt leaves; small reflective point of blue light",
+      "character_action": "Feather glows under damp ash, sends light onto bark and stones; tiny gust lifts it free",
+      "sound_design": "Soft glassy chime under crackling embers",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 13,
+      "start_seconds": 108,
+      "end_seconds": 117,
+      "duration_seconds": 9,
+      "speaker_id": "s01_moss",
+      "spoken_line": "Don't touch it. That isn't firelight.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Macro close-up of realistic feather floating across Ember's face, Moss staying blurred in background",
+      "character_action": "Feather rises against wind and glows; Ember halts reaching paw, eyes tracking natural arc",
+      "sound_design": "Featherlike shimmer, wind changes direction",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 14,
+      "start_seconds": 117,
+      "end_seconds": 126,
+      "duration_seconds": 9,
+      "speaker_id": "s01_ember",
+      "spoken_line": "It's moving toward the tower.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Long tracking move through rich volumetric smoke; camera follows the feather over terrain",
+      "character_action": "Fox and tortoise follow feather, stepping around roots and sizzling water, real environmental interaction",
+      "sound_design": "Tense ascending original score, distant faint single metallic note",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 15,
+      "start_seconds": 126,
+      "end_seconds": 135,
+      "duration_seconds": 9,
+      "speaker_id": "s01_narrator",
+      "spoken_line": "A rope hung from the tower. Its end had been cut long ago.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Climb tower stairs and reveal rusted bell rope under broken timber, close-up fibers",
+      "character_action": "Moss touches rope, freezes; ember flecks drift past; Ember sees frayed end",
+      "sound_design": "Wooden stair groans; bell chain tick, wind whistling through burnt tower",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 16,
+      "start_seconds": 135,
+      "end_seconds": 144,
+      "duration_seconds": 9,
+      "speaker_id": "s01_ember",
+      "spoken_line": "Someone had a warning. Someone let it go unheard.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Medium low shot, Ember in foreground looking up to bell tower with Moss and flames deeply receding",
+      "character_action": "Ember holds the rope tip and stares up; the blue feather circles overhead",
+      "sound_design": "Rustling wind, soft ominous bass note",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 17,
+      "start_seconds": 144,
+      "end_seconds": 153,
+      "duration_seconds": 9,
+      "speaker_id": "s01_moss",
+      "spoken_line": "I kept quiet once. I won't make that mistake again.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Two-shot in surviving beam of blue light, clear facial acting and natural body contact",
+      "character_action": "Moss takes a deliberate step beside Ember, not behind him; Ember exhales, then nods",
+      "sound_design": "Tiny hopeful harmonic motif below real wind",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 18,
+      "start_seconds": 153,
+      "end_seconds": 162,
+      "duration_seconds": 9,
+      "speaker_id": "s01_narrator",
+      "spoken_line": "At last, thunder rolled across the valley. The fire had come first.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Very wide forest and sky reveal; a distant streak of lightning above a fire already burning",
+      "character_action": "Wind sends ash into layers; Ember and Moss shelter under the tower beam; feather draws blue streak in air",
+      "sound_design": "One rolling thunderclap, hot wind, trees creaking",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 19,
+      "start_seconds": 162,
+      "end_seconds": 171,
+      "duration_seconds": 9,
+      "speaker_id": "s01_ember",
+      "spoken_line": "Then we find who knew. We start tonight.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Heroic but small eye-level tracking shot with Ember facing a long black forest corridor",
+      "character_action": "Ember commits to following the feather; Moss walks at his side through forest depth",
+      "sound_design": "Measured pawsteps, tense hopeful score, distant bell resonance",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    },
+    {
+      "shot": 20,
+      "start_seconds": 171,
+      "end_seconds": 180,
+      "duration_seconds": 9,
+      "speaker_id": "s01_narrator",
+      "spoken_line": "Above them, a shadow opened its wings. The silent bell rang once.",
+      "visible_characters": [
+        "s01_ember",
+        "s01_moss"
+      ],
+      "camera": "Tilt from fox to distant winged silhouette in mist; then settle on bell moving by itself with no UI overlay",
+      "character_action": "Owl silhouette remains unidentified; bell shudders once; feather disappears beyond the first branch, cut on strong visual beat",
+      "sound_design": "One clear bell strike and tail decay; end sharply before any dead air",
+      "shot_type": "full_environment_cinematic_generated_video",
+      "no_subtitle_ui": true,
+      "technical_status": "NOT_RENDERED"
+    }
+  ]
+}
