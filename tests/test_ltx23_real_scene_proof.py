@@ -1,6 +1,7 @@
 """Contract tests: entirely new real-video test must never accept 2.5D or publish."""
 import pathlib
 import unittest
+import subprocess
 from pilot import ltx23_real_scene_proof as proof
 
 
@@ -25,7 +26,7 @@ class RealVideoProofContract(unittest.TestCase):
         self.assertNotIn("blinking png",p)
 
     def test_media_gate_fails_closed_without_ffprobe_or_valid_video(self):
-        with self.assertRaises((FileNotFoundError,RuntimeError)):
+        with self.assertRaises((FileNotFoundError,RuntimeError,subprocess.CalledProcessError)):
             proof.technical_check("definitely_missing_ltx_movie.mp4")
 
 
