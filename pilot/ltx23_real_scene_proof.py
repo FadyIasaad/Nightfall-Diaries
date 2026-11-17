@@ -31,7 +31,7 @@ PROMPT = (
     "rim lighting integrated with the environment. Cinematic composition and "
     "believable environmental motion from the first to last frame. Original "
     "animated family adventure aesthetic. Natural forest and fire ambience, "
-    "no narration in this proof. Absolutely NO dialogue box, subtitles, text, "
+    "no narration in this proof. Absolutely NO dialogue box, NO subtitles, NO text, "
     "interface elements, blue icons, black screen, cuts, frozen frame, "
     "flat silhouette trees, pasted sprites, repeated frames or montage."
 )
