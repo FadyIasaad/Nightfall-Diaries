@@ -1,1 +1,3 @@
 Owner demands no gaps, story-matched scenery, high-quality Ember and Moss graphics. Render entire V3 180-second original Nightfall E01 with new carefully shaded tortoise, repaired feather placement, canonical 14 Kokoro voices. DO NOT PUBLICLY POST or overwrite Facebook/Instagram v1. 2026-11-16.
+
+Owner-requested new full episode render from merged PR #69 on 2026-11-17. Render complete original E01 V3 180-second story and 14-scene visual storyboard for review. Use offline CPU, SHA-locked Ember art and original Kokoro voices; do not use paid video APIs, make public uploads or alter original series.
