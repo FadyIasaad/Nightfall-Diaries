@@ -1,0 +1,73 @@
+name: Nightfall — REAL AI Video Proof (LTX-2.3 ZeroGPU, Never Publish)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/nightfall_real_video_ltx23_proof.yml'
+      - 'pilot/ltx23_real_scene_proof.py'
+      - 'tests/test_ltx23_real_scene_proof.py'
+      - 'docs/NIGHTFALL_REAL_VIDEO_RESET_2026-11-18.md'
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        required: true
+        default: probe
+        options: [probe, generate]
+permissions:
+  contents: read
+concurrency:
+  group: nightfall-real-ai-ltx23-proof
+  cancel-in-progress: false
+jobs:
+  one-free-real-scene-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      HF_TOKEN: ''
+      AGNES_API_KEY: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+      MODE: ${{ github.event_name == 'pull_request' && 'generate' || inputs.mode }}
+    steps:
+      - name: Check out exact canon without touching published releases
+        uses: actions/checkout@v5
+      - name: Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install only free public Gradio client and ffprobe
+        run: |
+          python -m pip install --disable-pip-version-check 'gradio_client>=1.7,<3'
+          if ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Test isolated real-video-only/no-publishing contract
+        run: python -m unittest tests.test_ltx23_real_scene_proof -v
+      - name: Make EXACTLY ONE 4-second public ZeroGPU cinematic proof, no fallback
+        run: python -m pilot.ltx23_real_scene_proof --mode "$MODE"
+      - name: Preserve raw generated film and honest outcome
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-ltx23-full-environment-motion-proof-unpublished
+          path: |
+            output/real_ai_scene_proof/report.json
+            output/real_ai_scene_proof/ltx23_full_scene_4s_UNAPPROVED.mp4
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Explain human quality gate before series rendering
+        if: always()
+        run: |
+          {
+            echo '## One real-generated-scene experiment'
+            echo ''
+            echo '- This is a true video-model shot, not CPU 2.5D or a slideshow.'
+            echo '- Single unauthenticated public ZeroGPU call; no paid API or card.'
+            echo '- Any returned result is a tech proof only, NOT canon-locked Ember.'
+            echo '- No talking/lip-sync pass is claimed.'
+            echo '- Visual owner review is still required and publishing remains blocked.'
+            echo '- Next gate: audio-driven talking scene with correct original character.'
+          } >> "$GITHUB_STEP_SUMMARY"
