@@ -206,3 +206,14 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 
 - `tests/test_e01_visual_review.py` — **KEEP**. Skips gracefully in generic repository CI when Pillow is absent; runs both visual review tests in the dedicated V3 workflow after installing Pillow.
 - `.github/workflows/nightfall_e01_director_v3.yml` — **KEEP**. Publishes the storyboard and JSON as private-to-workflow review artifacts; no social video upload or story changes.
+
+## 2026-11-17: Isolated V4 cinematic painterly CPU art candidate
+
+| Studio file | Decision | Why |
+|---|---|---|
+| `studio/e01_v4_art_direction.py` | **KEEP — experimental review only** | Adds 14 textured E01 backdrops, independent atmosphere, cinematic character staging, subtle feather lighting and minimal subtitles. Preserves source-locked Ember and V3 articulated Moss. Not cinematic 3D, not automated owner visual approval, not public publishing. |
+
+- `pilot/e01_v4_cinematic.py` — KEEP. Separate original 180-second E01 V4 renderer and QA namespace; does not change existing earlier V4 outputs.
+- `tests/test_e01_v4_cinematic.py` — KEEP. Optional Pillow/OpenCV/NumPy tests skipped only by generic lightweight CI; dedicated V4 job installs dependencies.
+- `.github/workflows/nightfall_e01_v4_cinematic.yml` — KEEP review-only. PR sample and manual full render, no paid inference or social publication.
+- `docs/E01_ART_DIRECTION_V4_CINEMATIC.md` — KEEP. Visual scope, limitations and acceptance requirements.
