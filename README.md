@@ -1,5 +1,7 @@
 # Nightfall Diaries — Zero-Budget Cloud Studio
 
+> **18 Nov 2026 — First Episode real-video reboot:** The previous CPU 2.5D release is rejected for animation quality. E01 now has a revised 180s / 45-shot *plan*, and an isolated original-Ember + Kokoro **animal speaking proof** at `.github/workflows/nightfall_e01_daily_real_speaking.yml`. This workflow checks status every day at **10:00 Africa/Cairo** (no GPU on scheduled checks). It **does not produce or publish an episode daily**: animal speech, identity preservation and a fully free 3–6 minute video renderer are NOT verified. No paid APIs, manual PC, 2.5D fallback or automatic posting. See `docs/E01_REAL_ANIMAL_SPEECH_DAILY_ZERO_COST_2026-11-18.md` and `seasons/S01_the_last_little_fox/revised_screenplays/E01_2026-11-18.json`.
+
 **Status (4 November 2026): Engineering foundation / quality proof not passed / public posting disabled.** This repository does **not** yet produce a verified premium animated up-to-3-minute episode. No successful public four-platform upload is claimed.
 
 The non-negotiable requirements are recorded in [MASTER_PLAN_CONTRACT.md](MASTER_PLAN_CONTRACT.md). The two original series remain unchanged: **The Last Little Fox (12 episodes)** then **The Boy Who Forgot Tomorrow (10 episodes)**. Never replace the existing YouTube channel, Nightfall Diaries Facebook Page, stores.nightfall Instagram, or the intended TikTok identity.
