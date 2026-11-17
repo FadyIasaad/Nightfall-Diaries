@@ -1,5 +1,6 @@
 """Contract for $0 E01 first episode voice and daily quality-gate runner."""
 import pathlib
+import json
 import unittest
 from pilot import e01_real_speaking_proof as trial
 
@@ -14,6 +15,17 @@ class FirstEpisodeSpeakingProofTests(unittest.TestCase):
         data = (ROOT / "seasons/S01_the_last_little_fox/screenplays/E01.json").read_text()
         self.assertIn("Moss? Can anyone hear me?", data)
         self.assertEqual(trial.SPACE, "henrybit/SadTalker-Demo")
+
+    def test_first_episode_has_180_seconds_of_unique_planned_real_shots(self):
+        source = ROOT / "seasons/S01_the_last_little_fox/revised_screenplays/E01_2026-11-18.json"
+        plan = json.loads(source.read_text())
+        self.assertEqual(plan["episode_id"], "S01_the_last_little_fox_E01")
+        self.assertEqual(plan["target_duration_seconds"], 180)
+        self.assertEqual(len(plan["scenes"]), 15)
+        self.assertEqual(sum(s["target_seconds"] for s in plan["scenes"]), 180)
+        self.assertEqual(plan["planned_distinct_real_video_shots"], 45)
+        self.assertEqual(sum(s["generated_clips"] for s in plan["scenes"]), 0)
+        self.assertFalse(plan["public_release"])
 
     def test_no_fallback_or_billable_secrets(self):
         code = pathlib.Path(trial.__file__).read_text()
