@@ -1,4 +1,4 @@
-name: Nightfall — REAL AI Video Proof (LTX-2.3 ZeroGPU, Never Publish)
+name: Nightfall — Rejected LTX-2.3 Real Video Trial (Manual Only, Never Publish)
 on:
   pull_request:
     paths:
@@ -29,7 +29,7 @@ jobs:
       FB_PAGE_ACCESS_TOKEN: ''
       INSTAGRAM_ACCESS_TOKEN: ''
       TIKTOK_ACCESS_TOKEN: ''
-      MODE: ${{ github.event_name == 'pull_request' && 'generate' || inputs.mode }}
+      MODE: ${{ github.event_name == 'pull_request' && 'probe' || inputs.mode }}
     steps:
       - name: Check out exact canon without touching published releases
         uses: actions/checkout@v5
