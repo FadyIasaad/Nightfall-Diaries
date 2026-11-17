@@ -27,8 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 210
     env:
-      GH_TOKEN: \${{ github.token }}
-      MODE: \${{ github.event_name == 'push' && 'full' || (github.event_name == 'pull_request' && 'sample' || inputs.mode) }}
+      GH_TOKEN: ${{ github.token }}
+      MODE: ${{ github.event_name == 'push' && 'full' || (github.event_name == 'pull_request' && 'sample' || inputs.mode) }}
       HF_TOKEN: ''
       AGNES_API_KEY: ''
       YOUTUBE_REFRESH_TOKEN: ''
@@ -66,7 +66,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: output/nightfall_e01_v4_cinematic
-          key: nightfall-e01-v4-cinematic-\${{ github.run_id }}-\${{ github.run_attempt }}
+          key: nightfall-e01-v4-cinematic-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             nightfall-e01-v4-cinematic-
       - name: Render new V4 theatrical scene treatment
@@ -122,7 +122,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: output/nightfall_e01_v4_cinematic
-          key: nightfall-e01-v4-cinematic-\${{ github.run_id }}-\${{ github.run_attempt }}
+          key: nightfall-e01-v4-cinematic-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Explicitly report unapproved visual quality
         if: always()
         run: |
