@@ -197,3 +197,12 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `pilot/e01_director_v4.py` — **KEEP**. Separate isolated 180-second V4 masterpiece REVIEW with exact 14 Kokoro WAV original voice identities and unchanged canonical story, no public posts.
 - `.github/workflows/nightfall_e01_director_v4.yml` — **KEEP**. Free cloud CPU render with proper tests of Moss opacity; 14 scene photos and final MP4 accessible as unapproved workflow artifact.
 - `tests/test_e01_v4_shell_opaque.py` — **KEEP**. Regression test to prevent most shell alpha interior from becoming transparent after scute painting.
+
+## 2026-11-17: E01 visual consistency review (PR #69)
+
+| File | Disposition | Rationale |
+|---|---|---|
+| `studio/e01_visual_review.py` | **KEEP — review-only / fail-closed** | Builds a 14-scene storyboard and JSON report from actual V3 still frames, checking missing, low-contrast and duplicate frame evidence. Requires Pillow only in the dedicated render workflow. It **does not** prove Ember-level cinematic fidelity, approve Moss or backgrounds, alter source art, or authorize public publishing. |
+
+- `tests/test_e01_visual_review.py` — **KEEP**. Skips gracefully in generic repository CI when Pillow is absent; runs both visual review tests in the dedicated V3 workflow after installing Pillow.
+- `.github/workflows/nightfall_e01_director_v3.yml` — **KEEP**. Publishes the storyboard and JSON as private-to-workflow review artifacts; no social video upload or story changes.
