@@ -1,0 +1,89 @@
+name: Nightfall E01 - Real Speaking Quality Gate and Daily Cairo Check ($0)
+on:
+  schedule:
+    - cron: '0 10 * * *'
+      timezone: 'Africa/Cairo'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'preflight = no GPU; generate = exactly one short $0 speaking proof'
+        type: choice
+        options: [preflight, generate]
+        default: preflight
+        required: true
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'pilot/e01_real_speaking_proof.py'
+      - 'tests/test_e01_real_speaking_proof.py'
+      - '.github/workflows/nightfall_e01_daily_real_speaking.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightfall-e01-real-speech-single-free-slot
+  cancel-in-progress: false
+
+jobs:
+  first-episode-quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      # No use of credentials for billable inference providers.
+      HF_TOKEN: ''
+      HUGGING_FACE_HUB_TOKEN: ''
+      HUGGINGFACEHUB_API_TOKEN: ''
+      AGNES_API_KEY: ''
+      EVERYPIXEL_API_KEY: ''
+      RUNWAY_API_KEY: ''
+      ELEVENLABS_API_KEY: ''
+      OPENAI_API_KEY: ''
+      DASHSCOPE_API_KEY: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+      MODE: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' && 'generate' || github.event_name == 'workflow_dispatch' && inputs.mode || 'preflight' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install open-source dependencies (public runner, no GPU billing)
+        run: |
+          python -m pip install --disable-pip-version-check 'gradio_client>=1.7,<3' 'huggingface_hub>=2.1,<3' 'kokoro==0.9.4' 'soundfile>=0.12,<1' 'numpy<3'
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+      - name: Assert Ember original identity and strict no-charge rules
+        run: python -m unittest tests.test_e01_real_speaking_proof -v
+      - name: Check or attempt precisely one animal talking-scene proof
+        run: python -m pilot.e01_real_speaking_proof --mode "$MODE"
+      - name: Archive real dialogue audio, proof MP4 if it exists, and blocker report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-E01-real-speaking-proof-no-publish
+          path: |
+            output/e01_real_speaking_proof/report.json
+            output/e01_real_speaking_proof/ember_s01_e01_real_kokoro.wav
+            output/e01_real_speaking_proof/ember_s01_e01_speaking_UNAPPROVED.mp4
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Daily truthful production status
+        if: always()
+        run: |
+          {
+            echo '## Nightfall E01 real dialogue / identity quality gate'
+            echo '- Cairo schedule: daily 10:00 local; GitHub execution can be delayed.'
+            echo "- Mode: $MODE"
+            echo '- $0 only: public GitHub CPU + anonymous ZeroGPU; all billable keys blank.'
+            echo '- First-episode story is unchanged and locked to the original Ember.'
+            echo '- The talking demo was built for HUMAN faces; animal success is not established.'
+            echo '- No public publishing, no fake CGI approval, no 2.5D or photo-pan fallback.'
+            echo '- Daily run checks readiness; it does not promise one completed episode per day.'
+            if [ -f output/e01_real_speaking_proof/report.json ]; then
+              cat output/e01_real_speaking_proof/report.json
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
