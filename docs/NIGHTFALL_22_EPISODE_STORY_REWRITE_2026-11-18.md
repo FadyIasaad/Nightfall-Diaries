@@ -22,7 +22,7 @@ This revision improves pacing and tension **without changing the original storie
 | 11 · Who Started the Fire? | Luma and Moss pull Ember free. Evidence proves the unattended faulty signal lantern sparked the blaze; the warning system failure compounded the devastation. | The truth is more uncomfortable than one villain. | Will the council admit it condemned the wrong animal? |
 | 12 · The Forest Remembers | Ash's family and the council confess. The community rebuilds with a new shared alarm system, and Ember chooses to stay without demanding revenge. | Courage becomes collective responsibility. | Closure: a quiet sunrise, a functioning bell, and real trust. |
 
-**S01 continuity locks:** Ember's white-tipped **left** ear, teal scarf and **one** gold star; Moss has **no glasses**, has a shell spiral and small front-right crack; Luma is an ivory-faced blue-gray speckled owl with golden eyes; Ash has a scar above his right eyebrow and right-ear notch. Keep each locked Kokoro voice.
+**S01 continuity locks:** Ember's white-tipped **left** ear, teal scarf and a **single** gold star; Moss has **no glasses**, has a shell spiral and small front-right crack; Luma is an ivory-faced blue-gray speckled owl with golden eyes; Ash has a scar above his right eyebrow and right-ear notch. Keep each locked Kokoro voice.
 
 ## Season 2: The Boy Who Forgot Tomorrow — 10 episodes
 **The emotional question:** If you could see tomorrow but forgot the people you loved today, what future is worth protecting?  
