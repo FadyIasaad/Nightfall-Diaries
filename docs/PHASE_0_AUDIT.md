@@ -217,3 +217,8 @@ Kaggle GPU access, quota, quality, and 2B LTX runtime are unverified on the owne
 - `tests/test_e01_v4_cinematic.py` — KEEP. Optional Pillow/OpenCV/NumPy tests skipped only by generic lightweight CI; dedicated V4 job installs dependencies.
 - `.github/workflows/nightfall_e01_v4_cinematic.yml` — KEEP review-only. PR sample and manual full render, no paid inference or social publication.
 - `docs/E01_ART_DIRECTION_V4_CINEMATIC.md` — KEEP. Visual scope, limitations and acceptance requirements.
+
+## 2026-11-17: Premium generated Moss candidate for V4 review
+
+- `studio/e01_v4_moss.py` — **KEEP — source-locked review candidate**. Decodes, SHA-verifies and independently articulates a high-detail original generated reference portrait of Moss (tortoise with spiral shell, textured aged skin and distinct shell crack). Added glasses and white brows are a *design change*, not automatically owner-approved canon. No paid calls or publication.
+- `assets/v4/moss_generated_candidate.webp.b64` — **KEEP — V4 original image art only**. Transparent WebP asset stored as Base64 text for normal GitHub Contents API compatibility; source digest and dimensions verified during rendering. Never confuse this with an approved animated 3D character rig.
