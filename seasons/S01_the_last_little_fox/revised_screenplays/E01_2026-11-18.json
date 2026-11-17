@@ -1,0 +1,329 @@
+{
+  "schema": "nightfall-first-episode-2026-11-18",
+  "episode_id": "S01_the_last_little_fox_E01",
+  "title": "The Night the Forest Burned",
+  "source_script": "seasons/S01_the_last_little_fox/scripts/E01.json",
+  "source_screenplay": "seasons/S01_the_last_little_fox/screenplays/E01.json",
+  "status": "NEW_CINEMATIC_SHOT_PLAN_ONLY",
+  "target_duration_seconds": 180,
+  "planned_distinct_real_video_shots": 45,
+  "first_cliffhanger": "An unseen observer and a bell ring from a place without a tower; no fire origin reveal",
+  "character_rules": "Original SHA-locked Ember; Moss no glasses, shell spiral, front-right crack; no new wardrobe or voices.",
+  "video_rules": {
+    "real_camera_body_movement": true,
+    "no_cutout_2d": true,
+    "no_dialogue_boxes": true,
+    "no_black_or_silent_gaps": true,
+    "audio_driven_speech_needs_proof": true,
+    "no_looped_or_stretched_stills": true
+  },
+  "cost_rules": {
+    "charge_allowed": false,
+    "paid_provider_fallback": false,
+    "quota_bypass": false,
+    "unverified_model_output_must_stop": true
+  },
+  "public_release": false,
+  "scenes": [
+    {
+      "scene": 1,
+      "beat": "Before the thunder",
+      "character_id": "s01_narrator",
+      "text": "The first flames came before the thunder. Ember heard a cry from the smoke—and ran toward it.",
+      "direction": "Dark forest twilight; flames at distance, fox racing over mossy roots, foreground smoke opens to reveal peril",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 2,
+      "beat": "A voice in the ashes",
+      "character_id": "s01_ember",
+      "text": "Moss? Can anyone hear me?",
+      "direction": "Ember stops, ears sharply turn; he calls into smoke, ash settles on his scarf.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 3,
+      "beat": "The falling tree",
+      "character_id": "s01_narrator",
+      "text": "A burning branch fell across the trail. Ember leapt beneath it, searching for the voice.",
+      "direction": "Massive gnarled tree falls across a wet ravine path; Ember dives under and lands in mud.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 4,
+      "beat": "A shadow rescued",
+      "character_id": "s01_narrator",
+      "text": "A little animal slipped free of the fire and vanished north. Ember turned back for the others.",
+      "direction": "Scorched small woodland creature escapes at rear of frame; Ember watches then turns south against the fire.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 5,
+      "beat": "The impossible light",
+      "character_id": "s01_ember",
+      "text": "What is that? Fire burns everything. Why isn't that feather burning?",
+      "direction": "Real luminous blue feather caught in branches, its light spills onto Ember face and scarf.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 6,
+      "beat": "A trace of magic",
+      "character_id": "s01_narrator",
+      "text": "The feather spun against the wind. One blue spark drew a path across the blackened earth.",
+      "direction": "Feather ascends with trails over charred moss, its reflection flickers on muddy puddle.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 7,
+      "beat": "Warning from Moss",
+      "character_id": "s01_moss",
+      "text": "Do not touch it, little fox. Some things survive a fire because they are warnings.",
+      "direction": "Moss steps from ember-lit fog; ground shadows and shell depth, no glasses or new costume.",
+      "visible": [
+        "s01_moss"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 8,
+      "beat": "The missing alarm",
+      "character_id": "s01_ember",
+      "text": "The sky was clear when this started. And the warning bell never rang.",
+      "direction": "Ember and Moss in same detailed world under broken alarm rope, Ember speaks with disbelief.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 9,
+      "beat": "Footsteps under ash",
+      "character_id": "s01_narrator",
+      "text": "Moss stared toward the river. A crack spread beneath the ash, silent until it reached their feet.",
+      "direction": "Camera tracks fissure cracking across stone; real sparks and dust from ground; nearby roots shift.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 10,
+      "beat": "No ground left",
+      "character_id": "s01_ember",
+      "text": "Moss! The earth is breaking!",
+      "direction": "Ember slips and catches a root above a deep ravine, scarf pulled taut by wind.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 11,
+      "beat": "Hold on",
+      "character_id": "s01_moss",
+      "text": "Look at me. Put your paw on the stone. Now reach.",
+      "direction": "Moss anchors his shell and reaches down; Ember's real paws grip rock in synchronized shot.",
+      "visible": [
+        "s01_moss"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 12,
+      "beat": "A choice to save",
+      "character_id": "s01_narrator",
+      "text": "One last pull brought Ember to safety. But the feather had already slipped into the smoke.",
+      "direction": "Moss drags Ember to safety, tight meaningful shot; feather floats off into mist.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 13,
+      "beat": "The blue corridor",
+      "character_id": "s01_ember",
+      "text": "Someone wants us to follow. What if they started this?",
+      "direction": "Ember looks down blue-lit fog tunnel; his eyes flick between Moss and the disappearing glow.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 14,
+      "beat": "A bell with no tower",
+      "character_id": "s01_narrator",
+      "text": "Thunder finally rolled. Beyond the burned woods, a bell rang where no tower stood.",
+      "direction": "Cinematic panoramic forest silhouette, distant metallic bell sound from unexplained location, true moving mist.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    },
+    {
+      "scene": 15,
+      "beat": "The unseen witness",
+      "character_id": "s01_ember",
+      "text": "Whoever you are, I know you're out there.",
+      "direction": "Ember turns toward an owl-shaped shadow that vanishes into tree canopy; unresolved mystery ending.",
+      "visible": [
+        "s01_ember"
+      ],
+      "target_seconds": 12,
+      "shot_count": 3,
+      "shot_seconds": [
+        4,
+        4,
+        4
+      ],
+      "visual_quality": "UNVERIFIED",
+      "generated_clips": 0,
+      "public_approved": false
+    }
+  ]
+}
