@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 from studio import e01_v2_art_direction as old
-from studio import e01_v3_painterly_moss as moss
+from studio import e01_v4_moss as moss
 from studio.painterly_reference_actor_v2 import puppet
 from studio.cpu_motion_engine import W, H, font
 
@@ -136,21 +136,15 @@ def _place_moss(canvas, scene, t, mouth, speaker, visible):
     if "s01_moss" not in visible:
         return
     dual = "s01_ember" in visible
-    # Render in native V3 layers then apply subtle film contrast and light,
-    # preserving the canonical shell spiral and front-right crack.
-    actor = Image.new("RGBA", (W, H))
-    x = 265 if dual else 188
-    y = 480 if dual else 494
+    # SHA-locked generated source-textured head, shell and independently moving feet.
+    # This is a new REVIEW candidate, not automatic canon/style approval.
+    x = 268 if dual else 181
+    y = 488 if dual else 508
     if scene == 11:
-        y = 455
-    moss.draw_moss(actor, x, y, t,
+        y = 468
+    moss.draw_moss(canvas,x,y,t,
                    mouth if speaker == "s01_moss" else .04,
-                   scale=.59 if dual else 1.0)
-    # Color-preserving sharpening and subtle warm-grade integration.
-    rgb = ImageEnhance.Contrast(actor.convert("RGB")).enhance(1.09)
-    rgb = rgb.filter(ImageFilter.UnsharpMask(radius=1.2, percent=85, threshold=4))
-    actor = Image.merge("RGBA", (*rgb.split(), actor.getchannel("A")))
-    canvas.alpha_composite(actor)
+                   scale=.62 if dual else 1.0)
 
 
 def _feather(canvas, scene, t):
