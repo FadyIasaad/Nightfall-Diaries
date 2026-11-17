@@ -1,0 +1,115 @@
+name: Nightfall — E01 V4 Remastered (One-time Verified Meta Public Release)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_publish_v4_remaster_now.txt']
+  workflow_dispatch:
+    inputs:
+      owner_approved:
+        type: choice
+        description: 'Publish E01 V4 REMASTER as a separate post, not episode 2'
+        options: [NO, YES]
+        default: NO
+        required: true
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: nightfall-e01-painterly-verified-meta-publishing
+  cancel-in-progress: false
+jobs:
+  release-once:
+    if: github.event_name == 'push' || inputs.owner_approved == 'YES'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+      OWNER_AUTHORIZED_E01_PUBLIC_UPLOAD: YES
+      OWNER_AUTHORIZED_E01_V4_REMASTER_PUBLIC: YES
+      FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+      FB_EXPECTED_PAGE_ID: ${{ vars.FB_EXPECTED_PAGE_ID }}
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+      INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+      META_API_VERSION: v25.0
+      YOUTUBE_REFRESH_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install free media verification and HTTPS dependencies
+        run: |
+          python -m pip install --disable-pip-version-check 'requests>=2.31,<3'
+          if ! command -v ffprobe >/dev/null || ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+      - name: Verify remaster release safety and original receipt-isolation tests
+        run: python -m unittest tests.test_e01_v4_remaster_release -v
+      - name: Recover EXACT completed V4 film artifact from successful main run
+        run: |
+          mkdir -p output/v4_remaster_release/artifact
+          gh run download 44133360443 --repo "$GITHUB_REPOSITORY"             --name nightfall-e01-v4-cinematic-art-unpublished             --dir output/v4_remaster_release/artifact
+      - name: Verify original 180-second E01 V4, SHA and 14 scenes before public staging
+        run: |
+          set -euo pipefail
+          SRC=output/v4_remaster_release/artifact/Nightfall_S01_E01_V4_Cinematic_Painterly_180s_REVIEW.mp4
+          ORIGINAL=output/v4_remaster_release/original_original_approved_E01.mp4
+          DEST=output/v4_remaster_release/Nightfall_S01_E01_V4_Remastered_180s_PUBLIC.mp4
+          test -s "$SRC"
+          cp "$SRC" "$ORIGINAL"
+          echo "8aa394e7c3a30b819b2f03721ca08d6ed3327a0ef84bd8fa237e3a9b8a6b21a5  $ORIGINAL" | sha256sum -c -
+          python - <<'PY'
+          import json, pathlib, subprocess
+          folder=pathlib.Path("output/v4_remaster_release/artifact")
+          state=json.loads((folder/"progress.json").read_text(encoding="utf-8"))
+          qa=json.loads((folder/"quality_report.json").read_text(encoding="utf-8"))
+          art=json.loads((folder/"v4_review.json").read_text(encoding="utf-8"))
+          visual=json.loads((folder/"visual_audit.json").read_text(encoding="utf-8"))
+          assert state["status"]=="COMPLETE_V2_REVIEW_UNPUBLISHED"
+          assert len(state["completed"])==14 and state["public_posts_created"] is False
+          assert qa["technical_check_passed"] is True and 179 <= qa["duration_seconds"] <= 181
+          assert art["completed_scenes"]==14 and art["public_uploads"] is False
+          assert visual["found_scenes"] == 14 and not visual["failures"]
+          print("EXACT_V4_SOURCE_SAFETY_GATES_PASS")
+          PY
+          cp "$ORIGINAL" "$DEST"
+          ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name,width,height,r_frame_rate,sample_rate             -of json "$DEST"
+      - name: Host only exact V4 remaster MP4 in owner public GitHub release for IG API
+        run: |
+          set -euo pipefail
+          TAG=nightfall-e01-v4-painterly-remaster-20261117
+          FILE=output/v4_remaster_release/Nightfall_S01_E01_V4_Remastered_180s_PUBLIC.mp4
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets               --jq '.assets[].name' | grep -Fx "$(basename "$FILE")"
+          else
+            gh release create "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY"               --title "Nightfall Diaries — The Last Little Fox E01 V4 Remastered (2.5D)"               --notes "A distinct remastered edit of Episode 1, not a new Episode 2. Original source-locked Ember, new Moss candidate, original Kokoro audio, illustrated 2.5D. No true cinematic 3D or verified phoneme lip sync."               --latest=false
+          fi
+      - name: Post once to exact verified Nightfall Facebook Page and Instagram account
+        run: python -m pilot.e01_v4_remaster_upload_once
+      - name: Store redacted Meta acceptance and blocked platform details
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-v4-remaster-public-post-status
+          path: output/painterly_release/social_upload_result.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Show truthful result, no misleading all-platform success claim
+        if: always()
+        run: |
+          if [ -f output/painterly_release/social_upload_result.json ]; then
+            python - <<'PY'
+          import json,os
+          x=json.load(open("output/painterly_release/social_upload_result.json",encoding="utf-8"))
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f:
+              f.write("## Nightfall E01 V4 Remastered — post statuses\n\n")
+              for name in ("facebook","instagram","youtube","tiktok"):
+                  item=x.get(name,{})
+                  f.write("- "+name.title()+": "+item.get("phase","unknown")+"\n")
+              f.write("Accepted upload IDs are not proof of public visibility. E02 was not produced.\n")
+          PY
+          else
+            echo "::warning::No release receipt generated; check first failed step."
+          fi
