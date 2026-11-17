@@ -31,3 +31,10 @@ The existing V1/V2/V3 and the earlier V4 clean-shell review remain untouched. Th
 4. Moss and Ember quality genuinely match after **human** comparison; currently not established.
 5. Whole 180-second film passes technical timing and cinematic subjective review.
 6. Only later, after verified platform eligibility, consider public posting; no posting in this workflow.
+
+## Added generated Moss candidate (source-locked)
+
+- Actual image bytes: assets/v4/moss_generated_candidate.webp.b64 (Base64-encoded WebP, decoded in memory).
+- Runtime actor: studio/e01_v4_moss.py segments head/shell/three leg regions and animates independent elements, preserving most original painting texture.
+- This replaces the crude V3 procedural Moss in **V4 only**. The generated candidate visibly adds eyeglasses and white eyebrows/beard, not established in original canon. Review and visual approval remain required.
+- The image and all 14 scenes are generated/rendered with no paid APIs. Source SHA lock prevents silent substitution.
