@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - 'studio/e01_v4_art_direction.py'
+      - 'studio/e01_v4_moss.py'
+      - 'assets/v4/moss_generated_candidate.webp.b64'
       - 'pilot/e01_v4_cinematic.py'
       - 'tests/test_e01_v4_cinematic.py'
       - '.github/workflows/nightfall_e01_v4_cinematic.yml'
