@@ -1,0 +1,54 @@
+name: Nightfall E02 - Original Kokoro Voices on Free CPU (Unpublished)
+on:
+  pull_request:
+    paths:
+      - 'pilot/e02_voice_track.py'
+      - '.github/workflows/nightfall_e02_kokoro_voices.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nightfall-e02-original-cpu-voice-generation
+  cancel-in-progress: false
+jobs:
+  voice-cues:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ELEVENLABS_API_KEY: ''
+      OPENAI_API_KEY: ''
+      RUNWAY_API_KEY: ''
+      AGNES_API_KEY: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Free Kokoro neural model and voice codec
+        run: |
+          python -m pip install --disable-pip-version-check 'kokoro==0.9.4' 'soundfile>=0.12,<1' 'numpy<3'
+          if ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+      - name: Check complete rewritten Episode 2 scene identity
+        run: python -m unittest tests.test_e02_zero_budget_rewrite -v
+      - name: Generate all fifteen original English voice clips, fail on overflow
+        run: python -m pilot.e02_voice_track
+      - name: Archive real voice WAVs and SHA cue times, without video/public post
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-E02-original-kokoro-voices-no-publish
+          path: |
+            output/e02_kokoro_original_voice_cues/voice_cue_manifest.json
+            output/e02_kokoro_original_voice_cues/scene_*.wav
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Truthful result summary
+        if: always()
+        run: |
+          echo 'CPU Kokoro voices only. No lip-sync, real-video episode, paid API or social publishing.' >> "$GITHUB_STEP_SUMMARY"
