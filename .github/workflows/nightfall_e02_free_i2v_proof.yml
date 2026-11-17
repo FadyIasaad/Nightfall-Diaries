@@ -1,0 +1,76 @@
+name: Nightfall E02 - Free REAL Image-to-Video Gate (Never Publish)
+on:
+  pull_request:
+    paths:
+      - 'pilot/e02_real_i2v_proof.py'
+      - '.github/workflows/nightfall_e02_free_i2v_proof.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        required: true
+        type: choice
+        default: source-check
+        options: [source-check, generate]
+permissions:
+  contents: read
+concurrency:
+  group: nightfall-e02-one-free-image-to-video
+  cancel-in-progress: false
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_TOKEN: ''
+      AGNES_API_KEY: ''
+      EVERYPIXEL_API_KEY: ''
+      RUNWAY_API_KEY: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+      MODE: ${{ github.event_name == 'pull_request' && 'generate' || inputs.mode }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install free public demo client and FFmpeg
+        run: |
+          python -m pip install --disable-pip-version-check 'gradio_client>=1.7,<3'
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+      - name: Test complete revised screenplay and strict no-fee gate
+        run: python -m unittest tests.test_e02_zero_budget_rewrite -v
+      - name: Submit exactly one anonymous 4-second I2V request from locked original fox image
+        run: python -m pilot.e02_real_i2v_proof --mode "$MODE"
+      - name: Extract real-video frames for subjective quality review
+        if: success() && env.MODE == 'generate'
+        run: |
+          ffmpeg -hide_banner -loglevel error -y             -i output/e02_real_i2v_proof/E02_Ember_Real_AI_Scene_UNAPPROVED.mp4             -vf 'fps=1,scale=256:-1,tile=4x1' -frames:v 1             output/e02_real_i2v_proof/contact_sheet.jpg
+      - name: Store actual non-published clip and verification evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-E02-true-i2v-4s-unpublished
+          path: |
+            output/e02_real_i2v_proof/report.json
+            output/e02_real_i2v_proof/E02_Ember_Real_AI_Scene_UNAPPROVED.mp4
+            output/e02_real_i2v_proof/contact_sheet.jpg
+          if-no-files-found: warn
+          retention-days: 7
+      - name: State real $0 production limits
+        if: always()
+        run: |
+          {
+            echo '## E02 no-fee real-video test'
+            echo ''
+            echo '- One public anonymous ZeroGPU generation, no paid APIs or cards.'
+            echo '- Source is approved locked Ember still; full-scene keyframe consistency is not yet proven.'
+            echo '- This tests only four seconds, not 180 seconds.'
+            echo '- No talking-character lip sync or film quality approval is claimed.'
+            echo '- Never use rejected 2.5D or still zoom fallback.'
+            echo '- Never upload to social platforms. All public release flags stay false.'
+            echo '- Stop if the model quota or identity check fails; no paid fallback.'
+          } >> "$GITHUB_STEP_SUMMARY"
