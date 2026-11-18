@@ -50,10 +50,12 @@ def atmosphere(scene_num, n, np):
     rng = np.random.default_rng(51140 + scene_num)
     t = np.arange(n, dtype=np.float32) / SAMPLE_RATE
     # Low-frequency swells of wind over the whole valley.
-    low = np.interp(np.arange(n), np.arange(0, n+4800, 4800),
-                    rng.normal(0, .8, (n//4800) + 2)).astype(np.float32)
-    mid = np.interp(np.arange(n), np.arange(0, n+480, 480),
-                    rng.normal(0, .7, (n//480) + 2)).astype(np.float32)
+    low_knots = np.arange(0, n + 4800, 4800)
+    mid_knots = np.arange(0, n + 480, 480)
+    low = np.interp(np.arange(n), low_knots,
+                    rng.normal(0, .8, len(low_knots))).astype(np.float32)
+    mid = np.interp(np.arange(n), mid_knots,
+                    rng.normal(0, .7, len(mid_knots))).astype(np.float32)
     left = (.016 * low + .009 * mid + .0038 * rng.normal(size=n)).astype(np.float32)
     right = (.014 * low + .010 * np.roll(mid, 35) +
              .0038 * rng.normal(size=n)).astype(np.float32)
