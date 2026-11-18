@@ -1,0 +1,46 @@
+name: Nightfall E01 - Free Google Flow 30-Clip Prompt Pack (No Video / $0)
+on:
+  pull_request:
+    paths:
+      - 'pilot/e01_free_flow_clip_pack.py'
+      - 'tests/test_e01_free_flow_clip_pack.py'
+      - '.github/workflows/nightfall_e01_flow_free_prompt_pack.yml'
+      - 'docs/E01_FLOW_FREE_ALTERNATIVE_2026-11-18.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  free-clip-prompt-pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Test 30 authentic 8s plus 4s story prompts and $0 restrictions
+        run: python -m unittest tests.test_e01_free_flow_clip_pack -v
+      - name: Prepare full first-episode model-specific scene prompts, NO web/API calls
+        run: python -m pilot.e01_free_flow_clip_pack
+      - name: Archive free Flow prompts for 15 scenes, 180 seconds
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-google-flow-30shot-promptbook-no-video
+          path: |
+            output/e01_free_google_flow_pack/e01_30shot_promptbook.md
+            output/e01_free_google_flow_pack/e01_30shot_free_flow_plan.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Accurately explain missing hosted Flow API and animated movie
+        run: |
+          {
+            echo '## Google Flow free alternative, promptbook only'
+            echo '- Free 50 credits/day verified in Google official documentation.'
+            echo '- Veo 3.1 Lite 10 credits for each 4, 6 or 8-second generation.'
+            echo '- 15 scenes x (8s+4s) = 30 clips = 180s.'
+            echo '- Theoretical minimum 6 days with 0 retakes; model access and quality are account-dependent.'
+            echo '- THIS JOB GENERATES **PROMPTS**, NOT VIDEO CLIPS.'
+            echo '- No authenticated free Flow video API/automation is established.'
+            echo '- No cinema-quality / animal lip-sync / public posting claim.'
+            echo '- No paid inference, GPU sessions, or user PC used.'
+          } >> "$GITHUB_STEP_SUMMARY"
