@@ -1,0 +1,103 @@
+name: Nightfall E01 - ONE Real AI Video Shot per Cairo Day ($0 Studio)
+on:
+  schedule:
+    - cron: '0 10 * * *'
+      timezone: 'Africa/Cairo'
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [audit, generate]
+        default: audit
+        required: true
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_e01_real_ai_studio_start_now.txt']
+  pull_request:
+    paths:
+      - 'pilot/e01_free_ai_studio.py'
+      - 'tests/test_e01_free_ai_studio.py'
+      - '.github/workflows/nightfall_e01_free_ai_studio.yml'
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: nightfall-E01-one-real-zero-dollar-video-shot
+  cancel-in-progress: false
+jobs:
+  daily-one-real-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MODE: ${{ github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'generate') && 'generate' || 'audit' }}
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+      # All provider billing/account tokens intentionally unset: anonymous public ZeroGPU ONLY.
+      HF_TOKEN: ''
+      HUGGING_FACE_HUB_TOKEN: ''
+      AGNES_API_KEY: ''
+      EVERYPIXEL_API_KEY: ''
+      OPENAI_API_KEY: ''
+      ELEVENLABS_API_KEY: ''
+      RUNWAY_API_KEY: ''
+      DASHSCOPE_API_KEY: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - name: Checkout unmodified original stories and locked Ember image
+        uses: actions/checkout@v5
+      - name: Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Validate a genuine 45-shot storyline, free quota locks and draft-only storage
+        run: python -m unittest tests.test_e01_free_ai_studio -v
+      - name: Install free API client and FFmpeg only for actual one-shot generate
+        if: env.MODE == 'generate'
+        run: |
+          python -m pip install --disable-pip-version-check 'gradio_client>=1.7,<3'
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Generate exactly one actual source-locked four-second scene, OR audit without GPU
+        run: python -m pilot.e01_free_ai_studio --mode "$MODE"
+      - name: Report exact accumulated real shots and quality gaps
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          file=Path("output/e01_free_ai_studio/studio_state.json")
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as out:
+              out.write("## Nightfall E01 — Genuine moving video only\\n\\n")
+              out.write(f"- Mode: {os.environ['MODE']}\\n")
+              if not file.is_file():
+                  out.write("- No status artifact found. Job may have failed before state was saved.\\n")
+              else:
+                  data=json.loads(file.read_text(encoding="utf-8"))
+                  out.write("- Status: **"+data.get("status","UNKNOWN")+"**\\n")
+                  out.write("- Real 4-second raw AI shots accumulated: **"+
+                            str(len(data.get("completed_technical_shots",[])))+"/45**\\n")
+                  out.write("- Human art approval: NOT automatically granted.\\n")
+                  out.write("- Full cinematic 180s MP4: NOT completed.\\n")
+                  out.write("- Natural original Kokoro animal lip-sync: NOT verified.\\n")
+                  out.write("- Public publishing: DISABLED.\\n")
+                  out.write("- Provider charges: $0 by code policy; no paid keys supplied.\\n")
+                  out.write("- Storage: owner-only DRAFT GitHub release assets.\\n")
+          PY
+      - name: Downloadable real proof clip and progress report (never pretend to be episode)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-e01-real-ai-raw-shot-and-queue-status
+          path: |
+            output/e01_free_ai_studio/studio_state.json
+            output/e01_free_ai_studio/scene_*.mp4
+            output/e01_free_ai_studio/scene_*_4frames.jpg
+            output/e01_free_ai_studio/scene_*.json
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
