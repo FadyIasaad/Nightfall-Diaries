@@ -61,9 +61,11 @@ jobs:
             sudo apt-get update -qq && sudo apt-get install -y ffmpeg
           fi
       - name: Assert Ember original identity and strict no-charge rules
-        run: python -m unittest tests.test_e01_real_speaking_proof -v
+        run: python -m unittest tests.test_e01_real_speaking_proof tests.test_e01_animal_provider_preflight -v
       - name: Check or attempt precisely one animal talking-scene proof
         run: python -m pilot.e01_real_speaking_proof --mode "$MODE"
+      - name: Check zero-cost animal speech providers (public metadata, no inference)
+        run: python -m pilot.e01_animal_provider_preflight
       - name: Report the output truthfully even when the free quota is exhausted
         if: always()
         run: |
@@ -91,6 +93,7 @@ jobs:
           name: nightfall-E01-real-speaking-proof-no-publish
           path: |
             output/e01_real_speaking_proof/report.json
+            output/e01_animal_provider_preflight.json
             output/e01_real_speaking_proof/ember_s01_e01_real_kokoro.wav
             output/e01_real_speaking_proof/ember_s01_e01_speaking_UNAPPROVED.mp4
           if-no-files-found: warn
@@ -107,6 +110,7 @@ jobs:
             echo '- The talking demo was built for HUMAN faces; animal success is not established.'
             echo '- No public publishing, no fake CGI approval, no 2.5D or photo-pan fallback.'
             echo '- Daily run checks readiness; it does not promise one completed episode per day.'
+            echo '- Provider availability is read-only; JoyVASA is animal-specific but may be paused; LongCat exceeds anonymous free quota.'
             if [ -f output/e01_real_speaking_proof/report.json ]; then
               cat output/e01_real_speaking_proof/report.json
             fi
