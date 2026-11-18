@@ -1,0 +1,103 @@
+name: Nightfall E01 - Complete 180s Original Neural Soundtrack ($0 CPU, Review)
+on:
+  pull_request:
+    paths:
+      - 'pilot/e01_cinematic_soundtrack.py'
+      - 'tests/test_e01_cinematic_soundtrack.py'
+      - '.github/workflows/nightfall_e01_full_soundtrack.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        required: true
+        default: render
+        options: [render, validate]
+  push:
+    branches: [main]
+    paths: ['.github/nightfall_e01_soundtrack_render_once.txt']
+
+permissions:
+  contents: read
+concurrency:
+  group: nightfall-e01-full-original-cpu-soundtrack
+  cancel-in-progress: false
+jobs:
+  script-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Validate full scene script and no fake final-video/publishing
+        run: python -m unittest tests.test_e01_cinematic_soundtrack -v
+  render-actual-neural-film-audio:
+    needs: script-contract
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'render')
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    env:
+      OPENAI_API_KEY: ''
+      ELEVENLABS_API_KEY: ''
+      AGNES_API_KEY: ''
+      RUNWAY_API_KEY: ''
+      DASHSCOPE_API_KEY: ''
+      EVERYPIXEL_API_KEY: ''
+      HF_TOKEN: ''
+      YOUTUBE_REFRESH_TOKEN: ''
+      FB_PAGE_ACCESS_TOKEN: ''
+      INSTAGRAM_ACCESS_TOKEN: ''
+      TIKTOK_ACCESS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install only original offline Kokoro voice and audio libraries
+        run: |
+          python -m pip install --disable-pip-version-check 'kokoro==0.9.4' 'soundfile>=0.12,<1' 'numpy>=1.26,<3'
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          fi
+      - name: Recheck original 180s character-cast/timing contract
+        run: python -m unittest tests.test_e01_cinematic_soundtrack -v
+      - name: Generate real unique neural lines and finished 180-second film soundtrack
+        run: python -m pilot.e01_cinematic_soundtrack --mode render
+      - name: Validate sound output and truthful status (NOT video!)
+        run: |
+          python - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          p=Path("output/e01_180s_cinematic_soundtrack")
+          manifest=json.loads((p/"soundtrack_manifest.json").read_text())
+          assert manifest["status"]=="FULL_180S_AUDIO_TRACK_READY_VISUAL_VIDEO_NOT_PRODUCED"
+          assert manifest["scene_count"]==15 and manifest["voice_count"]==15
+          assert manifest["duration_seconds"]==180
+          assert not manifest["all_45_cinematic_video_shots_rendered"]
+          assert not manifest["accurate_animal_lipsync_verified"]
+          assert not manifest["new_public_release"] and not manifest["paid_service_used"]
+          mp3=p/manifest["mp3_file"]
+          d=float(subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
+             "-of","default=noprint_wrappers=1:nokey=1",str(mp3)],
+             capture_output=True,text=True,check=True).stdout)
+          assert 179.8<=d<=180.2,d
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f:
+              f.write("## Original first episode AUDIO assembled at $0\n")
+              f.write(f"- 15 original neural lines, 180 seconds soundtrack, hash: {manifest['mp3_sha256']}\n")
+              f.write("- Full animated VIDEO NOT completed. Visual/lip-sync acceptance still blocked.\n")
+              f.write("- No public posting, GPU charges or billable providers.\n")
+          print("FULL_180S_NEURAL_AUDIO_VERIFIED_MOVIE_STILL_BLOCKED",d)
+          PY
+      - name: Archive 180s full soundtrack, original lines and exact cue sheet
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightfall-E01-180s-complete-original-soundtrack-unpublished
+          path: |
+            output/e01_180s_cinematic_soundtrack/Nightfall_S01_E01_180s_original_soundtrack_REVIEW.mp3
+            output/e01_180s_cinematic_soundtrack/Nightfall_S01_E01_180s_original_soundtrack_REVIEW.wav
+            output/e01_180s_cinematic_soundtrack/soundtrack_manifest.json
+            output/e01_180s_cinematic_soundtrack/scene_*.wav
+          if-no-files-found: warn
+          retention-days: 30
