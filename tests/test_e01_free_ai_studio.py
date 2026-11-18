@@ -19,7 +19,7 @@ class FreeAIStudioTests(TestCase):
         self.assertEqual([x["shot"] for x in shots],[1,2,3]*15)
         self.assertEqual(sum(x["seconds"] for x in shots),180)
         self.assertIn("Absolutely NO text",shots[0]["prompt"])
-        self.assertIn("exactly ONE GOLD STAR",shots[0]["prompt"])
+        self.assertIn("exactly ONE golden star",shots[0]["prompt"])
         self.assertIn("body length across the environment",shots[0]["prompt"])
 
     def test_source_image_sha_and_no_paid_provider(self):
