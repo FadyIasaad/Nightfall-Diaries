@@ -1,0 +1,1 @@
+Owner-requested first episode full production step on 2026-11-18: render exact 180-second original Kokoro voice and ambient cinematic soundtrack on free GitHub CPU only. No paid external AI, no rejected 2.5D render, no public post, no fake video. Preserve cue hashes and sound artifact; movie footage remains blocked by missing legitimate free GPU.
