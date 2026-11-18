@@ -94,6 +94,8 @@ def plan():
         for idx in range(1,4):
             visible = scene["visible"]
             identity = ". ".join(cast[c]["visual"] for c in visible if c in cast)
+            source_kind = ("ember" if visible == ["s01_ember"] else
+                           "moss_reference_not_approved")
             phase = (
                 "The foreground and forest establish real depth. The characters "
                 "ENTER the environment and react naturally to the crisis."
@@ -106,9 +108,10 @@ def plan():
             )
             prompt = (
                 "One coherent four-second shot from an ORIGINAL premium stylized "
-                "3D animated fox adventure film. Keep the APPROVED IMAGE's exact "
-                "Ember identity: orange russet fox cub, white tip on HIS LEFT EAR, "
-                "amber eyes, turquoise woven scarf with exactly ONE GOLD STAR. "
+                "3D animated fox adventure film. The APPROVED IMAGE shows Ember, "
+                "a russet fox cub with a white tip on HIS LEFT EAR, amber eyes, "
+                "turquoise woven scarf with exactly ONE GOLD STAR. Preserve the "
+                "fox's exact approved silhouette, face, and fur texture. "
                 "Full cinematic FOREST WORLD: layered trunks, real moss, lichen, "
                 "twisted roots, realistic soil, atmospheric perspective, volumetric "
                 "smoke and rays of warm dramatic light. Frame is fully filled with "
@@ -135,6 +138,7 @@ def plan():
                 "expected_speaker":scene["character_id"],
                 "prompt":prompt,
                 "seed":20261119 + 101*scene["scene"] + idx,
+                "source_kind":source_kind,
             })
     if len(shots)!=TOTAL:
         raise RuntimeError("SHOT_COUNT_INCONSISTENT")
@@ -311,6 +315,15 @@ def run(mode):
     if not completed.issubset(valid_ids):
         raise RuntimeError("DRAFT_CONTAINS_UNRECOGNIZED_SHOTS")
     remaining=[s for s in shots if s["id"] not in completed]
+    # A fox source image must NEVER be used to pretend a tortoise has
+    # identity consistency. Continue the Ember-only shots, but leave
+    # original Moss scenes blocked until a proper approved Moss reference.
+    eligible=[s for s in remaining if s["source_kind"]=="ember"]
+    if remaining and not eligible:
+        state["status"]="BLOCKED_MOSS_APPROVED_REFERENCE_REQUIRED"
+        persist_state(state)
+        print("NO_FALSE_MOSS_REFERENCE_SUBSTITUTION",flush=True)
+        return state
     if not remaining:
         state["status"]="ALL_RAW_SHOTS_CAPTURED_OWNER_QA_AND_LIPSYNC_PENDING"
         print("ALL_45_RAW_MOTION_CLIPS_ACQUIRED_FINAL_APPROVAL_PENDING",flush=True)
@@ -321,7 +334,7 @@ def run(mode):
         state["status"]="ALREADY_TRIED_ONE_FREE_GPU_CALL_TODAY"
         print("NO_SECOND_FREE_QUOTA_ATTEMPT_TODAY",flush=True)
         return state
-    current=remaining[0]
+    current=eligible[0]
     if clip_in_draft(current["id"]+".mp4"):
         raise RuntimeError("DRAFT_HAS_ORPHAN_CLIP_MANUAL_RECONCILIATION_REQUIRED")
     state["last_attempt_cairo_date"]=today
