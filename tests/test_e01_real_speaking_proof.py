@@ -35,6 +35,31 @@ class FirstEpisodeSpeakingProofTests(unittest.TestCase):
         self.assertNotIn("publish_video(", code)
         self.assertNotIn("studio.e01_v4_art_direction", code)
 
+    def test_quota_denial_is_explicit_not_any_provider_error(self):
+        self.assertTrue(trial.is_free_quota_error(
+            RuntimeError("You have exceeded your ZeroGPU runs limit. Authenticate with a Hugging Face token for more quota")
+        ))
+        self.assertTrue(trial.is_free_quota_error(
+            RuntimeError("Not enough ZeroGPU quota")
+        ))
+        self.assertFalse(trial.is_free_quota_error(
+            RuntimeError("AppError: model endpoint returned 500")
+        ))
+        self.assertFalse(trial.is_free_quota_error(
+            RuntimeError("Face detector failed for a fox")
+        ))
+
+    def test_schedule_preflight_cannot_trigger_gpu_on_pr_or_daily_run(self):
+        workflow = (ROOT / ".github/workflows/nightfall_e01_daily_real_speaking.yml").read_text()
+        self.assertIn("cron: '0 10 * * *'", workflow)
+        self.assertIn("timezone: 'Africa/Cairo'", workflow)
+        self.assertIn(
+            "github.event_name == 'workflow_dispatch' && inputs.mode == 'generate'",
+            workflow,
+        )
+        self.assertNotIn("github.event.action == 'opened' && 'generate'", workflow)
+        self.assertIn("BLOCKED_FREE_ZEROGPU_QUOTA", workflow)
+
     def test_movie_validator_refuses_missing_video(self):
         with self.assertRaises(Exception):
             trial.validate_movie(ROOT / "this_movie_does_not_exist.mp4")
