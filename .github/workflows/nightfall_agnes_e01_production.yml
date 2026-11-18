@@ -15,10 +15,8 @@ on:
   push:
     branches: [main]
     paths: ['.github/nightfall_agnes_e01_prepare_now.txt']
-  schedule:
-    # Multiple chances to resume provider tasks without 24h of waiting.
-    - cron: '7 2,6,10,14,18,22 * * *'
-      timezone: 'Africa/Cairo'
+# Retired schedule (model/key not confirmed $0 and repeated failing runs).
+# Manual dispatch remains for controlled future diagnostics only.
 
 permissions:
   contents: read
