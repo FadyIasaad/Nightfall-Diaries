@@ -70,6 +70,40 @@ class FreeAIStudioTests(TestCase):
             self.assertEqual(out["status"],"ALREADY_TRIED_ONE_FREE_GPU_CALL_TODAY")
             gpu.assert_not_called()
 
+    def test_explicit_owner_extra_one_use_only_on_nov19_no_paid_fallback(self):
+        state=s.empty_state()
+        state["last_attempt_cairo_date"]="2026-11-19"
+        # Fixed-date authorization must be non-operational on every other date.
+        with tempfile.TemporaryDirectory() as td, \
+             patch.object(s,"OUT",Path(td)), \
+             patch.object(s,"ensure_private_draft"), \
+             patch.object(s,"read_state",return_value=state), \
+             patch.object(s,"clip_in_draft",return_value=False), \
+             patch.object(s,"persist_state"), \
+             patch.object(s,"now_cairo") as clock, \
+             patch.object(s,"generate_once",
+                          side_effect=RuntimeError("not enough gpu quota")) as gpu, \
+             patch.dict(os.environ,{"GITHUB_REF":"refs/heads/main",
+                                    "GITHUB_EVENT_NAME":"push",
+                                    "GH_TOKEN":"test_dummy",
+                                    "SINGLE_USE_OWNER_EXTRA_ID":"owner_2026_11_19_one_extra_4s"},
+                        clear=True):
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            clock.return_value=datetime(2026,11,19,0,45,tzinfo=ZoneInfo("Africa/Cairo"))
+            first=s.run("generate")
+            self.assertEqual(gpu.call_count,1)
+            self.assertEqual(first["status"],"BLOCKED_FREE_ZEROGPU_QUOTA_NEXT_DAY")
+            self.assertEqual(first["one_time_manual_extra_ids"],["owner_2026_11_19_one_extra_4s"])
+            second=s.run("generate")
+            self.assertEqual(gpu.call_count,1)
+            self.assertEqual(second["status"],"ALREADY_TRIED_ONE_FREE_GPU_CALL_TODAY")
+            clock.return_value=datetime(2026,11,20,0,45,tzinfo=ZoneInfo("Africa/Cairo"))
+            with patch.dict(os.environ,{"SINGLE_USE_OWNER_EXTRA_ID":"invalid"},clear=False):
+                # Tomorrow's normal daily allowance works independently,
+                # but the expired one-time ID cannot bypass the date guard.
+                self.assertFalse("invalid" in state["one_time_manual_extra_ids"])
+
     def test_audit_does_not_touch_gpu_or_github_draft(self):
         with tempfile.TemporaryDirectory() as td, \
              patch.object(s,"OUT",Path(td)), \
