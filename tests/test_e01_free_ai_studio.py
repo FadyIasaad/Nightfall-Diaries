@@ -18,9 +18,9 @@ class FreeAIStudioTests(TestCase):
             i for i in range(1,16) for _ in range(3)])
         self.assertEqual([x["shot"] for x in shots],[1,2,3]*15)
         self.assertEqual(sum(x["seconds"] for x in shots),180)
-        self.assertIn("NO social-media overlays",shots[0]["prompt"])
-        self.assertIn("exactly ONE GOLD STAR",shots[0]["prompt"])
-        self.assertIn("Full cinematic FOREST WORLD",shots[0]["prompt"])
+        self.assertIn("Absolutely NO text",shots[0]["prompt"])
+        self.assertIn("exactly ONE golden star",shots[0]["prompt"])
+        self.assertIn("body length across the environment",shots[0]["prompt"])
 
     def test_source_image_sha_and_no_paid_provider(self):
         self.assertTrue(s.EMBER.exists())
@@ -80,6 +80,30 @@ class FreeAIStudioTests(TestCase):
             self.assertTrue((Path(td)/"studio_state.json").is_file())
             model.assert_not_called()
             drafts.assert_not_called()
+
+    def test_known_bad_first_raw_clip_rejected_and_retry_id_is_versioned(self):
+        import json
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as td:
+            review=Path(td)/"rejected.json"
+            raw=s.empty_state()
+            raw["completed_technical_shots"].append({
+                "id":"scene_01_shot_01",
+                "sha256":"abc123",
+                "human_visual_approval":False,
+            })
+            review.write_text(json.dumps({"rejections":[{
+                "clip_id":"scene_01_shot_01","sha256":"abc123",
+                "reasons":["Inaccurate background","Unwanted onscreen text"]
+            }]}))
+            with patch.object(s,"VISUAL_REJECTIONS",review):
+                changed=s.reconcile_visual_rejections(raw)
+                self.assertTrue(changed)
+                self.assertEqual(raw["completed_technical_shots"],[])
+                self.assertEqual(len(raw["rejected_raw_shots"]),1)
+                self.assertEqual(raw["rejected_raw_shots"][0]["visual_review"],"REJECTED")
+                self.assertFalse(s.reconcile_visual_rejections(raw))
+            # An already rejected clip is never mistaken for completion.
 
     def test_no_shot_fake_approval_or_social_upload(self):
         script=Path(s.__file__).read_text(encoding="utf-8")

@@ -27,6 +27,7 @@ CAST = ROOT / "seasons/S01_the_last_little_fox/characters/character_registry.jso
 EMBER = ROOT / "assets/cinematic_refs/ember_approved_candidate_2026-11-13.webp"
 EMBER_SHA = "c6cfda4f199c13d5fdf6d4e5057026d718787a495aefc29125c06779eb662432"
 OUT = ROOT / "output/e01_free_ai_studio"
+VISUAL_REJECTIONS = ROOT / "docs/E01_RAW_AI_VISUAL_REJECTIONS_2026-11-19.json"
 RELEASE_TAG = "nightfall-s01-e01-real-ai-draft-2026"
 SPACE = "Lightricks/LTX-2-3"
 API = "/generate_video"
@@ -106,29 +107,27 @@ def plan():
                 "Show the physical outcome and a believable character reaction. "
                 "Cut after the action without freezing or repeating it."
             )
+            # Avoid putting literal screenplay words into the video prompt:
+            # the first real LTX E01 clip hallucinated subtitle text and had
+            # almost-static body motion, despite a detailed environment.
             prompt = (
-                "One coherent four-second shot from an ORIGINAL premium stylized "
-                "3D animated fox adventure film. The APPROVED IMAGE shows Ember, "
-                "a russet fox cub with a white tip on HIS LEFT EAR, amber eyes, "
-                "turquoise woven scarf with exactly ONE GOLD STAR. Preserve the "
-                "fox's exact approved silhouette, face, and fur texture. "
-                "Full cinematic FOREST WORLD: layered trunks, real moss, lichen, "
-                "twisted roots, realistic soil, atmospheric perspective, volumetric "
-                "smoke and rays of warm dramatic light. Frame is fully filled with "
-                "real environment, NOT a studio character cutout. "
-                f"Episode scene {scene['scene']} {scene['beat']}. "
-                f"Directed performance: {scene['direction']} "
-                f"{phase} Characters to feature: {identity}. "
-                "Physically credible quadruped motion, paws interact with soil, "
-                "expressive eyes, moving fur, scarf inertia, believable camera. "
-                f"Script context for motivation (do not render words on screen): {scene['text']} "
-                "The scene MUST have natural continuous body acting. "
-                "NO social-media overlays, fake watermarks, UI icons, subtitles, "
-                "black bars, blue interface stickers, dialogue boxes, montage "
-                "cuts, game models, primitive 3D geometry, still panning, "
-                "frozen frames, repeated images or synthetic typography. "
-                "No spoken dialogue in this MOTION test; original Kokoro voice "
-                "will be added only after actual lip-sync quality is proven."
+                "Original cinematic stylized 3D animated family-adventure MOVING SHOT, "
+                "four continuous seconds. The APPROVED IMAGE is the visual identity "
+                "of a young russet fox, LEFT ear white tip, expressive amber eyes, "
+                "turquoise scarf with exactly ONE golden star. Do not redesign him. "
+                "ACTION is essential: Ember reacts to a sudden forest fire, turns "
+                "his entire body, then RUNS across uneven roots toward the right "
+                "of frame. His paws clearly lift, travel and LAND, moving at least "
+                "one body length across the environment. The camera TRACKS with "
+                "him while the visible forest background MOVES in depth, with "
+                "smoke, falling ash, orange firelight, trees and wet soil. "
+                f"Scene beat: {scene['beat']}. "
+                f"Action direction: {scene['direction']}. "
+                f"Motion phase: {phase}. "
+                "Must be one naturally animated action shot, not breathing "
+                "in place or a zoom of one illustration. Absolutely NO text, "
+                "captions, subtitles, typography, social UI, icons, cards "
+                "or logos at any point. Do not generate dialogue or speech."
             )
             shots.append({
                 "scene":scene["scene"],
@@ -155,6 +154,7 @@ def empty_state():
         "draft_release_tag":RELEASE_TAG,
         "target_shots":TOTAL,
         "completed_technical_shots":[],
+        "rejected_raw_shots":[],
         "visual_owner_approved_shots":[],
         "last_attempt_cairo_date":None,
         "last_attempt_result":None,
@@ -229,6 +229,34 @@ def persist_state(state):
               "--clobber","--repo",REPO])
 
 
+
+def reconcile_visual_rejections(state):
+    """Preserve a visibly bad raw clip as evidence, but never call it progress.
+
+    Review notes are exact-shot SHA-locked and checked into this repo.
+    This doesn't grant approval and doesn't permit another attempt today.
+    """
+    if not VISUAL_REJECTIONS.is_file():
+        return False
+    items=json.loads(VISUAL_REJECTIONS.read_text(encoding="utf-8"))
+    changed=False
+    for rejection in items.get("rejections",[]):
+        cid=rejection["clip_id"]
+        digest=rejection["sha256"]
+        for clip in list(state["completed_technical_shots"]):
+            if clip["id"] != cid:
+                continue
+            if clip["sha256"] != digest:
+                raise RuntimeError("UNMATCHED_VIDEO_REJECTION_HASH")
+            state["completed_technical_shots"].remove(clip)
+            entry=dict(clip)
+            entry["visual_review"]="REJECTED"
+            entry["reasons"]=rejection["reasons"]
+            state.setdefault("rejected_raw_shots",[]).append(entry)
+            changed=True
+    return changed
+
+
 def media_metadata(path):
     raw=subprocess.run(["ffprobe","-v","error","-of","json",
        "-show_entries","format=duration:stream=codec_type,codec_name,width,height",
@@ -276,14 +304,15 @@ def generate_once(shot):
         candidate=candidate.get("video") or candidate.get("path")
     if not isinstance(candidate,str) or not Path(candidate).is_file():
         raise RuntimeError("FREE_PROVIDER_RETURNED_NO_REAL_VIDEO")
-    media=OUT/(shot["id"]+".mp4")
+    stem=shot.get("asset_stem",shot["id"])
+    media=OUT/(stem+".mp4")
     shutil.copyfile(candidate,media)
     if media.stat().st_size < 10000:
         raise RuntimeError("FREE_PROVIDER_RETURNED_EMPTY_VIDEO")
     technical=media_metadata(media)
     motion_qa(media)
     # A frame-contact sheet is an EVIDENCE artifact, not cinematic approval.
-    sheet=OUT/(shot["id"]+"_4frames.jpg")
+    sheet=OUT/(stem+"_4frames.jpg")
     subprocess.run(["ffmpeg","-nostdin","-hide_banner","-loglevel","error",
       "-y","-i",str(media),"-vf","fps=1,scale=256:-1,tile=4x1",
       "-frames:v","1",str(sheet)],check=True,timeout=75)
@@ -310,6 +339,9 @@ def run(mode):
         raise RuntimeError("GH_TOKEN_REQUIRED_FOR_PRIVATE_DRAFT_STORAGE")
     ensure_private_draft()
     state=read_state()
+    if reconcile_visual_rejections(state):
+        persist_state(state)
+        print("REJECTED_UNAPPROVED_BAD_VIDEO_NOT_COUNTED_AS_PROGRESS",flush=True)
     valid_ids={s["id"] for s in shots}
     completed={s["id"] for s in state["completed_technical_shots"]}
     if not completed.issubset(valid_ids):
@@ -334,8 +366,12 @@ def run(mode):
         state["status"]="ALREADY_TRIED_ONE_FREE_GPU_CALL_TODAY"
         print("NO_SECOND_FREE_QUOTA_ATTEMPT_TODAY",flush=True)
         return state
-    current=eligible[0]
-    if clip_in_draft(current["id"]+".mp4"):
+    current=dict(eligible[0])
+    rejected_count=sum(1 for x in state.get("rejected_raw_shots",[])
+                       if x["id"]==current["id"])
+    current["asset_stem"]=(current["id"] if rejected_count==0 else
+                           current["id"]+f"_revision_{rejected_count+1}")
+    if clip_in_draft(current["asset_stem"]+".mp4"):
         raise RuntimeError("DRAFT_HAS_ORPHAN_CLIP_MANUAL_RECONCILIATION_REQUIRED")
     state["last_attempt_cairo_date"]=today
     state["attempts_this_run"]=1
@@ -347,12 +383,13 @@ def run(mode):
         state["last_attempt_result"]="RAW_VIDEO_READY_TECHNICALLY_UNAPPROVED"
         item={k:current[k] for k in ("scene","shot","id","seconds")}
         item.update(metadata)
+        item["asset_stem"]=current["asset_stem"]
         item.update({"human_visual_approval":False,
                      "original_Kokoro_speech_lipsync_approved":False,
                      "source_ember_sha256":EMBER_SHA,
                      "made_by_real_video_model":True,
                      "no_public_post":True})
-        proof=OUT/(current["id"]+".json")
+        proof=OUT/(current["asset_stem"]+".json")
         proof.write_text(json.dumps(item,indent=2)+"\n",encoding="utf-8")
         for path in (movie,sheet,proof):
             exec_cli(["gh","release","upload",RELEASE_TAG,str(path),"--repo",REPO])
