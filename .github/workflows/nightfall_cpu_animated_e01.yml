@@ -16,10 +16,8 @@ on:
     branches: [main]
     paths:
       - '.github/nightfall_cpu_2d_start_now.txt'
-  schedule:
-    # 10 AM Cairo; creates/restores the FULL unpublished episode only.
-    - cron: '12 10 * * *'
-      timezone: 'Africa/Cairo'
+# Daily CPU slideshow/cutout production retired after user rejected its quality.
+# Manual inspection of archived evidence remains available.
 
 permissions:
   contents: read

@@ -16,14 +16,7 @@ on:
         type: string
         default: "The Last Little Fox"
         required: true
-  schedule:
-    # Off the top of the hour to reduce delayed/dropped GitHub cron triggers.
-    # Approximate 10:00 Cairo morning run; backup only if the first was missed.
-    # The E01 runner saves a Cairo-day attempt marker: at most ONE free request/day.
-    - cron: '7 10 * * *'
-      timezone: 'Africa/Cairo'
-    - cron: '27 10 * * *'
-      timezone: 'Africa/Cairo'
+# Archived legacy workflow stays disabled. Remove idle scheduled runs.
 
 permissions:
   contents: write
