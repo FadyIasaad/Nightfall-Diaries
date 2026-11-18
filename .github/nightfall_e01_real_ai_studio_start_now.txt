@@ -1,0 +1,1 @@
+2026-11-19 owner request: stop failed-service loops and make one working E01 renderer. Trigger exactly ONE source-locked, real 4s animated shot using free anonymous LTX-2.3 ZeroGPU and durable owner-only draft GitHub release. No paid APIs, no user PC, no public social upload, no 2.5D fallback. Preserve original Kokoro 180s soundtrack. Report either real media or explicit blocker.
