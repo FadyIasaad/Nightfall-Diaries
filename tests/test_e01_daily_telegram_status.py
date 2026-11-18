@@ -126,18 +126,21 @@ class DailyTelegramTests(unittest.TestCase):
         self.assertIn("RECEIPT_SAVE_FAILED", result["status"])
         send.assert_not_called()
 
-    def test_only_one_real_production_schedule_on_default_branch(self):
-        new = (ROOT / ".github/workflows/nightfall_story_one_click.yml").read_text()
+    def test_only_safe_readiness_schedule_on_default_branch(self):
+        legacy = (ROOT / ".github/workflows/nightfall_story_one_click.yml").read_text()
         old = (ROOT / ".github/workflows/nightfall.yml").read_text()
-        self.assertIn("  schedule:\n", new)
+        daily = (ROOT / ".github/workflows/nightfall_e01_daily_real_speaking.yml").read_text()
+        self.assertNotIn("  schedule:\n", legacy)
         self.assertNotIn("  schedule:\n", old)
-        self.assertIn("cron: '7 10 * * *'", new)
-        self.assertIn("cron: '27 10 * * *'", new)
-        self.assertIn("python -m pilot.e01_daily_telegram_status", new)
-        self.assertLess(new.index("python -m pilot.e01_telegram_notify --mode progress"),
-                        new.index("python -m pilot.e01_daily_telegram_status"))
-        self.assertLess(new.index("python -m pilot.e01_daily_telegram_status"),
-                        new.index("python -m pilot.e01_free_resume --mode assembly-gate"))
+        self.assertIn("  schedule:\n", daily)
+        self.assertIn("cron: '0 10 * * *'", daily)
+        self.assertIn("timezone: 'Africa/Cairo'", daily)
+        self.assertIn("inputs.mode == 'generate'", daily)
+        self.assertIn("github.event_name == 'workflow_dispatch'", daily)
+        self.assertIn("if: ${{ false }}", legacy)
+        # The archived Telegram monitor exists for prior receipts only;
+        # it no longer triggers GPU work or old daily production.
+        self.assertIn("python -m pilot.e01_daily_telegram_status", legacy)
 
 
 if __name__ == "__main__":
