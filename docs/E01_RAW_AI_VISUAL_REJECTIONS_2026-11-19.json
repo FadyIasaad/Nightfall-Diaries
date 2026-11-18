@@ -1,0 +1,18 @@
+{
+  "schema": "nightfall-e01-raw-visual-review-v1",
+  "review_date": "2026-11-19",
+  "source_run_id": 44410617874,
+  "editor_note": "Model-generated review finding, not an owner-issued approval. Do not count this video toward the 45 original shots or public release.",
+  "rejections": [
+    {
+      "clip_id": "scene_01_shot_01",
+      "sha256": "269dcfac81b2e294b25219e88f6ecc93139e50a74b3e733389d17ee41bb6b1a4",
+      "reasons": [
+        "Hallucinated yellow pseudo-caption text appears across lower picture for much of the shot.",
+        "Ember's body position barely changes and he does not perform the requested run.",
+        "The lush waterfall forest does not convey the burning forest required by Scene 1."
+      ],
+      "next_action": "Retry original scene with literal script text removed and stronger real full-body translation instructions. New outputs must still be inspected; no automatic owner aesthetic approval."
+    }
+  ]
+}
