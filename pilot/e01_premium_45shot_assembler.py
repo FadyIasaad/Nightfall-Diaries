@@ -167,7 +167,7 @@ def assemble():
     if len(clips)!=SHOT_COUNT:
         raise RuntimeError("NOT_ALL_DISTINCT_RENDERED_VIDEO_CLIPS")
     concat=FINAL.parent/"approved_45shot_concat.txt"
-    concat.write_text("".join("file '"+str(p.resolve()).replace("'","")+"'\\n" for p in clips))
+    concat.write_text("".join("file '"+str(p.resolve()).replace("'","")+"'\n" for p in clips))
     visual=FINAL.parent/"genuine_motion_silent_180s.mp4"
     run_ffmpeg(["-f","concat","-safe","0","-i",concat,"-c:v","copy",visual],timeout=540)
     if not 179.6<=float(probe(visual)["format"]["duration"])<=180.4:
