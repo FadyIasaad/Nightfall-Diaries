@@ -41,7 +41,6 @@ class PremiumRealShotAssemblerTests(unittest.TestCase):
                     "GAP_BLACK_SCREEN_OR_STATIC_CAMERA"):
             self.assertIn(gate,text)
         self.assertIn('"public_upload_permitted":False',text)
-        self.assertNotIn("slideshow", text.lower().replace("slideshow","")) if False else None
 
 if __name__=="__main__":
     unittest.main()
