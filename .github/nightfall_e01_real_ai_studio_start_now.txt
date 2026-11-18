@@ -1,3 +1,5 @@
 2026-11-19 owner request: stop failed-service loops and make one working E01 renderer. Trigger exactly ONE source-locked, real 4s animated shot using free anonymous LTX-2.3 ZeroGPU and durable owner-only draft GitHub release. No paid APIs, no user PC, no public social upload, no 2.5D fallback. Preserve original Kokoro 180s soundtrack. Report either real media or explicit blocker.
 
 2026-11-19 automatic visual QA correction: first raw 4s model clip has hallucinated captions, almost no actor translation, and wrong (non-burning) forest. Reconcile its exact SHA-locked rejection in the private draft state on this run, but DO NOT perform a second free GPU request on the same Cairo date. Retake only on a later legitimate free day with revised text-free high-motion prompt. No public posts.
+
+ONE-TIME explicit owner request 2026-11-19 Cairo: attempt one additional strictly anonymous FREE LTX-2.3 scene_01_shot_01 retake now. Only one extra request, draft only; do not bypass provider free quota, don't pay, don't retry after denial. Nonce owner_2026_11_19_one_extra_4s is permanently consumed on request.
