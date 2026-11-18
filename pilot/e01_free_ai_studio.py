@@ -158,6 +158,7 @@ def empty_state():
         "visual_owner_approved_shots":[],
         "last_attempt_cairo_date":None,
         "last_attempt_result":None,
+        "one_time_manual_extra_ids":[],
         "attempts_this_run":0,
         "only_free_anonymous_ZeroGPU":True,
         "paid_inference_requests":0,
@@ -362,9 +363,16 @@ def run(mode):
         persist_state(state)
         return state
     today=now_cairo().date().isoformat()
-    if state.get("last_attempt_cairo_date")==today:
+    owner_extra_id=os.getenv("SINGLE_USE_OWNER_EXTRA_ID","")
+    owner_authorized_extra=(
+        owner_extra_id=="owner_2026_11_19_one_extra_4s"
+        and today=="2026-11-19"
+        and os.getenv("GITHUB_EVENT_NAME")=="push"
+        and owner_extra_id not in state.get("one_time_manual_extra_ids",[])
+    )
+    if state.get("last_attempt_cairo_date")==today and not owner_authorized_extra:
         state["status"]="ALREADY_TRIED_ONE_FREE_GPU_CALL_TODAY"
-        print("NO_SECOND_FREE_QUOTA_ATTEMPT_TODAY",flush=True)
+        print("NO_UNAUTHORIZED_SECOND_FREE_QUOTA_ATTEMPT_TODAY",flush=True)
         return state
     current=dict(eligible[0])
     rejected_count=sum(1 for x in state.get("rejected_raw_shots",[])
@@ -375,8 +383,14 @@ def run(mode):
         raise RuntimeError("DRAFT_HAS_ORPHAN_CLIP_MANUAL_RECONCILIATION_REQUIRED")
     state["last_attempt_cairo_date"]=today
     state["attempts_this_run"]=1
-    state["status"]="FREE_GPU_REQUEST_SUBMITTED"
-    persist_state(state)  # Lock today's one request BEFORE network inference.
+    if owner_authorized_extra:
+        # Explicit one-time owner request: allow ONE additional anonymous,
+        # non-billable trial on this exact Cairo date. Never retry automatically
+        # or renew the extra authorization on future days.
+        state.setdefault("one_time_manual_extra_ids",[]).append(owner_extra_id)
+    state["status"]=("ONE_TIME_OWNER_EXTRA_FREE_GPU_REQUEST_SUBMITTED" if owner_authorized_extra
+                     else "FREE_GPU_REQUEST_SUBMITTED")
+    persist_state(state)  # Persist nonce BEFORE network inference.
     try:
         movie,sheet,metadata=generate_once(current)
         state["status"]="ONE_REAL_4S_AI_VIDEO_SAVED_PENDING_OWNER_ART_REVIEW"
