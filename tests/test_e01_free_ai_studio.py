@@ -46,8 +46,10 @@ class FreeAIStudioTests(TestCase):
                           side_effect=RuntimeError("You have exceeded your ZeroGPU runs limit")) as generator, \
              patch.dict(os.environ,{"GITHUB_REF":"refs/heads/main","GH_TOKEN":"fake_test_only"},
                         clear=True):
-            actual=s.run("generate")
+            with patch("builtins.print") as captured:
+                actual=s.run("generate")
             self.assertEqual(generator.call_count,1)
+            self.assertTrue(captured.called)
             self.assertEqual(actual["status"],"BLOCKED_FREE_ZEROGPU_QUOTA_NEXT_DAY")
             self.assertEqual(actual["last_attempt_cairo_date"],s.now_cairo().date().isoformat())
             self.assertEqual(actual["completed_technical_shots"],[])
@@ -66,7 +68,8 @@ class FreeAIStudioTests(TestCase):
              patch.object(s,"generate_once") as gpu, \
              patch.dict(os.environ,{"GITHUB_REF":"refs/heads/main","GH_TOKEN":"fake_test_only"},
                         clear=True):
-            out=s.run("generate")
+            with patch("builtins.print"):
+                out=s.run("generate")
             self.assertEqual(out["status"],"ALREADY_TRIED_ONE_FREE_GPU_CALL_TODAY")
             gpu.assert_not_called()
 
@@ -91,11 +94,14 @@ class FreeAIStudioTests(TestCase):
             from datetime import datetime
             from zoneinfo import ZoneInfo
             clock.return_value=datetime(2026,11,19,0,45,tzinfo=ZoneInfo("Africa/Cairo"))
-            first=s.run("generate")
+            with patch("builtins.print") as captured:
+                first=s.run("generate")
             self.assertEqual(gpu.call_count,1)
+            self.assertTrue(captured.called)
             self.assertEqual(first["status"],"BLOCKED_FREE_ZEROGPU_QUOTA_NEXT_DAY")
             self.assertEqual(first["one_time_manual_extra_ids"],["owner_2026_11_19_one_extra_4s"])
-            second=s.run("generate")
+            with patch("builtins.print"):
+                second=s.run("generate")
             self.assertEqual(gpu.call_count,1)
             self.assertEqual(second["status"],"ALREADY_TRIED_ONE_FREE_GPU_CALL_TODAY")
             clock.return_value=datetime(2026,11,20,0,45,tzinfo=ZoneInfo("Africa/Cairo"))
