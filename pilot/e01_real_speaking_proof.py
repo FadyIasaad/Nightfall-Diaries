@@ -102,6 +102,22 @@ def validate_movie(path):
             "sha256": sha(path), "no_black_or_frozen_gaps": True}
 
 
+
+FREE_QUOTA_PHRASES = (
+    "exceeded your zerogpu runs limit",
+    "not enough zerogpu quota",
+    "insufficient zerogpu quota",
+    "zerogpu quota exceeded",
+    "zerogpu runs limit",
+)
+
+
+def is_free_quota_error(error):
+    """Only classify explicit ZeroGPU quota denials, not arbitrary API failures."""
+    message = str(error).lower()
+    return any(phrase in message for phrase in FREE_QUOTA_PHRASES)
+
+
 def execute(mode):
     OUT.mkdir(parents=True, exist_ok=True)
     report = {
@@ -121,6 +137,8 @@ def execute(mode):
         "public_posting_allowed": False,
         "render_2d_fallback": False,
         "status": "STARTED",
+        "free_gpu_quota_available": None,
+        "no_auto_retry_or_token_escalation": True,
     }
     try:
         if any(os.environ.get(key) for key in PAID_CREDENTIAL_NAMES):
@@ -160,13 +178,32 @@ def execute(mode):
         else:
             report["status"] = "SOURCE_LOCKED_FREE_PROVIDER_PRECHECK"
     except Exception as exc:
-        report["status"] = "BLOCKED_NO_TALKING_QUALITY_CLAIM"
+        free_quota_exhausted = is_free_quota_error(exc)
+        report["status"] = (
+            "BLOCKED_FREE_ZEROGPU_QUOTA"
+            if free_quota_exhausted else "BLOCKED_NO_TALKING_QUALITY_CLAIM"
+        )
+        report["free_gpu_quota_available"] = False if free_quota_exhausted else None
         report["error_type"] = type(exc).__name__
         report["error"] = str(exc)[:300]
+        if free_quota_exhausted:
+            report["next_action"] = (
+                "No video was generated. Stop instead of retrying or adding a "
+                "token. Run an explicit manual generate test after free quota "
+                "resets; animal-face quality is still unverified."
+            )
     finally:
         (OUT / "report.json").write_text(json.dumps(report, indent=2) + "\n",
                                          encoding="utf-8")
     print("E01_REAL_SPEAKING_PROOF:", report["status"], flush=True)
+    if report["status"] == "BLOCKED_FREE_ZEROGPU_QUOTA":
+        # A free provider refusing quota is an expected *readiness blocker*, not
+        # a broken application. Green workflow status must NOT be misread as a
+        # finished video: the report and GitHub warning explicitly say BLOCKED.
+        print("::warning title=Free ZeroGPU quota exhausted::"
+              "No talking video generated; no automatic retry, no paid API, "
+              "and no additional token is used.")
+        return
     if report["status"] == "BLOCKED_NO_TALKING_QUALITY_CLAIM":
         raise SystemExit(1)
 
