@@ -53,7 +53,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - name: Validate a genuine 45-shot storyline, free quota locks and draft-only storage
+      - name: Unit tests only - quota failures are MOCKED (no real provider calls)
         run: python -m unittest tests.test_e01_free_ai_studio -v
       - name: Install free API client and FFmpeg only for actual one-shot generate
         if: env.MODE == 'generate'
