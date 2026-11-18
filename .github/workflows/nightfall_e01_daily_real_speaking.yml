@@ -44,7 +44,7 @@ jobs:
       FB_PAGE_ACCESS_TOKEN: ''
       INSTAGRAM_ACCESS_TOKEN: ''
       TIKTOK_ACCESS_TOKEN: ''
-      MODE: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' && 'generate' || github.event_name == 'workflow_dispatch' && inputs.mode || 'preflight' }}
+      MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate' && 'generate' || 'preflight' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -64,6 +64,26 @@ jobs:
         run: python -m unittest tests.test_e01_real_speaking_proof -v
       - name: Check or attempt precisely one animal talking-scene proof
         run: python -m pilot.e01_real_speaking_proof --mode "$MODE"
+      - name: Report the output truthfully even when the free quota is exhausted
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          file = Path("output/e01_real_speaking_proof/report.json")
+          if file.is_file():
+              report = json.loads(file.read_text(encoding="utf-8"))
+              status = report.get("status", "UNKNOWN")
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+                  out.write("### Actual video-generation status: " + status + "\n\n")
+                  out.write("- Full E01 MP4 generated: NO\n")
+                  out.write("- Public posting: DISABLED\n")
+                  out.write("- Payable provider: NONE\n")
+                  if status == "BLOCKED_FREE_ZEROGPU_QUOTA":
+                      out.write("- Free GPU allowance: exhausted; no automatic retries\n")
+                  elif status == "TECHNICALLY_PLAYABLE_HUMAN_ART_REVIEW_REQUIRED":
+                      out.write("- Short MP4 technical pass only; animal acting/identity not approved\n")
+          PY
       - name: Archive real dialogue audio, proof MP4 if it exists, and blocker report
         if: always()
         uses: actions/upload-artifact@v6
