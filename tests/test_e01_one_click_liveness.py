@@ -10,16 +10,17 @@ from pilot import e01_progress_health as monitor
 
 
 class CairoLivenessTests(unittest.TestCase):
-    def test_two_daily_cron_slots_but_not_two_hf_calls(self):
-        wf = (resume.ROOT / ".github/workflows/nightfall_story_one_click.yml").read_text()
-        self.assertIn("cron: '7 10 * * *'", wf)
-        self.assertIn("cron: '27 10 * * *'", wf)
-        self.assertIn("timezone: 'Africa/Cairo'", wf)
-        self.assertIn("python -m pilot.e01_progress_health", wf)
-        self.assertIn("python -m pilot.e01_daily_telegram_status", wf)
+    def test_legacy_daily_cron_retired_in_favor_of_free_readiness(self):
+        legacy = (resume.ROOT / ".github/workflows/nightfall_story_one_click.yml").read_text()
+        readiness = (resume.ROOT / ".github/workflows/nightfall_e01_daily_real_speaking.yml").read_text()
+        self.assertNotIn("  schedule:\n", legacy)
+        self.assertIn("cron: '0 10 * * *'", readiness)
+        self.assertIn("timezone: 'Africa/Cairo'", readiness)
+        self.assertIn("github.event_name == 'workflow_dispatch' && inputs.mode == 'generate'", readiness)
         self.assertNotIn("  schedule:\n", (resume.ROOT / ".github/workflows/nightfall.yml").read_text())
-        self.assertIn("nightfall-e01-cumulative-real-shots", wf)
-        self.assertIn("python -m pilot.e01_free_resume --mode assemble", wf)
+        # Archived code remains reviewable but doesn't auto-render rejects.
+        self.assertIn("nightfall-e01-cumulative-real-shots", legacy)
+        self.assertIn("python -m pilot.e01_free_resume --mode assemble", legacy)
 
     def test_backup_cron_does_not_spend_extra_hf_gpu_same_day(self):
         with tempfile.TemporaryDirectory() as t:
