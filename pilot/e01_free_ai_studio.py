@@ -372,8 +372,8 @@ def run(mode):
     state=read_state()
     state.setdefault("automatic_best_candidates",{})
     state.setdefault("rejected_raw_shots",[])
-    if reconcile_visual_rejections(state):
-        persist_state(state)
+    newly_rejected=reconcile_visual_rejections(state)
+    if newly_rejected:
         print("REJECTED_UNAPPROVED_BAD_VIDEO_NOT_COUNTED_AS_PROGRESS",flush=True)
     valid_ids={s["id"] for s in shots}
     rejected_ids={x["id"] for x in state.get("rejected_raw_shots",[])}
@@ -381,6 +381,19 @@ def run(mode):
         if not any(x["id"]==shot_id and x.get("sha256")==record.get("sha256")
                    for x in state["completed_technical_shots"]):
             state["automatic_best_candidates"].pop(shot_id,None)
+    if newly_rejected:
+        state["status"]="AUTO_REJECTED_STORY_BACKGROUND_OR_FRAMING"
+        state["last_attempt_result"]="REJECTED_OWNER_VISUAL_REVIEW_MEDIA_SHA_LOCKED"
+        persist_state(state)
+    if mode=="reconcile":
+        # Read and reconcile real saved draft quality state ONLY. No GPU,
+        # no inference, no new billing or attempt, even if free quota exists.
+        if not newly_rejected:
+            state["status"]="READ_ONLY_VISUAL_REJECTION_RECONCILIATION_NO_NEW_CHANGE"
+        persist_state(state)
+        print("E01_RECONCILE_ONLY_NO_GPU",state["status"],
+              len(state["completed_technical_shots"]),"of",TOTAL,flush=True)
+        return state
     completed={s["id"] for s in state["completed_technical_shots"]}
     if not completed.issubset(valid_ids):
         raise RuntimeError("DRAFT_CONTAINS_UNRECOGNIZED_SHOTS")
@@ -488,6 +501,6 @@ def run(mode):
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser()
-    parser.add_argument("--mode",choices=("audit","generate"),default="audit")
+    parser.add_argument("--mode",choices=("audit","reconcile","generate"),default="audit")
     cfg=parser.parse_args()
     run(cfg.mode)
