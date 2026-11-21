@@ -5,3 +5,5 @@
 ONE-TIME explicit owner request 2026-11-19 Cairo: attempt one additional strictly anonymous FREE LTX-2.3 scene_01_shot_01 retake now. Only one extra request, draft only; do not bypass provider free quota, don't pay, don't retry after denial. Nonce owner_2026_11_19_one_extra_4s is permanently consumed on request.
 
 2026-11-21 owner requests actual E01 episode. Fixed three days of SHA mismatch pre-generation failures, added free motion ranking and Telegram alerts, and changed Scene1 prompt to require real burning forest + continuous centered tracking. Trigger one normal $0 LTX-2.3 genuine shot now (no extra token, no payment, no reuse of rejected E01 v1/v2). If provider refuses, record honest blocker. Do not publish partial movie.
+
+2026-11-21: explicit NO-GPU semantic rejection reconciliation after actual v3 forest shot failed story/framing review (SHA 30008fe29c354cd0f128c4decc295b302a6bf69c5bf62962dd49a2d1c95b16c0). Remove v3 from technical shortlist, preserve draft evidence, deliver actual Telegram result with fixed full JSON parsing. Never request a second GPU call or publicly publish. Next scheduled free attempt uses approved owner PNG in E01 opening scenes.
