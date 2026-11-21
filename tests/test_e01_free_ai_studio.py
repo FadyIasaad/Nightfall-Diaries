@@ -22,6 +22,17 @@ class FreeAIStudioTests(TestCase):
         self.assertIn("exactly ONE golden star",shots[0]["prompt"])
         self.assertIn("body length across the environment",shots[0]["prompt"])
 
+    def test_true_approved_fire_reference_used_for_opening_scenes(self):
+        shots=s.plan()
+        self.assertTrue(s.FIRE_REFERENCE.is_file())
+        self.assertEqual(s.sha(s.FIRE_REFERENCE),s.FIRE_REFERENCE_SHA)
+        self.assertEqual({x["reference_source"] for x in shots if x["scene"]<=6},
+                         {"approved_firestorm"})
+        self.assertEqual({x["reference_source"] for x in shots if x["scene"]>6},
+                         {"original_ember"})
+        self.assertIn("KEEP THE COMPLETE FOX INSIDE THE",shots[0]["prompt"])
+        self.assertIn("clearly BURNING FOREST",shots[0]["prompt"])
+
     def test_source_image_sha_and_no_paid_provider(self):
         self.assertTrue(s.EMBER.exists())
         self.assertEqual(s.sha(s.EMBER),s.EMBER_SHA)
@@ -171,6 +182,26 @@ class FreeAIStudioTests(TestCase):
             with patch.object(s,"VISUAL_REJECTIONS",review):
                 self.assertFalse(s.reconcile_visual_rejections(state))
             self.assertEqual(len(state["completed_technical_shots"]),1)
+
+    def test_gpu_free_reconcile_rejects_exact_v3_without_new_inference(self):
+        state=s.empty_state()
+        state["completed_technical_shots"]=[
+            {"id":"scene_01_shot_01","sha256":"v3exact"}
+        ]
+        with tempfile.TemporaryDirectory() as td, \
+             patch.object(s,"OUT",Path(td)), \
+             patch.object(s,"ensure_private_draft"), \
+             patch.object(s,"read_state",return_value=state), \
+             patch.object(s,"persist_state"), \
+             patch.object(s,"reconcile_visual_rejections",return_value=True), \
+             patch.object(s,"generate_once") as ai, \
+             patch.dict(os.environ,{"GH_TOKEN":"fake_test_only",
+                                    "GITHUB_REF":"refs/heads/main"},clear=True):
+            with patch("builtins.print"):
+                result=s.run("reconcile")
+            ai.assert_not_called()
+            self.assertEqual(result["status"],"AUTO_REJECTED_STORY_BACKGROUND_OR_FRAMING")
+            self.assertFalse(result["public_uploads"])
 
     def test_no_shot_fake_approval_or_social_upload(self):
         script=Path(s.__file__).read_text(encoding="utf-8")

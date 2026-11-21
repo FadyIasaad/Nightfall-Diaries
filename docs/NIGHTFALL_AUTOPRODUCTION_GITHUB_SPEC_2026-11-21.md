@@ -107,3 +107,15 @@ When automated tools cannot verify any gate, do not claim it passed; retain the 
 - [ ] Independently verify official social publishing on requested destinations (not achieved)
 
 **Truthful stage:** `PARTIAL_E01_PRODUCTION_AUDIO_DONE_VIDEO_MISSING`. The GitHub queue can attempt free genuine clips but is not a promise of a finished daily premium movie.
+
+
+## 2026-11-21: actual source-image correction and tested Telegram root cause
+
+Run [44924337217](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/44924337217) succeeded in creating a **genuine 4.042-second E01 v3 sample**. Its CPU-only motion/texture score was **85.7/100**, but frame review showed the fox could leave the picture and the forest was green/waterfall-like rather than the original fire. It is **NOT a usable scene**. The SHA-locked v3 media `30008fe29c354cd0f128c4decc295b302a6bf69c5bf62962dd49a2d1c95b16c0` is now a separate rejection from v1/v2. Do **not** treat objective motion scores as narrative or acting approval.
+
+**Fundamental source correction:** The owner-approved complete burning-forest keyframe (not merely a text prompt), featuring Ember in a vivid firestorm, has been added **at full PNG resolution** to `assets/cinematic_refs/ember_firestorm_E01_owner_approved_20261121.png`. SHA256: `0dd125b3d4953a76f1704666b526559e371c80faa019cb41bbb57f86ba162d1e`. The first six E01 fire scenes now feed this **actual source image** into the LTX image-to-video endpoint. The separate previously SHA-locked character registry reference is still validated. Other scenes continue using their original appropriate source until story-specific references are available. All clips are draft-only until verified.
+
+**Telegram verified evidence:** For v3 run, the start message returned `SENT`. The result message returned `TELEGRAM_SEND_FAILED_JSONDecodeError` because the previous handler read only **2048 bytes** of a potentially larger Telegram `sendMessage` JSON response. Fixed to read and validate the complete response (up to 128 KiB) without leaking the token. This historical result message **cannot** be claimed delivered. The new explicit `reconcile` mode updates the draft rejection state without consuming GPU and emits an accurate end-status Telegram message on a marked reconciliation-only main push.
+
+**Production quota:** v3 used the permitted free anonymous request on 2026-11-21. No second paid or quota-avoiding attempt will occur today. The next legitimate eligible attempt uses the owner-approved firestorm image with v4 media revision and starts on the schedule, subject to provider free capacity. The actual full 3-minute film and natural animal lip-sync remain **NOT READY**.
+

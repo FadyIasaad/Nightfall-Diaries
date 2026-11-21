@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      MODE: ${{ (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'generate')) && 'generate' || 'audit' }}
+      MODE: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[E01-RECONCILE-ONLY]')) && 'reconcile' || (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'generate')) && 'generate' || 'audit' }}
       GH_TOKEN: ${{ github.token }}
       GITHUB_TOKEN: ${{ github.token }}
       SINGLE_USE_OWNER_EXTRA_ID: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[E01-OWNER-EXTRA-2026-11-19]') && 'owner_2026_11_19_one_extra_4s' || '' }}
@@ -70,10 +70,10 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m pilot.e01_studio_telegram --phase start
-      - name: Generate exactly one actual source-locked four-second scene, OR audit without GPU
+      - name: Execute actual generation OR GPU-free quality reconciliation
         run: python -m pilot.e01_free_ai_studio --mode "$MODE"
       - name: Telegram — report actual result, score, quota or failure (no false success)
-        if: always() && env.MODE == 'generate'
+        if: always() && (env.MODE == 'generate' || env.MODE == 'reconcile')
         continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

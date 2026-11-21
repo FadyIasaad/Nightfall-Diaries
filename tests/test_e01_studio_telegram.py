@@ -39,6 +39,30 @@ class TelegramStudioTests(unittest.TestCase):
             self.assertEqual(len(r["missing_secret_names"]),2)
             self.assertEqual(json.loads(t.OUTPUT.read_text())["status"],r["status"])
 
+    def test_long_real_telegram_json_response_over_2kb_is_parsed_completely(self):
+        class FakeResponse:
+            def __enter__(self): return self
+            def __exit__(self,*args): return False
+            def read(self,count):
+                import json
+                data={"ok":True,"result":{"message_id":349,"text":"تم الإرسال"*500}}
+                value=json.dumps(data,ensure_ascii=False).encode("utf-8")
+                assert len(value)>2048
+                return value
+        with tempfile.TemporaryDirectory() as td, \
+             patch.object(t,"OUTPUT",Path(td)/"receipt.json"), \
+             patch.object(t.urllib.request,"urlopen",return_value=FakeResponse()) as client, \
+             patch.dict(os.environ,{"GITHUB_EVENT_NAME":"push",
+                   "GITHUB_REF":"refs/heads/main","GITHUB_RUN_ATTEMPT":"1",
+                   "TELEGRAM_BOT_TOKEN":"example-test-token",
+                   "TELEGRAM_CHAT_ID":"123456"},clear=True):
+            with patch("builtins.print"):
+                result=t.send("result",{"status":"AUTO_REJECTED_WEAK_MOTION_OR_FRAMING"})
+            self.assertTrue(result["delivered"])
+            self.assertEqual(result["status"],"SENT")
+            self.assertEqual(result["message_id"],349)
+            client.assert_called_once()
+
     def test_pull_request_never_sends_telegram(self):
         with tempfile.TemporaryDirectory() as td, \
              patch.object(t,"OUTPUT",Path(td)/"receipt.json"), \
