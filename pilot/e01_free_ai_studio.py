@@ -26,6 +26,8 @@ SCRIPT = ROOT / "seasons/S01_the_last_little_fox/revised_screenplays/E01_2026-11
 CAST = ROOT / "seasons/S01_the_last_little_fox/characters/character_registry.json"
 EMBER = ROOT / "assets/cinematic_refs/ember_approved_candidate_2026-11-13.webp"
 EMBER_SHA = "c6cfda4f199c13d5fdf6d4e5057026d718787a495aefc29125c06779eb662432"
+FIRE_REFERENCE = ROOT / "assets/cinematic_refs/ember_firestorm_E01_owner_approved_20261121.png"
+FIRE_REFERENCE_SHA = "0dd125b3d4953a76f1704666b526559e371c80faa019cb41bbb57f86ba162d1e"
 OUT = ROOT / "output/e01_free_ai_studio"
 VISUAL_REJECTIONS = ROOT / "docs/E01_RAW_AI_VISUAL_REJECTIONS_2026-11-19.json"
 RELEASE_TAG = "nightfall-s01-e01-real-ai-draft-2026"
@@ -78,6 +80,8 @@ def guarantee_zero_paid_inference():
         raise RuntimeError("PRODUCTION_ONLY_ON_MAIN")
     if not EMBER.is_file() or sha(EMBER) != EMBER_SHA:
         raise RuntimeError("EMBER_ORIGINAL_IMAGE_HASH_MISMATCH")
+    if not FIRE_REFERENCE.is_file() or sha(FIRE_REFERENCE) != FIRE_REFERENCE_SHA:
+        raise RuntimeError("APPROVED_E01_BURNING_FOREST_REFERENCE_MISSING_OR_CHANGED")
 
 
 def plan():
@@ -127,8 +131,9 @@ def plan():
             prompt = (
                 "An original premium stylized animated feature-film scene, "
                 "one CONTINUOUS genuine four-second moving shot. The supplied "
-                "APPROVED IMAGE is an IDENTITY reference for Ember only, NOT "
-                "permission to preserve its peaceful forest background. "
+                "APPROVED IMAGE is the actual scene image to be animated. "
+                "Preserve its full three-dimensional burning-forest background, "
+                "flames and smoke; do not substitute a healthy green forest. "
                 "Ember is a russet fox cub with white-tipped LEFT ear, amber "
                 "eyes, teal scarf and exactly ONE golden star. No redesign. "
                 f"Required story world: {fire_setting} "
@@ -157,6 +162,8 @@ def plan():
                 "prompt":prompt,
                 "seed":20261119 + 101*scene["scene"] + idx,
                 "source_kind":source_kind,
+                "reference_source":("approved_firestorm" if scene["scene"] <= 6 else "original_ember"),
+
             })
     if len(shots)!=TOTAL:
         raise RuntimeError("SHOT_COUNT_INCONSISTENT")
@@ -320,7 +327,7 @@ def generate_once(shot):
     if API not in exposed:
         raise RuntimeError("LTX_PUBLIC_ZERO_GPU_ENDPOINT_CHANGED")
     result=client.predict(
-        handle_file(str(EMBER.resolve())),shot["prompt"],
+        handle_file(str((FIRE_REFERENCE if shot.get("reference_source")=="approved_firestorm" else EMBER).resolve())),shot["prompt"],
         4.0,False,shot["seed"],False,768,512,api_name=API
     )
     candidate=result[0] if isinstance(result,(tuple,list)) else result
@@ -431,6 +438,8 @@ def run(mode):
         item.update({"human_visual_approval":False,
                      "original_Kokoro_speech_lipsync_approved":False,
                      "source_ember_sha256":EMBER_SHA,
+                     "actual_i2v_source_sha256":(FIRE_REFERENCE_SHA if current.get("reference_source")=="approved_firestorm" else EMBER_SHA),
+                     "actual_i2v_source_type":current.get("reference_source"),
                      "made_by_real_video_model":True,
                      "no_public_post":True,
                      "automatic_quality":quality})
