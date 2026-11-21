@@ -110,24 +110,43 @@ def plan():
             # Avoid putting literal screenplay words into the video prompt:
             # the first real LTX E01 clip hallucinated subtitle text and had
             # almost-static body motion, despite a detailed environment.
+            fire_setting = (
+                "A clearly BURNING FOREST with large visible flames racing "
+                "through real blackened tree trunks and billowing thick dark "
+                "smoke behind the actor. Flying orange sparks and scorched "
+                "forest floor. Not a green waterfall, peaceful lake or twilight "
+                "flower garden. A real active fire must be visually obvious."
+                if scene["scene"] <= 6 else
+                "The charred forest aftermath with smoke, embers, damaged "
+                "roots and the correct story-specific location, NOT a pleasant "
+                "decorative meadow or unrelated scenery."
+            )
+            # The previous model retake let Ember leave the camera frame and
+            # hallucinated the wrong peaceful forest. Camera framing is now
+            # specified independently from how much the actor moves.
             prompt = (
-                "Original cinematic stylized 3D animated family-adventure MOVING SHOT, "
-                "four continuous seconds. The APPROVED IMAGE is the visual identity "
-                "of a young russet fox, LEFT ear white tip, expressive amber eyes, "
-                "turquoise scarf with exactly ONE golden star. Do not redesign him. "
-                "ACTION is essential: Ember reacts to a sudden forest fire, turns "
-                "his entire body, then RUNS across uneven roots toward the right "
-                "of frame. His paws clearly lift, travel and LAND, moving at least "
-                "one body length across the environment. The camera TRACKS with "
-                "him while the visible forest background MOVES in depth, with "
-                "smoke, falling ash, orange firelight, trees and wet soil. "
-                f"Scene beat: {scene['beat']}. "
-                f"Action direction: {scene['direction']}. "
-                f"Motion phase: {phase}. "
-                "Must be one naturally animated action shot, not breathing "
-                "in place or a zoom of one illustration. Absolutely NO text, "
+                "An original premium stylized animated feature-film scene, "
+                "one CONTINUOUS genuine four-second moving shot. The supplied "
+                "APPROVED IMAGE is an IDENTITY reference for Ember only, NOT "
+                "permission to preserve its peaceful forest background. "
+                "Ember is a russet fox cub with white-tipped LEFT ear, amber "
+                "eyes, teal scarf and exactly ONE golden star. No redesign. "
+                f"Required story world: {fire_setting} "
+                f"Required actual action: {scene['direction']} "
+                f"Motion beat: {phase} "
+                "Natural paw/body movement and expressive physical acting; "
+                "running actions translate at least one body length across "
+                "the environment, while quieter actions show intentional "
+                "facial and body reactions, not a zoom of a still. "
+                "The tracking camera must KEEP THE COMPLETE FOX INSIDE THE "
+                "FRAME for every moment. Full ears, tail and paws stay at "
+                "least ten percent clear of picture edges; camera follows "
+                "at matching speed rather than letting the actor run offscreen. "
+                "Real continuous parallax: foreground roots, midground tree "
+                "trunks and background fire all move in three-dimensional "
+                "depth. No cuts, no letterboxing. Absolutely NO text, fake "
                 "captions, subtitles, typography, social UI, icons, cards "
-                "or logos at any point. Do not generate dialogue or speech."
+                "or logos. No dialogue; original studio voice supplied separately."
             )
             shots.append({
                 "scene":scene["scene"],
