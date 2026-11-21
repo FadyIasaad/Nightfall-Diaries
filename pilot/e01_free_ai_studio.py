@@ -156,6 +156,7 @@ def empty_state():
         "completed_technical_shots":[],
         "rejected_raw_shots":[],
         "visual_owner_approved_shots":[],
+        "automatic_best_candidates":{},
         "last_attempt_cairo_date":None,
         "last_attempt_result":None,
         "one_time_manual_extra_ids":[],
@@ -248,7 +249,10 @@ def reconcile_visual_rejections(state):
             if clip["id"] != cid:
                 continue
             if clip["sha256"] != digest:
-                raise RuntimeError("UNMATCHED_VIDEO_REJECTION_HASH")
+                # Same scene ID can have multiple versions. A rejection of
+                # v1 must never abort v2 or v3 daily production; match on BOTH
+                # logical shot and exact SHA, and ignore unrelated versions.
+                continue
             state["completed_technical_shots"].remove(clip)
             entry=dict(clip)
             entry["visual_review"]="REJECTED"
@@ -340,10 +344,17 @@ def run(mode):
         raise RuntimeError("GH_TOKEN_REQUIRED_FOR_PRIVATE_DRAFT_STORAGE")
     ensure_private_draft()
     state=read_state()
+    state.setdefault("automatic_best_candidates",{})
+    state.setdefault("rejected_raw_shots",[])
     if reconcile_visual_rejections(state):
         persist_state(state)
         print("REJECTED_UNAPPROVED_BAD_VIDEO_NOT_COUNTED_AS_PROGRESS",flush=True)
     valid_ids={s["id"] for s in shots}
+    rejected_ids={x["id"] for x in state.get("rejected_raw_shots",[])}
+    for shot_id,record in list(state["automatic_best_candidates"].items()):
+        if not any(x["id"]==shot_id and x.get("sha256")==record.get("sha256")
+                   for x in state["completed_technical_shots"]):
+            state["automatic_best_candidates"].pop(shot_id,None)
     completed={s["id"] for s in state["completed_technical_shots"]}
     if not completed.issubset(valid_ids):
         raise RuntimeError("DRAFT_CONTAINS_UNRECOGNIZED_SHOTS")
@@ -393,8 +404,8 @@ def run(mode):
     persist_state(state)  # Persist nonce BEFORE network inference.
     try:
         movie,sheet,metadata=generate_once(current)
-        state["status"]="ONE_REAL_4S_AI_VIDEO_SAVED_PENDING_OWNER_ART_REVIEW"
-        state["last_attempt_result"]="RAW_VIDEO_READY_TECHNICALLY_UNAPPROVED"
+        from pilot.e01_auto_quality import score_clip
+        quality=score_clip(movie)
         item={k:current[k] for k in ("scene","shot","id","seconds")}
         item.update(metadata)
         item["asset_stem"]=current["asset_stem"]
@@ -402,12 +413,33 @@ def run(mode):
                      "original_Kokoro_speech_lipsync_approved":False,
                      "source_ember_sha256":EMBER_SHA,
                      "made_by_real_video_model":True,
-                     "no_public_post":True})
+                     "no_public_post":True,
+                     "automatic_quality":quality})
         proof=OUT/(current["asset_stem"]+".json")
         proof.write_text(json.dumps(item,indent=2)+"\n",encoding="utf-8")
+        # Capture genuine media even if automated evidence-based metrics are
+        # poor; rejected candidates are retained in the owner-only draft.
         for path in (movie,sheet,proof):
             exec_cli(["gh","release","upload",RELEASE_TAG,str(path),"--repo",REPO])
-        state["completed_technical_shots"].append(item)
+        if quality["passes_basic_machine_motion_gate"]:
+            state["status"]="AUTO_SHORTLISTED_TECHNICAL_MOTION_NOT_SEMANTICALLY_APPROVED"
+            state["last_attempt_result"]="REAL_MP4_SAVED_AND_AUTO_RANKED"
+            best=state.setdefault("automatic_best_candidates",{})
+            prior=best.get(current["id"])
+            if not prior or quality["score_0_to_100"]>prior.get("score",0):
+                best[current["id"]]={"asset_stem":current["asset_stem"],
+                       "sha256":metadata["sha256"],
+                       "score":quality["score_0_to_100"],
+                       "public_approved":False,
+                       "lip_sync_verified":False}
+            state["completed_technical_shots"].append(item)
+        else:
+            state["status"]="AUTO_REJECTED_WEAK_MOTION_OR_FRAMING"
+            state["last_attempt_result"]="MP4_REJECTED_BY_TECHNICAL_QA"
+            rejected=dict(item)
+            rejected["visual_review"]="AUTO_REJECTED_NON_SEMANTIC_QA"
+            rejected["reasons"]=quality["machine_flags"] or ["QUALITY_SCORE_BELOW_MINIMUM"]
+            state.setdefault("rejected_raw_shots",[]).append(rejected)
     except Exception as e:
         reason=str(e).lower()
         denied=any(pattern in reason for pattern in QUOTA_ERRORS)
