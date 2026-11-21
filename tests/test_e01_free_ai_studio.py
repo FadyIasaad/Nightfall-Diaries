@@ -22,6 +22,17 @@ class FreeAIStudioTests(TestCase):
         self.assertIn("exactly ONE golden star",shots[0]["prompt"])
         self.assertIn("body length across the environment",shots[0]["prompt"])
 
+    def test_true_approved_fire_reference_used_for_opening_scenes(self):
+        shots=s.plan()
+        self.assertTrue(s.FIRE_REFERENCE.is_file())
+        self.assertEqual(s.sha(s.FIRE_REFERENCE),s.FIRE_REFERENCE_SHA)
+        self.assertEqual({x["reference_source"] for x in shots if x["scene"]<=6},
+                         {"approved_firestorm"})
+        self.assertEqual({x["reference_source"] for x in shots if x["scene"]>6},
+                         {"original_ember"})
+        self.assertIn("KEEP THE COMPLETE FOX INSIDE THE",shots[0]["prompt"])
+        self.assertIn("clearly BURNING FOREST",shots[0]["prompt"])
+
     def test_source_image_sha_and_no_paid_provider(self):
         self.assertTrue(s.EMBER.exists())
         self.assertEqual(s.sha(s.EMBER),s.EMBER_SHA)
