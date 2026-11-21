@@ -23,6 +23,16 @@
         "Natural character speaking, appearance lock and complete film remain unverified."
       ],
       "next_action": "Retake from story-appropriate full fire reference when possible; automatically select best only after meaningful motion/framing metrics and semantic consistency; never publish this rejected v2."
+    },
+    {
+      "clip_id": "scene_01_shot_01",
+      "sha256": "30008fe29c354cd0f128c4decc295b302a6bf69c5bf62962dd49a2d1c95b16c0",
+      "reasons": [
+        "November 21 revision 3 genuine MP4 was machine-shortlisted 85.7/100 on motion/texture, but the real frames still show the old healthy forest/waterfall rather than required active forest fire.",
+        "The existing old image reference was NOT the approved firestorm keyframe; framing lets the character drift toward and out of frame.",
+        "This score cannot prove character consistency, natural speaking, story semantics, or final episode quality."
+      ],
+      "next_action": "Use the exact owner-approved complete burning-forest scene image uploaded in assets/cinematic_refs/ember_firestorm_E01_owner_approved_20261121.png as the starting frame; reject weak identity/setting and do not publish based on technical 85.7 score."
     }
   ]
 }
