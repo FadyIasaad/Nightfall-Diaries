@@ -183,6 +183,26 @@ class FreeAIStudioTests(TestCase):
                 self.assertFalse(s.reconcile_visual_rejections(state))
             self.assertEqual(len(state["completed_technical_shots"]),1)
 
+    def test_gpu_free_reconcile_rejects_exact_v3_without_new_inference(self):
+        state=s.empty_state()
+        state["completed_technical_shots"]=[
+            {"id":"scene_01_shot_01","sha256":"v3exact"}
+        ]
+        with tempfile.TemporaryDirectory() as td, \
+             patch.object(s,"OUT",Path(td)), \
+             patch.object(s,"ensure_private_draft"), \
+             patch.object(s,"read_state",return_value=state), \
+             patch.object(s,"persist_state"), \
+             patch.object(s,"reconcile_visual_rejections",return_value=True), \
+             patch.object(s,"generate_once") as ai, \
+             patch.dict(os.environ,{"GH_TOKEN":"fake_test_only",
+                                    "GITHUB_REF":"refs/heads/main"},clear=True):
+            with patch("builtins.print"):
+                result=s.run("reconcile")
+            ai.assert_not_called()
+            self.assertEqual(result["status"],"AUTO_REJECTED_STORY_BACKGROUND_OR_FRAMING")
+            self.assertFalse(result["public_uploads"])
+
     def test_no_shot_fake_approval_or_social_upload(self):
         script=Path(s.__file__).read_text(encoding="utf-8")
         self.assertIn('"human_visual_approval":False',script)
