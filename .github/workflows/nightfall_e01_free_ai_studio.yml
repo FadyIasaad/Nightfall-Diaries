@@ -54,7 +54,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit tests only - quota failures are MOCKED (no real provider calls)
-        run: python -m unittest tests.test_e01_free_ai_studio -v
+        run: python -m unittest tests.test_e01_free_ai_studio tests.test_e01_auto_quality tests.test_e01_studio_telegram -v
       - name: Install free API client and FFmpeg only for actual one-shot generate
         if: env.MODE == 'generate'
         run: |
@@ -63,8 +63,22 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y ffmpeg
           fi
+      - name: Telegram — report production attempt started (not a completed clip)
+        if: env.MODE == 'generate'
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m pilot.e01_studio_telegram --phase start
       - name: Generate exactly one actual source-locked four-second scene, OR audit without GPU
         run: python -m pilot.e01_free_ai_studio --mode "$MODE"
+      - name: Telegram — report actual result, score, quota or failure (no false success)
+        if: always() && env.MODE == 'generate'
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m pilot.e01_studio_telegram --phase result
       - name: Report exact accumulated real shots and quality gaps
         if: always()
         run: |
@@ -82,6 +96,7 @@ jobs:
                   out.write("- Status: **"+data.get("status","UNKNOWN")+"**\\n")
                   out.write("- Real 4-second raw AI shots accumulated: **"+
                             str(len(data.get("completed_technical_shots",[])))+"/45**\\n")
+                  out.write("- Automatic candidate rank: " + str(len(data.get("automatic_best_candidates",{}))) + " technically short-listed.\\n")
                   out.write("- Human art approval: NOT automatically granted.\\n")
                   out.write("- Full cinematic 180s MP4: NOT completed.\\n")
                   out.write("- Natural original Kokoro animal lip-sync: NOT verified.\\n")
@@ -96,6 +111,7 @@ jobs:
           name: nightfall-e01-real-ai-raw-shot-and-queue-status
           path: |
             output/e01_free_ai_studio/studio_state.json
+            output/e01_free_ai_studio/telegram_receipt.json
             output/e01_free_ai_studio/scene_*.mp4
             output/e01_free_ai_studio/scene_*_4frames.jpg
             output/e01_free_ai_studio/scene_*.json

@@ -13,6 +13,16 @@
         "The lush waterfall forest does not convey the burning forest required by Scene 1."
       ],
       "next_action": "Retry original scene with literal script text removed and stronger real full-body translation instructions. New outputs must still be inspected; no automatic owner aesthetic approval."
+    },
+    {
+      "clip_id": "scene_01_shot_01",
+      "sha256": "78832db77d0a5ff23cdfa715d240e499804db6359c61471226fdf40c5512c71a",
+      "reasons": [
+        "The earlier generated 4s v2 shows real running but the character moves out of frame by the final frames.",
+        "The scenery is a healthy twilight forest with waterfall, not the required large active fire and billowing smoke.",
+        "Natural character speaking, appearance lock and complete film remain unverified."
+      ],
+      "next_action": "Retake from story-appropriate full fire reference when possible; automatically select best only after meaningful motion/framing metrics and semantic consistency; never publish this rejected v2."
     }
   ]
 }

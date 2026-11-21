@@ -145,6 +145,33 @@ class FreeAIStudioTests(TestCase):
                 self.assertFalse(s.reconcile_visual_rejections(raw))
             # An already rejected clip is never mistaken for completion.
 
+    def test_old_rejected_sha_does_not_crash_new_version_of_same_shot(self):
+        with tempfile.TemporaryDirectory() as td:
+            review=Path(td)/"rejected.json"
+            review.write_text(json.dumps({"rejections":[
+                {"clip_id":"scene_01_shot_01","sha256":"oldsha","reasons":["captions"]},
+                {"clip_id":"scene_01_shot_01","sha256":"newsha","reasons":["wrong fire background"]}
+            ]}))
+            state=s.empty_state()
+            state["completed_technical_shots"]=[{"id":"scene_01_shot_01","sha256":"newsha"}]
+            with patch.object(s,"VISUAL_REJECTIONS",review):
+                self.assertTrue(s.reconcile_visual_rejections(state))
+                self.assertEqual(len(state["rejected_raw_shots"]),1)
+                self.assertEqual(state["rejected_raw_shots"][0]["sha256"],"newsha")
+                self.assertFalse(s.reconcile_visual_rejections(state))
+
+    def test_unmatched_sha_does_not_block_daily_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            review=Path(td)/"rejected.json"
+            review.write_text(json.dumps({"rejections":[
+                {"clip_id":"scene_01_shot_01","sha256":"v1sha","reasons":["bad"]}
+            ]}))
+            state=s.empty_state()
+            state["completed_technical_shots"]=[{"id":"scene_01_shot_01","sha256":"v2sha"}]
+            with patch.object(s,"VISUAL_REJECTIONS",review):
+                self.assertFalse(s.reconcile_visual_rejections(state))
+            self.assertEqual(len(state["completed_technical_shots"]),1)
+
     def test_no_shot_fake_approval_or_social_upload(self):
         script=Path(s.__file__).read_text(encoding="utf-8")
         self.assertIn('"human_visual_approval":False',script)
