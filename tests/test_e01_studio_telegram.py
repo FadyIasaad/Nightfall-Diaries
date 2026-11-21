@@ -32,7 +32,8 @@ class TelegramStudioTests(unittest.TestCase):
              patch.dict(os.environ,{"GITHUB_EVENT_NAME":"push",
                    "GITHUB_REF":"refs/heads/main","GITHUB_RUN_ATTEMPT":"1"},
                    clear=True):
-            r=t.send("result",{"status":"BLOCKED_FREE_ZEROGPU_QUOTA_NEXT_DAY"})
+            with patch("builtins.print"):
+                r=t.send("result",{"status":"BLOCKED_FREE_ZEROGPU_QUOTA_NEXT_DAY"})
             self.assertEqual(r["status"],"TELEGRAM_SECRETS_NOT_CONFIGURED")
             self.assertFalse(r["delivered"])
             self.assertEqual(len(r["missing_secret_names"]),2)
@@ -44,6 +45,7 @@ class TelegramStudioTests(unittest.TestCase):
              patch.dict(os.environ,{"GITHUB_EVENT_NAME":"pull_request",
                    "GITHUB_REF":"refs/pull/88/merge","TELEGRAM_BOT_TOKEN":"mock",
                    "TELEGRAM_CHAT_ID":"mock"},clear=True):
-            r=t.send("start")
+            with patch("builtins.print"):
+                r=t.send("start")
             self.assertEqual(r["status"],"NOT_MAIN_PRODUCTION_EVENT")
             self.assertFalse(r["delivered"])
