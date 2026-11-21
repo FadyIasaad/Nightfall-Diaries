@@ -119,3 +119,14 @@ Run [44924337217](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/4
 
 **Production quota:** v3 used the permitted free anonymous request on 2026-11-21. No second paid or quota-avoiding attempt will occur today. The next legitimate eligible attempt uses the owner-approved firestorm image with v4 media revision and starts on the schedule, subject to provider free capacity. The actual full 3-minute film and natural animal lip-sync remain **NOT READY**.
 
+
+## Final verified update — 21 November 2026, 18:52 Cairo
+
+1. **Owner-approved firestorm reference committed:** `assets/cinematic_refs/ember_firestorm_E01_owner_approved_20261121.png`, full-resolution SHA256 `0dd125b3d4953a76f1704666b526559e371c80faa019cb41bbb57f86ba162d1e`. The E01 LTX model now uses this actual frame for scenes 1–6, not the rejected green/waterfall reference.
+2. **All three previous AI shot revisions remain drafts, not approved:** v1 and v2 previously rejected; v3 actual generated clip at [run 44924337217](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/44924337217) machine-ranked 85.7/100 but failed scenery and framing. V3 exact SHA `30008fe29c354cd0f128c4decc295b302a6bf69c5bf62962dd49a2d1c95b16c0` is explicitly rejected.
+3. **Fixed Telegram response parsing:** bot start message reported `SENT` during real render. Results previously failed `JSONDecodeError` because of truncated 2048-byte response; now complete Bot API response is read (max 128 KiB) and validated. The follow-up GPU-free status workflow [run 44926912979](https://github.com/FadyIasaad/Nightfall-Diaries/actions/runs/44926912979) completed with **`E01_TELEGRAM_RESULT SENT`**. This confirms a result notification was accepted by Telegram, not that a film was published.
+4. **Draft state corrected:** `AUTO_REJECTED_STORY_BACKGROUND_OR_FRAMING`, **0/45 technically shortlistable clips**, no 180s visual MP4. A signed or semantic visual/lip-sync check is still required before a shot can be actually approved.
+5. **No second free inference on Nov 21:** that day already consumed its legitimate one-shot LTX anonymous request. Do not circumvent GPU quota. The next free eligible scheduled request will attempt `scene_01_shot_01_revision_4.mp4` using the new approved fire image, dependent on provider availability.
+6. **Remaining critical production tasks:** full physically moving 45-shot picture, distinct Moss model/reference and interaction, verified animal speaking synchronized to original Kokoro audio, accurate fire/forest setting, full 180s gap-free edit and safe official uploads. None is complete. Do not market this as a completed episode.
+
+**Audited costs:** no paid AI tokens passed; Google Flow is not silently used via unofficial APIs. GitHub Actions, shared ZeroGPU and Telegram Bot API are constrained to their free use.
