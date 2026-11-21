@@ -36,6 +36,10 @@ def message_for(phase, state=None, run_id=""):
            "✅ تم حفظ فيديو AI حقيقي واختيار أفضل مرشح تقنيًا. جودة القصة والشفاه لم تجتز الفحص بعد.",
        "AUTO_REJECTED_WEAK_MOTION_OR_FRAMING":
            "❌ تم رفض المقطع تلقائيًا بسبب ضعف الحركة/التفاصيل أو الإطار، وتم الاحتفاظ به للمراجعة.",
+       "AUTO_REJECTED_STORY_BACKGROUND_OR_FRAMING":
+           "❌ رُفض المقطع لأن الخلفية/إطار التصوير لا يطابقان القصة. النسخة السابقة محفوظة، وسيستخدم التشغيل التالي الصورة السينمائية النارية المعتمدة.",
+       "READ_ONLY_VISUAL_REJECTION_RECONCILIATION_NO_NEW_CHANGE":
+           "ℹ️ تم فحص سجل رفض اللقطات فقط، بدون استهلاك أي GPU أو إنتاج مقطع جديد.",
        "BLOCKED_FREE_ZEROGPU_QUOTA_NEXT_DAY":
            "⏸️ رفض المحرك المجاني الحصة اليوم. لم تُستخدم خدمة مدفوعة ولم تحدث إعادة محاولة.",
        "ALREADY_TRIED_ONE_FREE_GPU_CALL_TODAY":
